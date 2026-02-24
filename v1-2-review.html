@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V1.2 计划评估</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface-2: #1a1a26;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --text-dim: #8888a0;
+    --text-muted: #5c5c72;
+    --red: #ef4444;
+    --orange: #ff6b35;
+    --yellow: #fbbf24;
+    --green: #34d399;
+    --blue: #4a9eff;
+    --purple: #a78bfa;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Sans SC', sans-serif; line-height: 1.8; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 60px 32px; }
+  code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--surface-2); padding: 2px 6px; border-radius: 4px; }
+
+  .header { margin-bottom: 56px; }
+  .header-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--green); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 12px; }
+  .header h1 { font-size: 32px; font-weight: 900; margin-bottom: 16px; }
+  .header-desc { font-size: 14px; color: var(--text-dim); max-width: 700px; }
+
+  .section { margin-bottom: 56px; }
+  .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .section-num { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 5px; }
+  .section-title { font-size: 20px; font-weight: 700; }
+
+  /* Score comparison */
+  .score-compare {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    gap: 0;
+    align-items: center;
+    margin-bottom: 32px;
+  }
+
+  .score-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    text-align: center;
+  }
+
+  .score-box-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 8px;
+  }
+
+  .score-box-value {
+    font-size: 48px;
+    font-weight: 900;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .score-box-old .score-box-value { color: var(--yellow); }
+  .score-box-new .score-box-value { color: var(--green); }
+
+  .score-arrow {
+    text-align: center;
+    font-size: 24px;
+    color: var(--green);
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 14px;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .card-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .card-title { font-size: 15px; font-weight: 700; }
+  .card-body { font-size: 13px; color: var(--text-dim); line-height: 1.9; }
+
+  .tag-green { background: rgba(52,211,153,0.1); color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
+  .tag-red { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+  .tag-orange { background: rgba(255,107,53,0.1); color: var(--orange); border: 1px solid rgba(255,107,53,0.2); }
+  .tag-blue { background: rgba(74,158,255,0.1); color: var(--blue); border: 1px solid rgba(74,158,255,0.2); }
+  .tag-yellow { background: rgba(251,191,36,0.1); color: var(--yellow); border: 1px solid rgba(251,191,36,0.2); }
+  .tag-purple { background: rgba(167,139,250,0.1); color: var(--purple); border: 1px solid rgba(167,139,250,0.2); }
+
+  .highlight-box {
+    border-left: 3px solid;
+    padding-left: 20px;
+    margin: 16px 0;
+  }
+  .highlight-box.green { border-left-color: var(--green); }
+  .highlight-box.red { border-left-color: var(--red); }
+  .highlight-box.orange { border-left-color: var(--orange); }
+  .highlight-box.blue { border-left-color: var(--blue); }
+
+  /* Architecture diagram */
+  .arch-flow {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 36px;
+    margin-top: 16px;
+  }
+
+  .arch-flow-title {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 28px;
+  }
+
+  .flow-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+  }
+
+  .flow-step {
+    text-align: center;
+    padding: 16px 20px;
+    min-width: 130px;
+  }
+
+  .flow-step-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+
+  .flow-step-icon { font-size: 24px; margin-bottom: 6px; }
+  .flow-step-name { font-size: 13px; font-weight: 600; }
+  .flow-step-detail { font-size: 11px; color: var(--text-dim); }
+
+  .flow-arrow { color: var(--green); font-size: 20px; flex-shrink: 0; padding: 0 4px; }
+
+  .flow-loop-label {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--orange);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .flow-loop-arrow {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+    color: var(--orange);
+    font-size: 14px;
+  }
+
+  /* Summary */
+  .summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+  }
+
+  .summary h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--orange);
+  }
+
+  .summary p {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.9;
+    margin-bottom: 12px;
+  }
+
+  .next-steps {
+    margin-top: 20px;
+    padding: 20px 24px;
+    background: var(--surface-2);
+    border-radius: 10px;
+  }
+
+  .next-steps h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 12px;
+  }
+
+  .next-step-item {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+
+  .next-step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--orange);
+    flex-shrink: 0;
+    width: 24px;
+  }
+
+  @media (max-width: 768px) {
+    .score-compare { grid-template-columns: 1fr; gap: 12px; }
+    .score-arrow { transform: rotate(90deg); }
+    .container { padding: 40px 20px; }
+    .header h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-label">V1.2 Review</div>
+    <h1>第三版计划评估</h1>
+    <div class="header-desc">整体评级从 B+ 提升到 A-。计划质量已经接近可以直接交付给用户的水平，下一步的瓶颈在于系统的自我纠错能力。</div>
+  </div>
+
+  <!-- Score -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num" style="background:rgba(52,211,153,0.08);color:var(--green);border:1px solid rgba(52,211,153,0.2);">01</span>
+      <span class="section-title">评级变化</span>
+    </div>
+
+    <div class="score-compare">
+      <div class="score-box score-box-old">
+        <div class="score-box-label">V1.1（上一版）</div>
+        <div class="score-box-value">B+</div>
+      </div>
+      <div class="score-arrow">→</div>
+      <div class="score-box score-box-new">
+        <div class="score-box-label">V1.2（本版）</div>
+        <div class="score-box-value">A-</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Improvements -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num" style="background:rgba(52,211,153,0.08);color:var(--green);border:1px solid rgba(52,211,153,0.2);">02</span>
+      <span class="section-title">本版新增的改进 ✓</span>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--green);">
+      <div class="card-header">
+        <span class="card-tag tag-green">新增</span>
+        <span class="card-title">引入了杠铃复合动作</span>
+      </div>
+      <div class="card-body">杠铃深蹲和杠铃臀推的加入充分利用了用户的可用器材，杠铃复合动作是力量增长和肌肉发展最高效的训练方式。同时加入了坐姿绳索划船和绳索面拉等 cable machine 动作，器材利用率显著提高。</div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--green);">
+      <div class="card-header">
+        <span class="card-tag tag-green">新增</span>
+        <span class="card-title">训练量自动验证机制</span>
+      </div>
+      <div class="card-body">系统在生成计划后自动统计了每个主要肌群的周训练量，并与推荐最低值做了对比。日志显示 <code>Volume validation: 8 muscle group(s) below target</code>。虽然验证结果显示有肌群不达标（统计准确性存疑，见下方分析），但这个验证机制本身是一个关键的架构进步。</div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--green);">
+      <div class="card-header">
+        <span class="card-tag tag-green">新增</span>
+        <span class="card-title">饮食替换选项</span>
+      </div>
+      <div class="card-body">每一餐都提供了替换方案（如"鱼肉 180g / 豆腐 250g / 牛肉 120g"），训练前后的营养指导也更具体了。乳糖不耐受和不吃油腻的限制在所有替换选项中都得到了尊重。</div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--green);">
+      <div class="card-header">
+        <span class="card-tag tag-green">改善</span>
+        <span class="card-title">训练分化更清晰，动作更丰富</span>
+      </div>
+      <div class="card-body">五天分化逻辑更明确（下肢股四头肌主导 / 上推 / 上拉 / 下肢臀腿主导 / 全身复合），动作种类更丰富，涵盖了杠铃、哑铃、绳索和自重四种训练模式。</div>
+    </div>
+  </div>
+
+  <!-- Key Issue: Volume Validation Bug -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num" style="background:rgba(239,68,68,0.08);color:var(--red);border:1px solid rgba(239,68,68,0.2);">03</span>
+      <span class="section-title">核心问题：训练量统计可能有 Bug</span>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--red);">
+      <div class="card-header">
+        <span class="card-tag tag-red">Bug</span>
+        <span class="card-title">肌群训练量统计与计划内容不一致</span>
+      </div>
+      <div class="card-body">
+        底部验证显示 shoulders 本周仅 3 组，但实际计划中：Day 2 有肩推 3 组 + 飞鸟 3 组（胸飞鸟但前三角有参与） + 三头臂屈伸 3 组（长头涉及肩）+ 前平举 3 组，Day 3 有反向飞鸟 3 组，Day 5 有侧平举 3 组 + 反向飞鸟 3 组。仅直接三角肌训练就至少 9-12 组。
+
+        类似地，hamstrings 显示 3 组，但 Day 1 有罗马尼亚硬拉 3 组（主要腘绳肌动作），Day 4 有杠铃臀推 3 组 + 弓步蹲 3 组（腘绳肌次要参与）。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-tag tag-blue">诊断</span>
+        <span class="card-title">可能的原因</span>
+      </div>
+      <div class="card-body">
+        最可能的原因是动作库中的肌群标注不完整。例如 Dumbbell Shoulder Press 的 <code>primary_muscle</code> 可能被标注为 "shoulders" 但验证逻辑在检查时用的 key 是 "deltoids" 或 "anterior_deltoid"，导致计数时没有匹配上。另一种可能是验证逻辑只统计了 <code>primary_muscle</code> 而忽略了 <code>secondary_muscles</code>，导致像罗马尼亚硬拉（primary: glutes, secondary: hamstrings）这样的动作没有被计入 hamstrings 的训练量。建议检查两个地方：一是动作库的肌群标签是否使用了统一的命名规范，二是验证逻辑是否同时统计了 primary 和 secondary 肌群（secondary 可以按 0.5 的系数计算）。
+      </div>
+    </div>
+  </div>
+
+  <!-- Other Improvements -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num" style="background:rgba(255,107,53,0.08);color:var(--orange);border:1px solid rgba(255,107,53,0.2);">04</span>
+      <span class="section-title">其他改进建议</span>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-tag tag-orange">重要</span>
+        <span class="card-title">起始重量范围仍然太宽</span>
+      </div>
+      <div class="card-body">杠铃深蹲标注"空杆 20kg 或 30-40kg"，20kg 到 40kg 是一倍的差距。对于初学者来说，他到了健身房还是不知道该放几片杠铃片。建议改为更明确的指导："从空杆 20kg 开始，如果第一组能轻松完成 12 次，加到 30kg；如果 30kg 也能稳定完成 10 次以上，用 35kg"。或者在信息收集时增加一个简单的力量测试问题。</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-tag tag-yellow">建议</span>
+        <span class="card-title">手腕保护提示应该跟着动作走</span>
+      </div>
+      <div class="card-body">底部有通用的手腕注意事项，但用户在执行具体动作时不会去翻底部。建议在每个可能影响手腕的动作（如飞鸟、弯举、卧推）旁边直接标注一个简短提示，如"⚠️ 手腕保持中立"。这样用户每做一个动作就能看到提醒。</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-tag tag-yellow">建议</span>
+        <span class="card-title">每个动作需要 1-2 句执行要点</span>
+      </div>
+      <div class="card-body">计划里有动作名称、重量、组次，但没有动作要点提示。"杠铃深蹲"对初学者来说光名字就可能让人紧张，如果旁边有一句"脚与肩同宽，下蹲时膝盖与脚尖同向，挺胸收腹"，执行门槛会大大降低。这些 cues 可以预存在动作库中。</div>
+    </div>
+  </div>
+
+  <!-- Architecture: Generate-Validate-Fix Loop -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num" style="background:rgba(167,139,250,0.08);color:var(--purple);border:1px solid rgba(167,139,250,0.2);">05</span>
+      <span class="section-title">下一步架构建议：生成-验证-修正循环</span>
+    </div>
+
+    <div class="card-body" style="margin-bottom: 16px; font-size: 14px; color: var(--text-dim);">
+      当前系统是"单次生成"模式：LLM 生成一次计划 → 系统验证一次 → 输出结果。验证发现了问题（8 个肌群低于目标），但没有自动修复。下一步最有价值的改进是把这个过程变成一个多轮循环。
+    </div>
+
+    <div class="arch-flow">
+      <div class="arch-flow-title">生成-验证-修正循环（Proposed）</div>
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="flow-step-box">
+            <div class="flow-step-icon">🧠</div>
+            <div class="flow-step-name">LLM 生成</div>
+          </div>
+          <div class="flow-step-detail">基于用户信息<br>和知识库约束</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-step-box">
+            <div class="flow-step-icon">🔍</div>
+            <div class="flow-step-name">系统验证</div>
+          </div>
+          <div class="flow-step-detail">训练量检查<br>热量匹配<br>伤病冲突</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-step-box">
+            <div class="flow-step-icon">❓</div>
+            <div class="flow-step-name">是否通过？</div>
+          </div>
+          <div class="flow-step-detail">所有检查项<br>均达标？</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-step-box">
+            <div class="flow-step-icon">✅</div>
+            <div class="flow-step-name">输出计划</div>
+          </div>
+          <div class="flow-step-detail">所有验证通过<br>交付给用户</div>
+        </div>
+      </div>
+      <div class="flow-loop-arrow">↑ 不通过 → 把验证结果反馈给 LLM → 要求修正 → 重新生成 ↩</div>
+      <div class="flow-loop-label">最多循环 2-3 次，避免无限循环</div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary">
+    <h3>总结与下一步</h3>
+    <p>
+      这一版的计划在内容质量上已经非常接近可以交付给用户的水平。营养计算合理、动作选择丰富且充分利用了可用器材、饮食方案有替换选项、热身拉伸具体到位、有四周渐进框架。如果一个初学者拿到这个计划，他能够有效地开始训练。
+    </p>
+    <p>
+      当前的主要差距已经从"计划内容质量"转移到了"系统能力"——训练量验证存在统计 bug、验证发现问题后没有自动修正、起始重量范围需要更精确。这些都是系统层面的改进，而不是 LLM prompt 层面的改进。
+    </p>
+
+    <div class="next-steps">
+      <h4>建议的下一步优先级</h4>
+      <div class="next-step-item">
+        <span class="next-step-num">P0</span>
+        <span>修复训练量验证的统计 bug（检查肌群命名一致性和 primary/secondary 计算逻辑）</span>
+      </div>
+      <div class="next-step-item">
+        <span class="next-step-num">P1</span>
+        <span>实现"生成-验证-修正"循环，让 agent 在验证不通过时自动调整计划</span>
+      </div>
+      <div class="next-step-item">
+        <span class="next-step-num">P2</span>
+        <span>在动作库中为每个动作添加 cues（执行要点）和手腕/伤病相关的特殊提示</span>
+      </div>
+      <div class="next-step-item">
+        <span class="next-step-num">P3</span>
+        <span>优化起始重量建议逻辑——要么缩小范围，要么提供阶梯式的判断指导</span>
+      </div>
+      <div class="next-step-item">
+        <span class="next-step-num">P4</span>
+        <span>生成四周的具体计划（而非仅文字描述的渐进框架）</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
