@@ -17,6 +17,7 @@ dependencies = [
     # CLI
     "typer>=0.13.0",
     "rich>=13.9.0",
+    "google-genai>=1.64.0",
 ]
 
 [project.optional-dependencies]

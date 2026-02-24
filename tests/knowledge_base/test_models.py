@@ -103,6 +103,60 @@ class TestFoodItem:
         assert food.fiber_g == 0.0
 
 
+class TestExerciseValidation:
+    def test_invalid_category_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            Exercise(
+                id="bad",
+                name="Bad",
+                name_zh="错误",
+                category="not_a_category",
+                equipment=[Equipment.bodyweight],
+                primary_muscles=[MuscleGroup.chest],
+                difficulty=Difficulty.beginner,
+                movement_pattern=MovementPattern.push,
+            )
+
+    def test_invalid_equipment_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            Exercise(
+                id="bad",
+                name="Bad",
+                name_zh="错误",
+                category=ExerciseCategory.strength,
+                equipment=["treadmill"],          # not a valid Equipment enum value
+                primary_muscles=[MuscleGroup.chest],
+                difficulty=Difficulty.beginner,
+                movement_pattern=MovementPattern.push,
+            )
+
+    def test_invalid_muscle_group_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            Exercise(
+                id="bad",
+                name="Bad",
+                name_zh="错误",
+                category=ExerciseCategory.strength,
+                equipment=[Equipment.bodyweight],
+                primary_muscles=["not_a_muscle"],
+                difficulty=Difficulty.beginner,
+                movement_pattern=MovementPattern.push,
+            )
+
+    def test_missing_required_field_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            # Missing 'name_zh'
+            Exercise(
+                id="missing_field",
+                name="Missing",
+                category=ExerciseCategory.strength,
+                equipment=[Equipment.bodyweight],
+                primary_muscles=[MuscleGroup.chest],
+                difficulty=Difficulty.beginner,
+                movement_pattern=MovementPattern.push,
+            )
+
+
 class TestTrainingRule:
     def test_constraint_rule(self) -> None:
         rule = TrainingRule(

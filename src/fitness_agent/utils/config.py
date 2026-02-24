@@ -16,3 +16,4 @@ LLM_MODEL: str = os.getenv("LLM_MODEL", "claude-opus-4-6")
 
 ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
 OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
+GOOGLE_API_KEY: str | None = os.getenv("GOOGLE_API_KEY")
