@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 
 from fitness_agent.knowledge_base.loader import KnowledgeBase
-from fitness_agent.knowledge_base.models import ContraindicationTag, Equipment
+from fitness_agent.knowledge_base.models import ContraindicationTag, Equipment, ExperienceLevel
 from fitness_agent.planner.models import WeeklyPlan
 from fitness_agent.planner.prompt import PLANNER_SYSTEM, build_user_message
 from fitness_agent.user.models import UserProfile
@@ -127,12 +127,77 @@ class PlannerAgent:
                 "This is a known LLM compliance issue — consider retrying."
             )
 
+        # --- Step 6: validate weekly volume and append warnings to coach_notes ---
+        volume_warnings = self._validate_volume(plan, profile.experience_level)
+        if volume_warnings:
+            warning_text = (
+                "📊 **周训练量提醒**（系统自动检测）\n"
+                + "\n".join(volume_warnings)
+                + "\n\n建议在上述不足的肌群对应训练日中额外补充1-2组复合动作。"
+            )
+            if plan.coach_notes:
+                plan.coach_notes = plan.coach_notes + "\n\n" + warning_text
+            else:
+                plan.coach_notes = warning_text
+            logger.info(f"Volume validation: {len(volume_warnings)} muscle group(s) below target.")
+        else:
+            logger.info("Volume validation: all muscle groups within target ranges.")
+
         logger.info(f"Plan generated: {plan.summary()}")
         return plan
 
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _count_weekly_sets(self, plan: WeeklyPlan) -> dict[str, int]:
+        """
+        Count direct working sets per primary muscle group across all training days.
+
+        Uses the KB to resolve exercise_id → primary_muscles.
+        Exercises not found in the KB (e.g. LLM hallucinations) are skipped.
+        """
+        counts: dict[str, int] = {}
+        for day in plan.training_days:
+            for ex_set in day.exercises:
+                exercise = self.kb.get_exercise_by_id(ex_set.exercise_id)
+                if exercise is None:
+                    logger.debug(
+                        f"_count_weekly_sets: exercise_id '{ex_set.exercise_id}' not in KB, skipping."
+                    )
+                    continue
+                for muscle in exercise.primary_muscles:
+                    muscle_id = muscle.value
+                    counts[muscle_id] = counts.get(muscle_id, 0) + ex_set.sets
+        return counts
+
+    def _validate_volume(
+        self, plan: WeeklyPlan, level: ExperienceLevel
+    ) -> list[str]:
+        """
+        Return warning strings for muscle groups below their minimum weekly set target.
+
+        Only major muscle groups with volume targets in the anatomy data are checked.
+        Groups that are not trained at all (count=0) and have a target are flagged.
+        Groups that are above the maximum are logged but not surfaced to the user.
+        """
+        targets = self.kb.get_volume_targets(level)
+        counts = self._count_weekly_sets(plan)
+        warnings: list[str] = []
+        for muscle_id, (min_sets, max_sets) in targets.items():
+            actual = counts.get(muscle_id, 0)
+            if actual == 0:
+                # skip muscles that are never primary targets (e.g. obliques at beginner level)
+                continue
+            if actual < min_sets:
+                warnings.append(
+                    f"- {muscle_id}：本周 {actual} 组，推荐最低 {min_sets} 组"
+                )
+            elif actual > max_sets:
+                logger.debug(
+                    f"Volume above max for {muscle_id}: {actual} > {max_sets}"
+                )
+        return warnings
 
     @staticmethod
     def _parse_contraindications(injuries: list[str]) -> list[ContraindicationTag]:

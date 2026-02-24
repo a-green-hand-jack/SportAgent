@@ -216,6 +216,24 @@ class KnowledgeBase:
     # Anatomy queries
     # ------------------------------------------------------------------
 
+    def get_volume_targets(self, level: ExperienceLevel) -> dict[str, tuple[int, int]]:
+        """
+        Return {muscle_id: (min_sets_per_week, max_sets_per_week)} for the given level.
+
+        Uses the ``weekly_volume_{level}_min/max`` fields from anatomy.json.
+        Only muscles that have the relevant level-specific fields are included.
+        """
+        level_key = level.value  # "beginner" / "intermediate" / "advanced"
+        result: dict[str, tuple[int, int]] = {}
+        for mg in self.muscle_groups:
+            min_attr = f"weekly_volume_{level_key}_min"
+            max_attr = f"weekly_volume_{level_key}_max"
+            min_val = getattr(mg, min_attr, None)
+            max_val = getattr(mg, max_attr, None)
+            if min_val is not None and max_val is not None:
+                result[mg.id] = (min_val, max_val)
+        return result
+
     def format_anatomy_for_prompt(self, level: ExperienceLevel) -> str:
         """
         Return a concise muscle-group reference table for the given experience level.

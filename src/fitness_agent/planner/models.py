@@ -80,6 +80,14 @@ class TrainingDay(BaseModel):
         default=None,
         description="Cool-down / stretch recommendations for this session.",
     )
+    pre_workout_meal: Optional[str] = Field(
+        default=None,
+        description="训练前推荐餐食（训练前60-90分钟）及替换选项",
+    )
+    post_workout_meal: Optional[str] = Field(
+        default=None,
+        description="训练后推荐餐食（训练后30-60分钟内）及替换选项",
+    )
 
 
 # ---------------------------------------------------------------------------

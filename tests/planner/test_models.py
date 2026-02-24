@@ -148,6 +148,24 @@ class TestTrainingDay:
         assert day.warmup_notes == "5 min jog"
         assert day.cooldown_notes == "Stretch quads"
 
+    def test_pre_workout_meal_optional_default_none(self) -> None:
+        day = TrainingDay(**_training_day())
+        assert day.pre_workout_meal is None
+
+    def test_post_workout_meal_optional_default_none(self) -> None:
+        day = TrainingDay(**_training_day())
+        assert day.post_workout_meal is None
+
+    def test_pre_workout_meal_can_be_set(self) -> None:
+        meal = "训练前90分钟：燕麦80g+鸡蛋2个（替换：全麦面包2片+花生酱）"
+        day = TrainingDay(**_training_day(pre_workout_meal=meal))
+        assert day.pre_workout_meal == meal
+
+    def test_post_workout_meal_can_be_set(self) -> None:
+        meal = "训练后60分钟内：鸡胸肉150g+米饭150g（替换：鱼肉180g）"
+        day = TrainingDay(**_training_day(post_workout_meal=meal))
+        assert day.post_workout_meal == meal
+
 
 # ---------------------------------------------------------------------------
 # DailyNutrition

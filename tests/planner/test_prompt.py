@@ -53,6 +53,23 @@ class TestPlannerSystem:
     def test_system_prompt_mentions_training_days(self) -> None:
         assert "training_days" in PLANNER_SYSTEM
 
+    def test_system_prompt_notes_required(self) -> None:
+        # notes must be clearly marked as required
+        assert "notes" in PLANNER_SYSTEM
+        assert "必填" in PLANNER_SYSTEM
+
+    def test_system_prompt_mentions_pre_workout_meal(self) -> None:
+        assert "pre_workout_meal" in PLANNER_SYSTEM
+
+    def test_system_prompt_mentions_post_workout_meal(self) -> None:
+        assert "post_workout_meal" in PLANNER_SYSTEM
+
+    def test_system_prompt_mentions_meal_alternatives(self) -> None:
+        assert "替换" in PLANNER_SYSTEM
+
+    def test_system_prompt_mentions_volume_self_check(self) -> None:
+        assert "周训练量" in PLANNER_SYSTEM
+
 
 class TestBuildUserMessage:
     def test_contains_user_name(self, kb, profile) -> None:
@@ -88,18 +105,28 @@ class TestBuildUserMessage:
         msg = build_user_message(profile, kb, exercises)
         assert "可用动作库" in msg
 
+    @staticmethod
+    def _extract_pool_json(msg: str) -> list:
+        """
+        Extract the exercise pool JSON array from the user message.
+
+        The pool section starts with "## 可用动作库" followed by a note line,
+        then the JSON array. We find the '[' and use raw_decode() to parse
+        just the JSON array without trailing text.
+        """
+        pool_part = msg.split("## 可用动作库", 1)[1]
+        start = pool_part.index("[")
+        decoder = json.JSONDecoder()
+        obj, _ = decoder.raw_decode(pool_part, start)
+        return obj
+
     def test_exercise_pool_is_valid_json_array(self, kb, profile) -> None:
         exercises = kb.get_safe_exercises(
             contraindications=[],
             available_equipment=profile.available_equipment,
         )
         msg = build_user_message(profile, kb, exercises)
-
-        # Extract the JSON portion after the "## 可用动作库" header
-        pool_section = msg.split("## 可用动作库\n\n", 1)[1]
-        # The JSON block ends before the next section (if any)
-        pool_json = pool_section.split("\n\n")[0]
-        parsed = json.loads(pool_json)
+        parsed = self._extract_pool_json(msg)
         assert isinstance(parsed, list)
         assert len(parsed) > 0
 
@@ -109,9 +136,7 @@ class TestBuildUserMessage:
             available_equipment=profile.available_equipment,
         )
         msg = build_user_message(profile, kb, exercises)
-        pool_section = msg.split("## 可用动作库\n\n", 1)[1]
-        pool_json = pool_section.split("\n\n")[0]
-        entries = json.loads(pool_json)
+        entries = self._extract_pool_json(msg)
         for entry in entries:
             assert "id" in entry
             assert "name" in entry
@@ -155,9 +180,7 @@ class TestBuildUserMessage:
         msg = build_user_message(profile, kb, [])
         assert "Eve" in msg
         # Pool section should still exist, just with an empty array
-        pool_section = msg.split("## 可用动作库\n\n", 1)[1]
-        pool_json = pool_section.split("\n\n")[0]
-        parsed = json.loads(pool_json)
+        parsed = self._extract_pool_json(msg)
         assert parsed == []
 
     def test_strength_assessment_injected_when_set(self, kb) -> None:

@@ -276,3 +276,57 @@ class TestRulesQueries:
     def test_format_rules_for_prompt_empty_kb(self, empty_kb: KnowledgeBase) -> None:
         text = empty_kb.format_rules_for_prompt(GoalType.general_fitness, ExperienceLevel.beginner)
         assert text == "（无特定规则约束）"
+
+
+# ---------------------------------------------------------------------------
+# Volume targets
+# ---------------------------------------------------------------------------
+
+class TestGetVolumeTargets:
+    def test_returns_dict(self, kb: KnowledgeBase) -> None:
+        targets = kb.get_volume_targets(ExperienceLevel.beginner)
+        assert isinstance(targets, dict)
+        assert len(targets) > 0
+
+    def test_keys_are_muscle_id_strings(self, kb: KnowledgeBase) -> None:
+        targets = kb.get_volume_targets(ExperienceLevel.beginner)
+        for key in targets:
+            assert isinstance(key, str)
+            assert len(key) > 0
+
+    def test_values_are_min_max_tuples(self, kb: KnowledgeBase) -> None:
+        targets = kb.get_volume_targets(ExperienceLevel.beginner)
+        for muscle_id, (min_sets, max_sets) in targets.items():
+            assert isinstance(min_sets, int), f"{muscle_id}: min_sets should be int"
+            assert isinstance(max_sets, int), f"{muscle_id}: max_sets should be int"
+            assert min_sets > 0, f"{muscle_id}: min_sets should be positive"
+            assert max_sets >= min_sets, f"{muscle_id}: max_sets should be >= min_sets"
+
+    def test_beginner_volume_lower_than_intermediate(self, kb: KnowledgeBase) -> None:
+        beginner = kb.get_volume_targets(ExperienceLevel.beginner)
+        intermediate = kb.get_volume_targets(ExperienceLevel.intermediate)
+        # At least some muscles should have higher targets for intermediate
+        common = set(beginner.keys()) & set(intermediate.keys())
+        assert len(common) > 0
+        upgrades = sum(
+            1 for m in common if intermediate[m][0] >= beginner[m][0]
+        )
+        assert upgrades > 0, "Intermediate targets should be >= beginner for most muscles"
+
+    def test_chest_has_volume_target(self, kb: KnowledgeBase) -> None:
+        targets = kb.get_volume_targets(ExperienceLevel.beginner)
+        # chest is a key muscle group and should always be present
+        assert "chest" in targets
+        min_sets, max_sets = targets["chest"]
+        assert min_sets >= 8  # beginner minimum should be substantial
+
+    def test_empty_kb_returns_empty_dict(self, tmp_path: Path) -> None:
+        # Need to pass all paths to non-existent files so nothing is loaded
+        kb_empty = KnowledgeBase(
+            exercises_path=tmp_path / "no_exercises.json",
+            nutrition_path=tmp_path / "no_nutrition.json",
+            rules_path=tmp_path / "no_rules.json",
+            anatomy_path=tmp_path / "no_anatomy.json",
+        )
+        targets = kb_empty.get_volume_targets(ExperienceLevel.beginner)
+        assert targets == {}

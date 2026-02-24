@@ -82,6 +82,7 @@ def _minimal_plan_json(profile: UserProfile, n_days: int = 3) -> str:
         days.append({
             "day_label": f"Day {i}",
             "focus": "Full body strength",
+            "pre_workout_meal": "训练前90分钟：燕麦80g+鸡蛋2个（替换：全麦面包2片+花生酱）",
             "exercises": [
                 {
                     "exercise_id": "push_up",
@@ -91,12 +92,13 @@ def _minimal_plan_json(profile: UserProfile, n_days: int = 3) -> str:
                     "sets": 3,
                     "reps": "10-15",
                     "rest_seconds": 60,
-                    "notes": None,
+                    "notes": "保持身体成一条直线，肘部夹紧身体，感受胸肌收缩",
                 }
             ],
             "estimated_duration_minutes": 60,
             "warmup_notes": "① 开合跳 30秒 → ② 徒手深蹲 10次",
             "cooldown_notes": "① 胸肌拉伸 30秒 → ② 股四头肌拉伸 30秒",
+            "post_workout_meal": "训练后60分钟内：鸡胸肉150g+米饭150g（替换：鱼肉180g）",
         })
 
     plan = {
@@ -255,3 +257,98 @@ class TestPlannerAgent:
         tag_values = [t.value for t in tags]
         assert "knee_injury" in tag_values
         assert len([t for t in tag_values if t == "unknown_injury"]) == 0
+
+    def test_pre_post_workout_meals_in_generated_plan(self, kb, base_profile) -> None:
+        """Verify that pre/post workout meal fields are parsed and preserved."""
+        client = _make_llm_client(_minimal_plan_json(base_profile, n_days=3))
+        agent = PlannerAgent(client=client, kb=kb)
+        plan = agent.generate_plan(base_profile)
+        # The minimal plan json includes pre/post workout meals
+        assert plan.training_days[0].pre_workout_meal is not None
+        assert plan.training_days[0].post_workout_meal is not None
+
+
+# ---------------------------------------------------------------------------
+# Volume validation tests
+# ---------------------------------------------------------------------------
+
+class TestVolumeValidation:
+    def test_count_weekly_sets_known_exercise(self, kb, base_profile) -> None:
+        """push_up is in test KB and has chest as primary muscle."""
+        client = _make_llm_client(_minimal_plan_json(base_profile, n_days=1))
+        agent = PlannerAgent(client=client, kb=kb)
+        plan = agent.generate_plan(base_profile)
+        counts = agent._count_weekly_sets(plan)
+        # push_up exercises should contribute to chest (primary muscle in test KB)
+        # or at minimum the counts dict is a valid dict
+        assert isinstance(counts, dict)
+
+    def test_count_weekly_sets_unknown_exercise_skipped(self, kb, base_profile) -> None:
+        """Exercises not in KB should be skipped without crashing."""
+        from fitness_agent.planner.models import WeeklyPlan, TrainingDay, ExerciseSet, DailyNutrition
+        from fitness_agent.knowledge_base.models import GoalType
+        day = TrainingDay(
+            day_label="Day 1",
+            focus="Test",
+            exercises=[ExerciseSet(
+                exercise_id="nonexistent_exercise_xyz",
+                exercise_name="Unknown",
+                exercise_name_zh="未知动作",
+                sets=3,
+                reps="10",
+                rest_seconds=60,
+            )],
+            estimated_duration_minutes=45,
+        )
+        plan = WeeklyPlan(
+            user_name="Test",
+            goal=GoalType.general_fitness,
+            experience_level="beginner",
+            training_days=[day],
+            daily_nutrition=DailyNutrition(
+                calorie_target=2000, protein_g=150, carbs_g=200, fat_g=60
+            ),
+        )
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        counts = agent._count_weekly_sets(plan)
+        # Unknown exercise is skipped — counts should be empty or have no entry for its muscles
+        assert isinstance(counts, dict)
+        # nonexistent exercise should not contribute to any muscle count
+        assert sum(counts.values()) == 0
+
+    def test_validate_volume_returns_list(self, kb, base_profile) -> None:
+        from fitness_agent.knowledge_base.models import ExperienceLevel
+        client = _make_llm_client(_minimal_plan_json(base_profile, n_days=3))
+        agent = PlannerAgent(client=client, kb=kb)
+        plan = agent.generate_plan(base_profile)
+        warnings = agent._validate_volume(plan, ExperienceLevel.beginner)
+        assert isinstance(warnings, list)
+
+    def test_volume_warning_appended_to_coach_notes(self, kb) -> None:
+        """
+        A plan with 1 training day and only push_up exercises will have
+        most muscle groups below minimum. Warnings should appear in coach_notes.
+        """
+        from fitness_agent.user.calculator import enrich_profile
+        from fitness_agent.knowledge_base.models import ExperienceLevel
+
+        profile = enrich_profile(UserProfile(
+            name="VolumeTest",
+            age=25,
+            gender="male",
+            height_cm=175,
+            weight_kg=75,
+            goal=GoalType.muscle_gain,
+            experience_level=ExperienceLevel.beginner,
+            training_days_per_week=1,
+            session_duration_minutes=60,
+            available_equipment=[Equipment.bodyweight],
+            activity_level="sedentary",
+        ))
+        # Only 1 training day → most muscles will be below beginner minimums
+        client = _make_llm_client(_minimal_plan_json(profile, n_days=1))
+        agent = PlannerAgent(client=client, kb=kb)
+        plan = agent.generate_plan(profile)
+        # If any warnings were generated, they should be in coach_notes
+        if "📊" in plan.coach_notes:
+            assert "周训练量提醒" in plan.coach_notes

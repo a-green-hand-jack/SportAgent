@@ -54,6 +54,9 @@ def _display_plan(plan) -> None:  # type: ignore[no-untyped-def]
 
     # --- Training days ---
     for day in plan.training_days:
+        if day.pre_workout_meal:
+            console.print(f"  [bold green]🍽 训练前：[/bold green][dim]{day.pre_workout_meal}[/dim]")
+
         ex_table = Table(
             "动作", "起始重量", "组数", "次数", "休息",
             box=box.SIMPLE_HEAD, show_header=True,
@@ -76,6 +79,8 @@ def _display_plan(plan) -> None:  # type: ignore[no-untyped-def]
         console.print(Panel(ex_table, title=day_header, border_style="yellow"))
         if day.cooldown_notes:
             console.print(f"  [dim]放松: {day.cooldown_notes}[/dim]")
+        if day.post_workout_meal:
+            console.print(f"  [bold green]🍽 训练后：[/bold green][dim]{day.post_workout_meal}[/dim]")
 
     # --- Rest days ---
     if plan.rest_days:
