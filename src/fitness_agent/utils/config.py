@@ -10,7 +10,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 DATA_DIR = Path(os.getenv("DATA_DIR", str(PROJECT_ROOT / "data")))
 OUTPUTS_DIR = Path(os.getenv("OUTPUTS_DIR", str(PROJECT_ROOT / "outputs")))
 
-# LLM settings
+# LLM settings — valid providers: "anthropic" | "openai" | "gemini"
 LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "anthropic")
 LLM_MODEL: str = os.getenv("LLM_MODEL", "claude-opus-4-6")
 
