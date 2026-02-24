@@ -14,12 +14,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
-from fitness_agent.knowledge_base.models import ContraindicationTag, Equipment, ExperienceLevel, GoalType
+from fitness_agent.knowledge_base.models import Equipment, ExperienceLevel, GoalType
 from fitness_agent.user.calculator import enrich_profile
 from fitness_agent.user.models import UserProfile
 from fitness_agent.utils.logging import get_logger
+
+if TYPE_CHECKING:
+    from fitness_agent.utils.llm_client import BaseLLMClient
 
 logger = get_logger(__name__)
 
@@ -160,18 +163,6 @@ _ACTIVITY_LABELS: dict[str, str] = {
     "very_active":       "高度活跃 (每周高强度运动 6-7 次)",
 }
 
-_INJURY_LABELS: dict[str, str] = {
-    ContraindicationTag.knee_injury.value:      "膝关节损伤 (knee_injury)",
-    ContraindicationTag.lower_back_pain.value:  "腰痛/下背痛 (lower_back_pain)",
-    ContraindicationTag.shoulder_injury.value:  "肩关节损伤 (shoulder_injury)",
-    ContraindicationTag.wrist_injury.value:     "手腕损伤 (wrist_injury)",
-    ContraindicationTag.neck_pain.value:        "颈部疼痛 (neck_pain)",
-    ContraindicationTag.hip_injury.value:       "髋关节损伤 (hip_injury)",
-    ContraindicationTag.ankle_injury.value:     "踝关节损伤 (ankle_injury)",
-    ContraindicationTag.herniated_disc.value:   "椎间盘突出 (herniated_disc)",
-    ContraindicationTag.hypertension.value:     "高血压 (hypertension)",
-    ContraindicationTag.elbow_injury.value:     "肘关节损伤 (elbow_injury)",
-}
 
 
 # ---------------------------------------------------------------------------
@@ -181,6 +172,7 @@ _INJURY_LABELS: dict[str, str] = {
 def run_onboarding(
     ask_fn: AskFn | None = None,
     print_fn: PrintFn | None = None,
+    llm_client: BaseLLMClient | None = None,
 ) -> UserProfile:
     """
     Run an interactive Q&A session and return a fully-enriched UserProfile.
@@ -295,21 +287,28 @@ def run_onboarding(
     eq_values = [k for k, v in _EQUIPMENT_LABELS.items() if v in eq_selected]
     available_equipment = [Equipment(e) for e in eq_values]
 
-    # --- Injuries / contraindications (optional, multi-select menu) ---
-    inj_choices = list(_INJURY_LABELS.values())
-    print_fn("\n是否有受伤史或需要规避的动作？（可跳过直接回车，直接按回车跳过）")
-    print_fn("\n受伤部位（多选）:")
-    for i, label in enumerate(inj_choices, 1):
-        print_fn(f"  {i}. {label}")
-    inj_raw = ask_fn("输入编号（多选用逗号分隔，直接回车跳过）: ").strip()
-    injuries: list[str] = []
-    if inj_raw:
-        inj_keys = list(_INJURY_LABELS.keys())
-        for idx_str in [p.strip() for p in inj_raw.split(",") if p.strip()]:
-            if idx_str.isdigit() and 1 <= int(idx_str) <= len(inj_keys):
-                injuries.append(inj_keys[int(idx_str) - 1])
-            else:
-                print_fn(f"  ⚠️  跳过无效编号: {idx_str!r}")
+    # --- Injuries / contraindications (optional, free-text + LLM) ---
+    from fitness_agent.knowledge_base.models import ContraindicationTag
+    from fitness_agent.utils.text_parser import format_injuries_for_display, parse_injuries_with_llm
+
+    injuries: list[ContraindicationTag] = []
+    print_fn("\n是否有受伤史或需要规避的动作？（可跳过直接回车）")
+    inj_raw = ask_fn(
+        '请描述你的伤病情况（自由输入，如 "手腕疼、膝盖不好"，直接回车跳过）: '
+    ).strip()
+    if inj_raw and llm_client is not None:
+        print_fn("  🔍 正在分析你的伤病描述…")
+        injuries = parse_injuries_with_llm(inj_raw, llm_client)
+        display = format_injuries_for_display(injuries)
+        print_fn(f"  📋 识别到的伤病: {display}")
+        confirm = ask_fn("以上是否正确？(Y/n，直接回车确认): ").strip().lower()
+        if confirm in ("n", "no", "否"):
+            injuries = []
+            print_fn("  ✏️  已清除伤病记录，你可以稍后在个人资料中手动添加。")
+    elif inj_raw:
+        # No LLM client — warn user but don't crash
+        print_fn("  ⚠️  无法解析自由文本（LLM 未配置），已跳过伤病输入。")
+        logger.warning("Skipped injury parsing: no LLM client provided.")
 
     # --- Dietary restrictions (optional) ---
     diet_raw = ask_fn("\n饮食限制（如素食/乳糖不耐，可跳过直接回车）: ").strip()

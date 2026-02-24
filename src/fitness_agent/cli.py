@@ -130,22 +130,7 @@ def plan(
     from fitness_agent.utils.config import DATA_DIR
     from fitness_agent.utils.llm_client import build_client, build_client_from_config
 
-    # --- Load or collect profile ---
-    if profile_path and profile_path.exists():
-        console.print(f"[dim]Loading profile from {profile_path}…[/dim]")
-        user_profile = load_profile(profile_path)
-        console.print(f"  欢迎回来，[bold]{user_profile.name}[/bold]！")
-    else:
-        user_profile = run_onboarding(
-            ask_fn=lambda prompt: typer.prompt(prompt, prompt_suffix=" "),
-            print_fn=console.print,
-        )
-        # Auto-save profile for future reuse
-        default_profile_path = DATA_DIR / "processed" / "profile.json"
-        save_profile(user_profile, default_profile_path)
-        console.print(f"\n[dim]Profile saved to {default_profile_path}[/dim]")
-
-    # --- Build LLM client ---
+    # --- Build LLM client (needed for both onboarding parsing and plan generation) ---
     console.print("\n[dim]Initialising LLM client…[/dim]")
     try:
         if provider:
@@ -156,6 +141,22 @@ def plan(
     except ValueError as exc:
         console.print(f"[red]LLM configuration error:[/red] {exc}")
         raise typer.Exit(code=1)
+
+    # --- Load or collect profile ---
+    if profile_path and profile_path.exists():
+        console.print(f"[dim]Loading profile from {profile_path}…[/dim]")
+        user_profile = load_profile(profile_path)
+        console.print(f"  欢迎回来，[bold]{user_profile.name}[/bold]！")
+    else:
+        user_profile = run_onboarding(
+            ask_fn=lambda prompt: typer.prompt(prompt, prompt_suffix=" "),
+            print_fn=console.print,
+            llm_client=client,
+        )
+        # Auto-save profile for future reuse
+        default_profile_path = DATA_DIR / "processed" / "profile.json"
+        save_profile(user_profile, default_profile_path)
+        console.print(f"\n[dim]Profile saved to {default_profile_path}[/dim]")
 
     # --- Generate plan ---
     console.print("\n[bold]正在生成训练计划，请稍候…[/bold]")

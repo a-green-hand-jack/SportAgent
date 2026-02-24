@@ -53,10 +53,11 @@ def _full_onboarding_inputs(
     training_days: str = "3",
     session_dur: str = "60",
     equipment_choice: str = "1",     # bodyweight only
-    injuries: str = "",
+    injuries: str = "",              # free text, empty = skip
+    injury_confirm: str = "",        # Y/n confirm (only used when LLM parses)
     diet: str = "",
 ) -> tuple[str, ...]:
-    return (
+    inputs = [
         name,
         age,
         gender_choice,
@@ -70,8 +71,12 @@ def _full_onboarding_inputs(
         session_dur,
         equipment_choice,
         injuries,
-        diet,
-    )
+    ]
+    # Confirmation prompt only appears when injuries are non-empty AND llm_client is provided
+    if injuries and injury_confirm is not None:
+        inputs.append(injury_confirm)
+    inputs.append(diet)
+    return tuple(inputs)
 
 
 # ---------------------------------------------------------------------------
@@ -198,15 +203,57 @@ class TestRunOnboarding:
         profile = run_onboarding(ask_fn=_make_inputs(*inputs), print_fn=_silent_print)
         assert profile.training_days_per_week == 4
 
-    def test_injuries_captured(self) -> None:
-        inputs = _full_onboarding_inputs(injuries="knee_injury, lower_back_pain")
-        profile = run_onboarding(ask_fn=_make_inputs(*inputs), print_fn=_silent_print)
-        assert "knee_injury" in profile.injuries
-        assert "lower_back_pain" in profile.injuries
+    def test_injuries_captured_with_llm(self) -> None:
+        """With a mock LLM client, free-text injuries are parsed and confirmed."""
+        from fitness_agent.knowledge_base.models import ContraindicationTag
+        from fitness_agent.utils.llm_client import LLMResponse
+
+        mock_client = MagicMock()
+        mock_client.chat.return_value = LLMResponse(
+            content='["wrist_injury", "knee_injury"]',
+            provider="mock", model="mock",
+        )
+        # injuries text + Y confirm
+        inputs = _full_onboarding_inputs(injuries="手腕疼，膝盖不好", injury_confirm="")
+        profile = run_onboarding(
+            ask_fn=_make_inputs(*inputs),
+            print_fn=_silent_print,
+            llm_client=mock_client,
+        )
+        assert ContraindicationTag.wrist_injury in profile.injuries
+        assert ContraindicationTag.knee_injury in profile.injuries
+
+    def test_injuries_rejected_by_user(self) -> None:
+        """User rejects LLM parsed injuries -> empty list."""
+        from fitness_agent.utils.llm_client import LLMResponse
+
+        mock_client = MagicMock()
+        mock_client.chat.return_value = LLMResponse(
+            content='["wrist_injury"]',
+            provider="mock", model="mock",
+        )
+        inputs = _full_onboarding_inputs(injuries="手腕", injury_confirm="n")
+        profile = run_onboarding(
+            ask_fn=_make_inputs(*inputs),
+            print_fn=_silent_print,
+            llm_client=mock_client,
+        )
+        assert profile.injuries == []
 
     def test_no_injuries_empty_list(self) -> None:
         inputs = _full_onboarding_inputs(injuries="")
         profile = run_onboarding(ask_fn=_make_inputs(*inputs), print_fn=_silent_print)
+        assert profile.injuries == []
+
+    def test_injuries_skipped_without_llm(self) -> None:
+        """Without LLM client, free-text injuries are skipped gracefully."""
+        inputs = _full_onboarding_inputs(injuries="手腕疼", injury_confirm=None)
+        # Remove the confirm step since no LLM = no confirm
+        filtered = [i for i in inputs if i is not None]
+        profile = run_onboarding(
+            ask_fn=_make_inputs(*filtered),
+            print_fn=_silent_print,
+        )
         assert profile.injuries == []
 
     def test_dietary_restrictions_captured(self) -> None:
