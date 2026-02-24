@@ -58,6 +58,22 @@ class UserProfile(BaseModel):
         description="饮食限制，如 vegetarian, no_pork, lactose_intolerant"
     )
 
+    # --- 力量与训练偏好 ---
+    strength_assessment: str | None = Field(
+        default=None,
+        description=(
+            "当前力量水平自评，用于估算起始重量。"
+            "取值: beginner_no_weights / beginner_light / beginner_moderate / intermediate"
+        ),
+    )
+    preferred_training_time: str | None = Field(
+        default=None,
+        description=(
+            "偏好训练时间，影响餐食时机建议。"
+            "取值: morning / forenoon / afternoon / evening / flexible"
+        ),
+    )
+
     # --- 计算字段（收集信息后填入）---
     bmr: float | None = Field(default=None, description="基础代谢率（kcal/day）")
     tdee: float | None = Field(default=None, description="每日总能量消耗（kcal/day）")

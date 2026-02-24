@@ -99,6 +99,18 @@ class TestExerciseSet:
         ex = ExerciseSet(**_exercise_set(reps="AMRAP"))
         assert ex.reps == "AMRAP"
 
+    def test_weight_hint_optional_default_none(self) -> None:
+        ex = ExerciseSet(**_exercise_set())
+        assert ex.weight_hint is None
+
+    def test_weight_hint_can_be_set(self) -> None:
+        ex = ExerciseSet(**_exercise_set(weight_hint="8-10 kg 哑铃"))
+        assert ex.weight_hint == "8-10 kg 哑铃"
+
+    def test_weight_hint_bodyweight(self) -> None:
+        ex = ExerciseSet(**_exercise_set(weight_hint="徒手"))
+        assert ex.weight_hint == "徒手"
+
 
 # ---------------------------------------------------------------------------
 # TrainingDay
@@ -185,6 +197,15 @@ class TestWeeklyPlan:
     def test_coach_notes_default_empty(self) -> None:
         plan = WeeklyPlan(**_weekly_plan())
         assert plan.coach_notes == ""
+
+    def test_four_week_overview_optional_default_none(self) -> None:
+        plan = WeeklyPlan(**_weekly_plan())
+        assert plan.four_week_overview is None
+
+    def test_four_week_overview_can_be_set(self) -> None:
+        overview = "第1周：技术练习\n第2周：逐步加重"
+        plan = WeeklyPlan(**_weekly_plan(four_week_overview=overview))
+        assert plan.four_week_overview == overview
 
     def test_created_at_set_automatically(self) -> None:
         plan = WeeklyPlan(**_weekly_plan())

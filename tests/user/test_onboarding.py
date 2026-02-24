@@ -52,6 +52,8 @@ def _full_onboarding_inputs(
     activity_choice: str = "2",      # lightly_active
     training_days: str = "3",
     session_dur: str = "60",
+    strength_choice: str = "1",      # beginner_no_weights (1st strength level option)
+    time_choice: str = "5",          # flexible (5th training time option)
     equipment_choice: str = "1",     # bodyweight only
     injuries: str = "",              # free text, empty = skip
     injury_confirm: str = "",        # Y/n confirm (only used when LLM parses)
@@ -75,6 +77,8 @@ def _full_onboarding_inputs(
         activity_choice,
         training_days,
         session_dur,
+        strength_choice,
+        time_choice,
         equipment_choice,
         injuries,
     ]
@@ -276,6 +280,30 @@ class TestRunOnboarding:
         inputs = _full_onboarding_inputs(level_choice="2")
         profile = run_onboarding(ask_fn=_make_inputs(*inputs), print_fn=_silent_print)
         assert profile.experience_level == ExperienceLevel.intermediate
+
+    def test_strength_assessment_captured(self) -> None:
+        # Choice "2" → beginner_light (second in _STRENGTH_LABELS)
+        inputs = _full_onboarding_inputs(strength_choice="2")
+        profile = run_onboarding(ask_fn=_make_inputs(*inputs), print_fn=_silent_print)
+        assert profile.strength_assessment == "beginner_light"
+
+    def test_preferred_training_time_captured(self) -> None:
+        # Choice "1" → morning (first in _TRAINING_TIME_LABELS)
+        inputs = _full_onboarding_inputs(time_choice="1")
+        profile = run_onboarding(ask_fn=_make_inputs(*inputs), print_fn=_silent_print)
+        assert profile.preferred_training_time == "morning"
+
+    def test_strength_assessment_default_is_beginner_no_weights(self) -> None:
+        # Default strength_choice="1" → beginner_no_weights
+        inputs = _full_onboarding_inputs()
+        profile = run_onboarding(ask_fn=_make_inputs(*inputs), print_fn=_silent_print)
+        assert profile.strength_assessment == "beginner_no_weights"
+
+    def test_preferred_training_time_default_is_flexible(self) -> None:
+        # Default time_choice="5" → flexible
+        inputs = _full_onboarding_inputs()
+        profile = run_onboarding(ask_fn=_make_inputs(*inputs), print_fn=_silent_print)
+        assert profile.preferred_training_time == "flexible"
 
 
 # ---------------------------------------------------------------------------

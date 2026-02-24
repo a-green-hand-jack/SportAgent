@@ -87,6 +87,7 @@ def _minimal_plan_json(profile: UserProfile, n_days: int = 3) -> str:
                     "exercise_id": "push_up",
                     "exercise_name": "Push Up",
                     "exercise_name_zh": "俯卧撑",
+                    "weight_hint": "徒手",
                     "sets": 3,
                     "reps": "10-15",
                     "rest_seconds": 60,
@@ -94,8 +95,8 @@ def _minimal_plan_json(profile: UserProfile, n_days: int = 3) -> str:
                 }
             ],
             "estimated_duration_minutes": 60,
-            "warmup_notes": "5 min light cardio",
-            "cooldown_notes": "Stretch",
+            "warmup_notes": "① 开合跳 30秒 → ② 徒手深蹲 10次",
+            "cooldown_notes": "① 胸肌拉伸 30秒 → ② 股四头肌拉伸 30秒",
         })
 
     plan = {
@@ -113,6 +114,7 @@ def _minimal_plan_json(profile: UserProfile, n_days: int = 3) -> str:
             "supplements": [],
         },
         "coach_notes": "保持每周渐进超负荷！",
+        "four_week_overview": "第1周：技术巩固\n第2周：逐步加重\n第3周：冲刺\n第4周：减量",
     }
     return json.dumps(plan, ensure_ascii=False)
 

@@ -157,10 +157,25 @@ _LEVEL_LABELS: dict[str, str] = {
 }
 
 _ACTIVITY_LABELS: dict[str, str] = {
-    "sedentary":         "久坐不动 (办公室工作，几乎不运动)",
-    "lightly_active":    "轻度活跃 (每周轻度运动 1-3 次)",
-    "moderately_active": "中度活跃 (每周中度运动 3-5 次)",
-    "very_active":       "高度活跃 (每周高强度运动 6-7 次)",
+    "sedentary":         "久坐不动（办公室/学生，全天以坐为主，不含健身训练）",
+    "lightly_active":    "轻度活跃（日常有较多步行或站立，如销售、服务业，不含健身训练）",
+    "moderately_active": "中度活跃（体力劳动为主，如体育老师、快递员，不含健身训练）",
+    "very_active":       "高度活跃（重体力劳动，如建筑工人、农业劳动者，不含健身训练）",
+}
+
+_STRENGTH_LABELS: dict[str, str] = {
+    "beginner_no_weights":  "入门级 — 徒手动作（俯卧撑、深蹲）还比较费力，未接触过哑铃/杠铃",
+    "beginner_light":       "初级 — 能完成基本徒手动作，偶尔接触过 10 kg 以内的哑铃",
+    "beginner_moderate":    "中等初级 — 能用 10-15 kg 哑铃做基本动作（深蹲/划船/卧推）",
+    "intermediate":         "中级 — 能规律使用 20 kg+ 哑铃，或能做完整的引体向上",
+}
+
+_TRAINING_TIME_LABELS: dict[str, str] = {
+    "morning":   "清晨（5-9 点）",
+    "forenoon":  "上午（9-12 点）",
+    "afternoon": "下午（12-17 点）",
+    "evening":   "傍晚/夜间（17 点以后）",
+    "flexible":  "不固定",
 }
 
 
@@ -275,6 +290,22 @@ def run_onboarding(
         min_val=20, max_val=180,
     )
 
+    # --- Strength assessment ---
+    strength_choices = list(_STRENGTH_LABELS.values())
+    strength_label = _ask_choice(
+        "\n你目前的力量水平（用于估算起始重量）:",
+        strength_choices, ask_fn, print_fn,
+    )
+    strength_assessment = [k for k, v in _STRENGTH_LABELS.items() if v == strength_label][0]
+
+    # --- Training time preference ---
+    time_choices = list(_TRAINING_TIME_LABELS.values())
+    time_label = _ask_choice(
+        "\n你通常什么时间训练（影响餐食时机建议）:",
+        time_choices, ask_fn, print_fn,
+    )
+    preferred_training_time = [k for k, v in _TRAINING_TIME_LABELS.items() if v == time_label][0]
+
     # --- Equipment ---
     eq_choices = list(_EQUIPMENT_LABELS.values())
     eq_selected = _ask_choice(
@@ -332,6 +363,8 @@ def run_onboarding(
         injuries=injuries,
         activity_level=activity_level,
         dietary_restrictions=dietary_restrictions,
+        strength_assessment=strength_assessment,
+        preferred_training_time=preferred_training_time,
     )
 
     enriched = enrich_profile(profile)

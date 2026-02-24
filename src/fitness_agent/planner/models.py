@@ -40,6 +40,10 @@ class ExerciseSet(BaseModel):
         le=300,
         description="Rest between sets in seconds.",
     )
+    weight_hint: Optional[str] = Field(
+        default=None,
+        description="起始重量建议，如 '8-10 kg 哑铃'、'体重30%作为杠铃重量'、'徒手'",
+    )
     notes: Optional[str] = Field(
         default=None,
         description="Optional coaching notes, form cues, or substitution hints.",
@@ -129,6 +133,10 @@ class WeeklyPlan(BaseModel):
     coach_notes: str = Field(
         default="",
         description="General coaching advice, progression tips, and encouragement.",
+    )
+    four_week_overview: Optional[str] = Field(
+        default=None,
+        description="4周训练周期概要：每周的侧重点和进阶方向",
     )
     created_at: datetime = Field(
         default_factory=datetime.now,

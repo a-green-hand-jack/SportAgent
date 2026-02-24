@@ -159,3 +159,60 @@ class TestBuildUserMessage:
         pool_json = pool_section.split("\n\n")[0]
         parsed = json.loads(pool_json)
         assert parsed == []
+
+    def test_strength_assessment_injected_when_set(self, kb) -> None:
+        from fitness_agent.user.calculator import enrich_profile
+        profile_with_strength = enrich_profile(UserProfile(
+            name="Grace",
+            age=25,
+            gender="female",
+            height_cm=165,
+            weight_kg=58,
+            goal=GoalType.muscle_gain,
+            experience_level=ExperienceLevel.beginner,
+            training_days_per_week=3,
+            session_duration_minutes=45,
+            available_equipment=[Equipment.bodyweight, Equipment.dumbbell],
+            activity_level="lightly_active",
+            strength_assessment="beginner_moderate",
+        ))
+        exercises = kb.get_safe_exercises(
+            contraindications=[],
+            available_equipment=profile_with_strength.available_equipment,
+        )
+        msg = build_user_message(profile_with_strength, kb, exercises)
+        assert "beginner_moderate" in msg
+        assert "weight_hint" in msg
+
+    def test_preferred_training_time_injected_when_set(self, kb) -> None:
+        from fitness_agent.user.calculator import enrich_profile
+        profile_with_time = enrich_profile(UserProfile(
+            name="Henry",
+            age=30,
+            gender="male",
+            height_cm=175,
+            weight_kg=75,
+            goal=GoalType.fat_loss,
+            experience_level=ExperienceLevel.beginner,
+            training_days_per_week=3,
+            session_duration_minutes=45,
+            available_equipment=[Equipment.bodyweight],
+            activity_level="sedentary",
+            preferred_training_time="morning",
+        ))
+        exercises = kb.get_safe_exercises(
+            contraindications=[],
+            available_equipment=profile_with_time.available_equipment,
+        )
+        msg = build_user_message(profile_with_time, kb, exercises)
+        assert "morning" in msg
+
+    def test_strength_assessment_absent_when_not_set(self, kb, profile) -> None:
+        # Default profile (fixture) has no strength_assessment
+        exercises = kb.get_safe_exercises(
+            contraindications=[],
+            available_equipment=profile.available_equipment,
+        )
+        msg = build_user_message(profile, kb, exercises)
+        # "当前力量水平" line should not appear when field is None
+        assert "当前力量水平:" not in msg

@@ -55,13 +55,14 @@ def _display_plan(plan) -> None:  # type: ignore[no-untyped-def]
     # --- Training days ---
     for day in plan.training_days:
         ex_table = Table(
-            "动作", "组数", "次数", "休息",
+            "动作", "起始重量", "组数", "次数", "休息",
             box=box.SIMPLE_HEAD, show_header=True,
             header_style="bold cyan",
         )
         for ex in day.exercises:
             ex_table.add_row(
                 f"[bold]{ex.exercise_name_zh}[/bold] ({ex.exercise_name})",
+                ex.weight_hint or "—",
                 str(ex.sets),
                 str(ex.reps),
                 f"{ex.rest_seconds}s",
@@ -79,6 +80,14 @@ def _display_plan(plan) -> None:  # type: ignore[no-untyped-def]
     # --- Rest days ---
     if plan.rest_days:
         console.print(f"\n  [bold]休息日:[/bold] {', '.join(plan.rest_days)}")
+
+    # --- 4-week overview ---
+    if plan.four_week_overview:
+        console.print(Panel(
+            plan.four_week_overview,
+            title="[bold]📅 4周训练规划[/bold]",
+            border_style="cyan",
+        ))
 
     # --- Coach notes ---
     if plan.coach_notes:

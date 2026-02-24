@@ -53,6 +53,7 @@ PLANNER_SYSTEM = """\
           "exercise_id": "snake_case_id",
           "exercise_name": "English Name",
           "exercise_name_zh": "中文名称",
+          "weight_hint": "起始重量建议，如 '8-10 kg 哑铃' 或 '徒手' 或 '空杆（20 kg）'",
           "sets": 3,
           "reps": "8-12",
           "rest_seconds": 90,
@@ -60,8 +61,8 @@ PLANNER_SYSTEM = """\
         }
       ],
       "estimated_duration_minutes": 60,
-      "warmup_notes": "具体热身动作（5-10分钟），例如：开合跳30次、手臂绕环20次、深蹲热身10次",
-      "cooldown_notes": "具体拉伸动作（5分钟），例如：胸肌拉伸30秒、股四头肌拉伸30秒"
+      "warmup_notes": "① 开合跳 30秒 → ② 手臂绕环 前后各10次 → ③ 徒手深蹲 10次 → ④ 猫牛式伸展 10次",
+      "cooldown_notes": "① 胸肌伸展（门框拉伸）30秒×2 → ② 股四头肌拉伸 30秒×2 → ③ 肩部交叉拉伸 30秒×2"
     }
   ],
   "rest_days": ["周四", "周六", "周日"],
@@ -80,7 +81,8 @@ PLANNER_SYSTEM = """\
     ],
     "supplements": ["肌酸 3-5g/天（任意时间）", "维生素D3 2000IU（随餐）"]
   },
-  "coach_notes": "包含：①本周训练结构说明 ②起始重量选择指引 ③渐进超负荷具体规则 ④恢复和睡眠提醒"
+  "coach_notes": "包含：①本周训练结构说明 ②起始重量选择指引 ③渐进超负荷具体规则 ④恢复和睡眠提醒",
+  "four_week_overview": "第1周：建立动作模式，严格按 weight_hint 重量，专注技术。\\n第2周：重量不变，尝试增加1组或2次额外次数。\\n第3周：若第2周最后一组能完成目标次数上限，重量提高2.5-5kg。\\n第4周：减量周，重量降至第3周的80%，组数减1，关注恢复。"
 }
 
 ## 训练分化标准
@@ -90,12 +92,28 @@ PLANNER_SYSTEM = """\
 - **中级（3-4天/周）**：上下肢分化；5-6天可用推拉腿分化
 - **高级（4-6天/周）**：推拉腿分化，每个肌群每周2次训练频率
 
+## weight_hint 填写规则
+
+根据用户资料中的 **当前力量水平** 来估算起始重量：
+- **beginner_no_weights**（入门级）：所有动作用徒手或最轻重量，哑铃动作用 2-5 kg
+- **beginner_light**（初级）：哑铃动作用 5-10 kg，杠铃动作用空杆（20 kg）
+- **beginner_moderate**（中等初级）：哑铃动作用 10-15 kg，杠铃动作用体重 30-40%
+- **intermediate**（中级）：哑铃动作用 15-25 kg，杠铃动作用体重 40-60%
+
+weight_hint 格式示例：`"8-10 kg 哑铃"`、`"徒手"`、`"空杆（20 kg）"`、`"体重约30%（约60 kg）"`
+
+## 热身/放松格式要求
+
+warmup_notes 和 cooldown_notes 必须使用编号动作序列（① ② ③），每步说明动作名称+次数/时长：
+- 正确示例：`① 高抬腿原地跑 30秒 → ② 手臂绕环 前后各10次 → ③ 徒手深蹲 10次`
+- 错误示例：`热身10分钟`（过于笼统，不可接受）
+
 ## 计划质量要求
 
-- 每个动作必须提供 notes（1-2条要领），帮助新手和中级者正确执行
-- 热身和放松必须具体（说明动作，不能只说"热身10分钟"）
-- meal_suggestions 必须包含训练前后的餐食时机建议
-- coach_notes 必须包含起始重量指引和渐进超负荷的具体触发条件
+- 每个动作必须提供 weight_hint（基于用户力量水平）和 notes（1-2条要领）
+- 热身和放松必须使用编号动作序列，不得笼统描述
+- meal_suggestions 必须包含训练前后的餐食时机建议，考虑用户偏好训练时间
+- four_week_overview 必须提供具体的渐进超负荷触发条件（何时加重/加组）
 - 考虑用户的饮食限制，meal_suggestions 中不要出现用户不能食用的食物
 """
 
@@ -247,6 +265,12 @@ def _format_profile(
 
     if profile.target_weight_kg:
         lines.append(f"- 目标体重: {profile.target_weight_kg} kg")
+
+    if profile.strength_assessment:
+        lines.append(f"- 当前力量水平: {profile.strength_assessment}（请据此估算每个动作的 weight_hint）")
+
+    if profile.preferred_training_time:
+        lines.append(f"- 偏好训练时间: {profile.preferred_training_time}（影响 meal_suggestions 中训练前后餐食时机）")
 
     lines += [
         "",
