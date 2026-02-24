@@ -5,6 +5,7 @@
 AI 驱动的个性化健身规划系统。V1 目标：用户通过问答提供个人信息，LLM 结合结构化知识库（动作库 + 营养数据 + 规则集）生成个性化的训练计划和营养方案。
 
 ### 核心架构原则
+
 - **知识库负责确定性逻辑**：热量计算、动作安全过滤、规则约束
 - **LLM 负责创造性编排**：计划组合、个性化表达、自然语言输出
 - 两者职责分明，不要让 LLM 做应该确定性完成的事
@@ -49,3 +50,8 @@ src/fitness_agent/
 - 营养数据：`data/raw/nutrition.json`
 - 训练规则：`data/raw/rules.json`
 - 处理后的数据：`data/processed/`
+
+# Git Commit Guidelines
+
+- **Author**: Always use **Jieke Wu** (`jieke.wu@kaust.edu.sa`) as the sole author.
+- **Co-authors**: Do **NOT** include "ai-agent" or any AI-related handles as co-authors in git commits.
