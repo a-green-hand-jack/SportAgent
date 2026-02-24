@@ -1,39 +1,30 @@
 """
-Generate initial knowledge base JSON data files using DeepSeek.
+Generate initial knowledge base JSON data files via the unified LLM client.
 
 Usage:
     uv run python scripts/generate_kb_data.py [--what exercises|nutrition|rules|all]
+                                               [--provider deepseek|anthropic|openai|qwen|gemini]
+                                               [--model <model-name>]
 
-This script calls DeepSeek (deepseek-chat) to generate structured JSON data
-conforming to the KB Pydantic models. Output is written to data/raw/.
-
-DeepSeek max_tokens is 8192, so large datasets (exercises, nutrition) are
-generated in multiple batches and merged automatically.
+Default provider: deepseek (cheap, fast, sufficient for data generation).
 """
 import argparse
 import json
 import sys
 from pathlib import Path
 
-from openai import OpenAI
-
 # Ensure src/ is on path when running as script
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from fitness_agent.knowledge_base.models import (
-    Exercise,
-    FoodItem,
-    TrainingRule,
-)
-from fitness_agent.utils.config import DEEPSEEK_API_KEY, DATA_DIR
+from fitness_agent.knowledge_base.models import Exercise, FoodItem, TrainingRule
+from fitness_agent.utils.config import DATA_DIR
+from fitness_agent.utils.llm_client import Message, BaseLLMClient, build_client
 from fitness_agent.utils.logging import get_logger
 
 logger = get_logger("generate_kb_data")
 
 RAW_DIR = DATA_DIR / "raw"
 RAW_DIR.mkdir(parents=True, exist_ok=True)
-
-MODEL = "deepseek-chat"  # DeepSeek-V3.2, 128K context, max_tokens=8192
 
 # ---------------------------------------------------------------------------
 # Shared system prompts (schema definitions)
@@ -112,11 +103,10 @@ RULES_SYSTEM = """你是一位经验丰富的力量与体能教练，负责为 A
 """
 
 # ---------------------------------------------------------------------------
-# Batch prompts — split large datasets to fit within 8192 max_tokens
+# Batch prompts — split large datasets to stay within model token limits
 # ---------------------------------------------------------------------------
 
 EXERCISE_PROMPTS = [
-    # Batch 1: bodyweight + pull-up bar (~25 exercises)
     """请生成 25 个健身动作，仅覆盖以下器材类型：
 - 徒手/自重（bodyweight）：约 20 个
 - 单杠（pull_up_bar）：约 5 个
@@ -125,7 +115,6 @@ EXERCISE_PROMPTS = [
 还需包含 3 个有氧类动作（如 Burpee、Mountain Climber 等，带 met_value）。
 请直接输出 JSON 对象 {"exercises": [...]}。""",
 
-    # Batch 2: dumbbell + kettlebell + resistance_band (~30 exercises)
     """请生成 30 个健身动作，仅覆盖以下器材类型：
 - 哑铃（dumbbell）：约 20 个
 - 壶铃（kettlebell）：约 5 个
@@ -135,7 +124,6 @@ EXERCISE_PROMPTS = [
 还需包含 2 个有氧类动作（带 met_value）。
 请直接输出 JSON 对象 {"exercises": [...]}。""",
 
-    # Batch 3: barbell + cable_machine + machine (~30 exercises)
     """请生成 30 个健身动作，仅覆盖以下器材类型：
 - 杠铃（barbell）：约 20 个
 - 绳索器械（cable_machine）：约 5 个
@@ -146,7 +134,6 @@ EXERCISE_PROMPTS = [
 ]
 
 NUTRITION_PROMPTS = [
-    # Batch 1: protein-rich foods (~55 items)
     """请生成以下类别的食物营养数据（每 100g），共约 55 种：
 
 - 主食/谷物（grain）：大米、糙米、燕麦、全麦面包、土豆、红薯等 15 种
@@ -157,7 +144,6 @@ NUTRITION_PROMPTS = [
 
 请直接输出 JSON 对象 {"foods": [...]}。""",
 
-    # Batch 2: plant-based + supplements (~65 items)
     """请生成以下类别的食物营养数据（每 100g），共约 65 种：
 
 - 蔬菜（vegetable）：西兰花、菠菜、番茄、黄瓜、胡萝卜、芹菜等 20 种
@@ -185,81 +171,64 @@ RULES_PROMPT = """请生成一套完整的健身训练规则集，涵盖以下�
 请直接输出 JSON 对象 {"rules": [...]}。"""
 
 # ---------------------------------------------------------------------------
-# Generator functions
+# LLM call + JSON extraction
 # ---------------------------------------------------------------------------
 
-_CLIENT: OpenAI | None = None
-
-
-def _get_client() -> OpenAI:
-    """Lazy-init the OpenAI client for DeepSeek."""
-    global _CLIENT
-    if _CLIENT is None:
-        if not DEEPSEEK_API_KEY:
-            raise ValueError("DEEPSEEK_API_KEY not set. Please add it to .env")
-        _CLIENT = OpenAI(
-            api_key=DEEPSEEK_API_KEY,
-            base_url="https://api.deepseek.com",
-        )
-    return _CLIENT
-
-
-def _call_deepseek(system: str, prompt: str) -> dict:
-    """Single DeepSeek API call, returns parsed JSON dict."""
-    client = _get_client()
-
-    response = client.chat.completions.create(
-        model=MODEL,
-        max_tokens=8192,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
-        ],
-        response_format={"type": "json_object"},
+def _call_llm(client: BaseLLMClient, system: str, prompt: str) -> dict:
+    """Call the LLM and return a parsed JSON dict."""
+    response = client.chat(
+        messages=[Message(role="user", content=prompt)],
+        system=system,
+        max_tokens=8096,
+        temperature=0.3,   # low temp for structured data generation
     )
+    raw = response.content.strip()
 
-    raw_text = response.choices[0].message.content
-    if not raw_text:
-        raise RuntimeError(
-            "DeepSeek returned empty content. Try adjusting the prompt."
-        )
-    return json.loads(raw_text.strip())
+    # Strip markdown code fences if present (e.g. ```json ... ```)
+    if raw.startswith("```"):
+        lines = raw.split("\n")
+        raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+
+    return json.loads(raw)
 
 
 def _extract_list(result: dict, key: str) -> list:
-    """Extract the list from a JSON response, with fallbacks."""
+    """Extract the target list from the JSON response, with fallbacks."""
     if isinstance(result, dict) and key in result:
         return result[key]
     if isinstance(result, list):
         return result
-    # Fallback: grab the first list value
+    # Grab the first list value as a last resort
     for v in result.values():
         if isinstance(v, list):
             return v
-    raise ValueError(
-        f"Unexpected JSON structure from DeepSeek: {list(result.keys())}"
-    )
+    raise ValueError(f"Could not find a list in the JSON response: {list(result.keys())}")
 
+
+# ---------------------------------------------------------------------------
+# Batch generation + validation
+# ---------------------------------------------------------------------------
 
 def generate_batched(
+    client: BaseLLMClient,
     system: str,
     prompts: list[str],
     response_key: str,
     label: str,
 ) -> list:
-    """Generate data in multiple batches and merge results."""
+    """Call the LLM for each batch prompt and merge all results."""
     all_data: list = []
     for i, prompt in enumerate(prompts, 1):
         logger.info(
-            f"Calling DeepSeek ({MODEL}) to generate {label} "
+            f"[{client.provider}/{client.model}] Generating {label} "
             f"[batch {i}/{len(prompts)}]..."
         )
-        result = _call_deepseek(system, prompt)
+        result = _call_llm(client, system, prompt)
         batch = _extract_list(result, response_key)
-        logger.info(f"  Batch {i}: got {len(batch)} entries")
+        logger.info(f"  Batch {i}: {len(batch)} entries")
         all_data.extend(batch)
 
-    logger.info(f"Generated {len(all_data)} {label} entries total")
+    logger.info(f"Total {label}: {len(all_data)} entries")
     return all_data
 
 
@@ -269,26 +238,21 @@ def validate_and_save(
     output_path: Path,
     label: str,
 ) -> None:
-    """Validate each entry against the Pydantic model, then save."""
-    valid = []
-    skipped = 0
-
+    """Validate each entry with Pydantic, then write to JSON file."""
+    valid, skipped = [], 0
     for entry in data:
         try:
             model_cls.model_validate(entry)
             valid.append(entry)
         except Exception as e:
-            logger.warning(f"Invalid {label} entry (skipped): {e}\n  Entry: {entry}")
+            logger.warning(f"Skipping invalid {label} entry: {e}")
             skipped += 1
 
     output_path.write_text(
         json.dumps(valid, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    logger.info(
-        f"Saved {len(valid)} valid {label} entries to {output_path} "
-        f"({skipped} skipped)"
-    )
+    logger.info(f"Saved {len(valid)} {label} to {output_path} ({skipped} skipped)")
 
 
 # ---------------------------------------------------------------------------
@@ -296,16 +260,30 @@ def validate_and_save(
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate KB data using DeepSeek")
+    parser = argparse.ArgumentParser(
+        description="Generate KB data using the unified LLM client"
+    )
     parser.add_argument(
         "--what",
         choices=["exercises", "nutrition", "rules", "all"],
         default="all",
-        help="Which dataset to generate",
+    )
+    parser.add_argument(
+        "--provider",
+        default="deepseek",
+        choices=["deepseek", "anthropic", "openai", "qwen", "gemini"],
+        help="LLM provider to use (default: deepseek)",
+    )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Model name override (uses provider default if omitted)",
     )
     args = parser.parse_args()
 
-    # Each task: (system_prompt, list_of_user_prompts, response_key, model_cls, output_path)
+    client = build_client(provider=args.provider, model=args.model)
+    logger.info(f"Using client: {client}")
+
     tasks = {
         "exercises": (
             EXERCISE_SYSTEM, EXERCISE_PROMPTS, "exercises",
@@ -326,13 +304,13 @@ def main() -> None:
     for target in targets:
         system, prompts, resp_key, model_cls, output_path = tasks[target]
         try:
-            data = generate_batched(system, prompts, resp_key, target)
+            data = generate_batched(client, system, prompts, resp_key, target)
             validate_and_save(data, model_cls, output_path, target)
         except Exception as e:
             logger.error(f"Failed to generate {target}: {e}")
             raise
 
-    logger.info("Done. KB data files written to data/raw/")
+    logger.info("Done.")
 
 
 if __name__ == "__main__":
