@@ -1,0 +1,65 @@
+[
+  {
+    "id": "rule_calorie_deficit",
+    "category": "nutrition",
+    "applies_to_goals": ["fat_loss"],
+    "applies_to_levels": [],
+    "rule_type": "constraint",
+    "description": "减脂期每日热量缺口控制在 300-500 kcal，避免过度节食导致肌肉流失",
+    "parameters": {"min_deficit_kcal": 300, "max_deficit_kcal": 500}
+  },
+  {
+    "id": "rule_calorie_surplus",
+    "category": "nutrition",
+    "applies_to_goals": ["muscle_gain"],
+    "applies_to_levels": [],
+    "rule_type": "constraint",
+    "description": "增肌期每日热量盈余控制在 200-400 kcal，避免过多脂肪增加",
+    "parameters": {"min_surplus_kcal": 200, "max_surplus_kcal": 400}
+  },
+  {
+    "id": "rule_protein_intake",
+    "category": "nutrition",
+    "applies_to_goals": [],
+    "applies_to_levels": [],
+    "rule_type": "constraint",
+    "description": "每日蛋白质摄入量不低于体重（kg）× 1.6g，增肌目标可提升至 2.0-2.2g/kg",
+    "parameters": {"min_protein_per_kg": 1.6, "optimal_protein_per_kg": 2.0}
+  },
+  {
+    "id": "rule_beginner_volume",
+    "category": "volume",
+    "applies_to_goals": [],
+    "applies_to_levels": ["beginner"],
+    "rule_type": "constraint",
+    "description": "初学者每个肌群每周有效训练组数控制在 10-15 组，避免过度训练",
+    "parameters": {"min_sets_per_muscle": 10, "max_sets_per_muscle": 15}
+  },
+  {
+    "id": "rule_sleep",
+    "category": "recovery",
+    "applies_to_goals": [],
+    "applies_to_levels": [],
+    "rule_type": "recommendation",
+    "description": "每晚保持 7-9 小时睡眠，以支持肌肉恢复和激素水平",
+    "parameters": {"min_sleep_hours": 7, "recommended_sleep_hours": 8}
+  },
+  {
+    "id": "rule_beginner_no_1rm",
+    "category": "safety",
+    "applies_to_goals": [],
+    "applies_to_levels": ["beginner"],
+    "rule_type": "constraint",
+    "description": "初学者前 8 周不进行最大重量（1RM）测试，以确保动作模式建立和关节适应",
+    "parameters": {"restriction_weeks": 8}
+  },
+  {
+    "id": "rule_intermediate_volume",
+    "category": "volume",
+    "applies_to_goals": [],
+    "applies_to_levels": ["intermediate"],
+    "rule_type": "recommendation",
+    "description": "中级训练者每个肌群每周有效训练组数建议 15-20 组",
+    "parameters": {"min_sets_per_muscle": 15, "max_sets_per_muscle": 20}
+  }
+]

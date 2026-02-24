@@ -1,0 +1,92 @@
+{
+  "meal_timing": {
+    "pre_workout": {
+      "window_minutes": 90,
+      "focus": "碳水为主，适量蛋白质",
+      "rationale": "为训练提供能量",
+      "examples": ["燕麦+鸡蛋清", "香蕉+蛋白粉"],
+      "avoid": ["高脂餐食"]
+    },
+    "post_workout": {
+      "window_minutes": 60,
+      "focus": "快速蛋白质+碳水",
+      "rationale": "补充糖原，促进合成",
+      "examples": ["鸡胸肉+米饭", "蛋白粉+香蕉"],
+      "avoid": ["高脂食物"]
+    },
+    "pre_sleep": {
+      "window_minutes": 30,
+      "focus": "缓释蛋白质",
+      "rationale": "睡眠期间持续供给氨基酸",
+      "examples": ["牛奶+坚果", "酪蛋白粉"],
+      "avoid": []
+    }
+  },
+  "training_vs_rest_day": {
+    "training_day": {
+      "carb_adjustment": "+15%~+20%",
+      "protein_adjustment": "不变",
+      "fat_adjustment": "不变",
+      "note": "训练日碳水更多，支持训练能量需求"
+    },
+    "rest_day": {
+      "carb_adjustment": "-10%~-15%",
+      "protein_adjustment": "不变",
+      "fat_adjustment": "+5%",
+      "note": "休息日碳水减少，蛋白质保持"
+    }
+  },
+  "hydration": {
+    "daily_baseline_ml_per_kg": 35,
+    "training_day_extra_ml": 500,
+    "note": "每公斤体重每天约需35ml，训练日额外补充500ml"
+  },
+  "dietary_substitutions": [
+    {
+      "restriction": "lactose_intolerant",
+      "restriction_zh": "乳糖不耐受",
+      "avoid": ["普通牛奶", "酸奶", "乳清蛋白粉"],
+      "protein_alternatives": ["豆浆", "豆腐", "大豆蛋白粉", "鸡蛋"],
+      "calcium_alternatives": ["豆腐", "绿叶蔬菜"],
+      "dairy_alternatives": ["无乳糖牛奶", "燕麦奶", "豆浆"],
+      "carb_alternatives": [],
+      "must_supplement": [],
+      "notes": "选择无乳糖乳清蛋白粉即可"
+    },
+    {
+      "restriction": "vegetarian",
+      "restriction_zh": "素食",
+      "avoid": ["肉类", "海鲜"],
+      "protein_alternatives": ["鸡蛋", "豆腐", "豆类", "植物蛋白粉"],
+      "calcium_alternatives": ["乳制品", "豆腐"],
+      "dairy_alternatives": [],
+      "carb_alternatives": [],
+      "must_supplement": ["维生素B12"],
+      "notes": "注意补充完整氨基酸"
+    }
+  ],
+  "supplements": [
+    {
+      "id": "creatine",
+      "name": "Creatine Monohydrate",
+      "name_zh": "肌酸",
+      "evidence_level": "A级",
+      "benefit": "提升爆发力和肌肉体积",
+      "dosage": "每日3-5g",
+      "timing": "任意时间",
+      "suitable_for": ["muscle_gain", "body_recomposition", "general_fitness"],
+      "notes": "安全性高"
+    },
+    {
+      "id": "whey_protein",
+      "name": "Whey Protein",
+      "name_zh": "乳清蛋白粉",
+      "evidence_level": "A级",
+      "benefit": "快速补充蛋白质",
+      "dosage": "每次20-40g",
+      "timing": "训练后30-60分钟",
+      "suitable_for": ["muscle_gain", "fat_loss", "body_recomposition", "general_fitness"],
+      "notes": "乳糖不耐受选WPI版本"
+    }
+  ]
+}

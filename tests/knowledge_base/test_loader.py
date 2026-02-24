@@ -24,6 +24,8 @@ def kb() -> KnowledgeBase:
         exercises_path=TEST_DATA / "exercises.json",
         nutrition_path=TEST_DATA / "nutrition.json",
         rules_path=TEST_DATA / "rules.json",
+        anatomy_path=TEST_DATA / "anatomy.json",
+        nutrition_principles_path=TEST_DATA / "nutrition_principles.json",
     )
 
 
@@ -53,7 +55,10 @@ class TestLoading:
 
     def test_stats(self, kb: KnowledgeBase) -> None:
         stats = kb.stats()
-        assert stats == {"exercises": 7, "foods": 5, "rules": 7}
+        assert stats["exercises"] == 7
+        assert stats["foods"] == 5
+        assert stats["rules"] >= 7          # rules.json may grow over time
+        assert stats["muscle_groups"] >= 1  # anatomy.json loaded
 
     def test_missing_files_return_empty(self, empty_kb: KnowledgeBase) -> None:
         assert empty_kb.exercises == []

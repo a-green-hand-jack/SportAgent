@@ -137,6 +137,87 @@ class FoodItem(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# MuscleGroupInfo  (anatomy knowledge)
+# ---------------------------------------------------------------------------
+
+class MuscleGroupInfo(BaseModel):
+    id: str = Field(description="肌群 ID，与 MuscleGroup 枚举值对应")
+    name: str = Field(description="英文名称")
+    name_zh: str = Field(description="中文名称")
+    is_large_muscle: bool = Field(description="是否大肌群（大肌群恢复更慢，容量更高）")
+    recovery_hours_min: int = Field(description="最少恢复小时数")
+    recovery_hours_max: int = Field(description="最多恢复小时数")
+    primary_movement_patterns: list[str] = Field(description="主要动作模式")
+    antagonist_groups: list[str] = Field(default_factory=list, description="拮抗肌群")
+    weekly_volume_beginner_min: int = Field(description="新手每周最少训练组数")
+    weekly_volume_beginner_max: int = Field(description="新手每周最多训练组数")
+    weekly_volume_intermediate_min: int = Field(description="中级每周最少训练组数")
+    weekly_volume_intermediate_max: int = Field(description="中级每周最多训练组数")
+    weekly_volume_advanced_min: int = Field(description="高级每周最少训练组数")
+    weekly_volume_advanced_max: int = Field(description="高级每周最多训练组数")
+    scheduling_notes: str = Field(default="", description="排课注意事项")
+
+
+# ---------------------------------------------------------------------------
+# NutritionPrinciples  (meal timing + dietary substitutions)
+# ---------------------------------------------------------------------------
+
+class MealTimingEntry(BaseModel):
+    window_minutes: int
+    focus: str
+    rationale: str = ""
+    examples: list[str] = Field(default_factory=list)
+    avoid: list[str] = Field(default_factory=list)
+
+
+class TrainingRestDayNutrition(BaseModel):
+    carb_adjustment: str
+    protein_adjustment: str
+    fat_adjustment: str
+    note: str
+
+
+class DietarySubstitution(BaseModel):
+    restriction: str = Field(description="饮食限制 ID（英文小写）")
+    restriction_zh: str = Field(description="中文标签")
+    avoid: list[str] = Field(default_factory=list)
+    protein_alternatives: list[str] = Field(default_factory=list)
+    calcium_alternatives: list[str] = Field(default_factory=list)
+    dairy_alternatives: list[str] = Field(default_factory=list)
+    carb_alternatives: list[str] = Field(default_factory=list)
+    must_supplement: list[str] = Field(default_factory=list)
+    notes: str = ""
+
+
+class SupplementInfo(BaseModel):
+    id: str
+    name: str
+    name_zh: str
+    evidence_level: str
+    benefit: str
+    dosage: str
+    timing: str
+    suitable_for: list[str] = Field(default_factory=list)
+    notes: str = ""
+
+
+class NutritionPrinciples(BaseModel):
+    meal_timing: dict[str, MealTimingEntry] = Field(default_factory=dict)
+    training_vs_rest_day: dict[str, TrainingRestDayNutrition] = Field(default_factory=dict)
+    hydration: dict[str, Any] = Field(default_factory=dict)
+    dietary_substitutions: list[DietarySubstitution] = Field(default_factory=list)
+    supplements: list[SupplementInfo] = Field(default_factory=list)
+
+    def get_substitution(self, restriction: str) -> "DietarySubstitution | None":
+        """Find substitution rules for a given dietary restriction (case-insensitive)."""
+        r = restriction.lower()
+        for sub in self.dietary_substitutions:
+            if r in sub.restriction.lower() or r in sub.restriction_zh:
+                return sub
+        return None
+
+
+# ---------------------------------------------------------------------------
 # TrainingRule
 # ---------------------------------------------------------------------------
 

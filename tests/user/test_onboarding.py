@@ -46,8 +46,8 @@ def _full_onboarding_inputs(
     gender_choice: str = "1",        # 男
     height: str = "168",
     weight: str = "62",
-    goal_choice: str = "2",          # 增肌
-    target_weight: str = "",         # skip
+    goal_choice: str = "2",          # 增肌 (fat_loss="1", muscle_gain="2", ...)
+    target_weight: str = "",         # only consumed when goal_choice == "1" (fat_loss)
     level_choice: str = "1",         # 新手
     activity_choice: str = "2",      # lightly_active
     training_days: str = "3",
@@ -64,7 +64,13 @@ def _full_onboarding_inputs(
         height,
         weight,
         goal_choice,
-        target_weight,
+    ]
+    # target_weight prompt only appears for fat_loss (choice "1").
+    # After the P1 fix, muscle_gain and other goals skip this prompt entirely.
+    if goal_choice == "1":
+        inputs.append(target_weight)
+
+    inputs += [
         level_choice,
         activity_choice,
         training_days,

@@ -236,7 +236,7 @@ def run_onboarding(
     goal = GoalType(goal_value)
 
     target_weight_kg: float | None = None
-    if goal in (GoalType.fat_loss, GoalType.muscle_gain):
+    if goal == GoalType.fat_loss:
         tw_raw = ask_fn("目标体重（kg，可跳过直接回车）: ").strip()
         if tw_raw:
             try:

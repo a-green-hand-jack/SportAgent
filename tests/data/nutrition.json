@@ -1,0 +1,62 @@
+[
+  {
+    "id": "chicken_breast",
+    "name": "Chicken Breast",
+    "name_zh": "鸡胸肉",
+    "category": "poultry",
+    "serving_size_g": 100,
+    "calories": 165,
+    "protein_g": 31.0,
+    "carbs_g": 0.0,
+    "fat_g": 3.6,
+    "fiber_g": 0.0
+  },
+  {
+    "id": "white_rice_cooked",
+    "name": "White Rice (cooked)",
+    "name_zh": "白米饭",
+    "category": "grain",
+    "serving_size_g": 100,
+    "calories": 130,
+    "protein_g": 2.7,
+    "carbs_g": 28.2,
+    "fat_g": 0.3,
+    "fiber_g": 0.4
+  },
+  {
+    "id": "egg_whole",
+    "name": "Whole Egg",
+    "name_zh": "鸡蛋",
+    "category": "egg_dairy",
+    "serving_size_g": 100,
+    "calories": 143,
+    "protein_g": 13.0,
+    "carbs_g": 0.7,
+    "fat_g": 9.5,
+    "fiber_g": 0.0
+  },
+  {
+    "id": "broccoli",
+    "name": "Broccoli",
+    "name_zh": "西兰花",
+    "category": "vegetable",
+    "serving_size_g": 100,
+    "calories": 34,
+    "protein_g": 2.8,
+    "carbs_g": 6.6,
+    "fat_g": 0.4,
+    "fiber_g": 2.6
+  },
+  {
+    "id": "whey_protein",
+    "name": "Whey Protein Powder",
+    "name_zh": "乳清蛋白粉",
+    "category": "supplement",
+    "serving_size_g": 100,
+    "calories": 380,
+    "protein_g": 75.0,
+    "carbs_g": 8.0,
+    "fat_g": 5.0,
+    "fiber_g": 0.0
+  }
+]

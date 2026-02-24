@@ -117,6 +117,16 @@ class PlannerAgent:
 
         # --- Step 4: parse response ---
         plan = self._parse_response(response.content, profile)
+
+        # --- Step 5: post-validate training days count ---
+        expected = profile.training_days_per_week
+        actual = len(plan.training_days)
+        if actual != expected:
+            logger.warning(
+                f"Training days mismatch: user requested {expected} but LLM generated {actual}. "
+                "This is a known LLM compliance issue — consider retrying."
+            )
+
         logger.info(f"Plan generated: {plan.summary()}")
         return plan
 

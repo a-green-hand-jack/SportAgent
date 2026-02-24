@@ -1,0 +1,53 @@
+[
+  {
+    "id": "chest",
+    "name": "Chest / Pectorals",
+    "name_zh": "胸肌",
+    "is_large_muscle": true,
+    "recovery_hours_min": 48,
+    "recovery_hours_max": 72,
+    "primary_movement_patterns": ["push"],
+    "antagonist_groups": ["lats", "back"],
+    "weekly_volume_beginner_min": 10,
+    "weekly_volume_beginner_max": 15,
+    "weekly_volume_intermediate_min": 14,
+    "weekly_volume_intermediate_max": 20,
+    "weekly_volume_advanced_min": 18,
+    "weekly_volume_advanced_max": 25,
+    "scheduling_notes": "避免在连续两天内训练胸肌。"
+  },
+  {
+    "id": "lats",
+    "name": "Latissimus Dorsi / Back",
+    "name_zh": "背阔肌",
+    "is_large_muscle": true,
+    "recovery_hours_min": 48,
+    "recovery_hours_max": 72,
+    "primary_movement_patterns": ["pull"],
+    "antagonist_groups": ["chest"],
+    "weekly_volume_beginner_min": 10,
+    "weekly_volume_beginner_max": 15,
+    "weekly_volume_intermediate_min": 14,
+    "weekly_volume_intermediate_max": 20,
+    "weekly_volume_advanced_min": 18,
+    "weekly_volume_advanced_max": 25,
+    "scheduling_notes": "推/拉比例应接近 1:1。"
+  },
+  {
+    "id": "quads",
+    "name": "Quadriceps",
+    "name_zh": "股四头肌",
+    "is_large_muscle": true,
+    "recovery_hours_min": 48,
+    "recovery_hours_max": 72,
+    "primary_movement_patterns": ["squat"],
+    "antagonist_groups": ["hamstrings"],
+    "weekly_volume_beginner_min": 10,
+    "weekly_volume_beginner_max": 16,
+    "weekly_volume_intermediate_min": 14,
+    "weekly_volume_intermediate_max": 20,
+    "weekly_volume_advanced_min": 18,
+    "weekly_volume_advanced_max": 26,
+    "scheduling_notes": "大肌群，需要充足恢复。"
+  }
+]

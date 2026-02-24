@@ -37,6 +37,8 @@ def kb() -> KnowledgeBase:
         exercises_path=_DATA_DIR / "exercises.json",
         nutrition_path=_DATA_DIR / "nutrition.json",
         rules_path=_DATA_DIR / "rules.json",
+        anatomy_path=_DATA_DIR / "anatomy.json",
+        nutrition_principles_path=_DATA_DIR / "nutrition_principles.json",
     )
 
 

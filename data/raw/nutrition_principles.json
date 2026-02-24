@@ -1,0 +1,144 @@
+{
+  "meal_timing": {
+    "pre_workout": {
+      "window_minutes": 90,
+      "focus": "碳水为主，适量蛋白质，低脂肪低纤维（减少肠胃负担）",
+      "rationale": "碳水为肌肉提供即时能量（糖原），脂肪和纤维会减慢消化速度，影响运动表现",
+      "examples": ["燕麦+鸡蛋清 (碳水50g+蛋白质20g)", "米饭100g+鸡胸肉50g", "香蕉1根+蛋白粉1勺", "全麦面包2片+花生酱少量"],
+      "avoid": ["高脂餐食（如炸鸡、汉堡）", "高纤维蔬菜大量（如花椰菜、豆类）", "乳制品（部分人群会引起肠胃不适）"]
+    },
+    "post_workout": {
+      "window_minutes": 60,
+      "focus": "快速蛋白质（20-40g）+ 中高GI碳水（30-60g），尽快补充糖原",
+      "rationale": "训练后肌肉蛋白质合成窗口开启，胰岛素敏感性最高，此时摄入蛋白质和碳水利用率最佳",
+      "examples": ["乳清蛋白粉1勺+香蕉1根", "鸡胸肉150g+白米饭200g", "鸡蛋3个+土豆泥", "希腊酸奶+水果（蓝莓/草莓）"],
+      "avoid": ["高脂食物（会减慢蛋白质吸收）", "跳过餐食超过2小时"]
+    },
+    "pre_sleep": {
+      "window_minutes": 30,
+      "focus": "缓释蛋白质（酪蛋白为佳），少量碳水，避免大量脂肪",
+      "rationale": "睡眠期间生长激素分泌峰值，缓释蛋白质可持续供给肌肉修复所需氨基酸长达7-8小时",
+      "examples": ["牛奶200ml+少量坚果（10g）", "低脂奶酪（茅屋奶酪/Cottage Cheese）150g", "酪蛋白粉1勺", "豆腐脑+少量蜂蜜（乳糖不耐受替代方案）"],
+      "avoid": ["大量碳水（可能影响睡眠质量）", "空腹睡眠（减少肌肉合成机会）"]
+    }
+  },
+  "training_vs_rest_day": {
+    "training_day": {
+      "carb_adjustment": "+15%~+20%（支持训练能量需求和运动后糖原补充）",
+      "protein_adjustment": "不变",
+      "fat_adjustment": "不变或略减",
+      "note": "训练日碳水摄入更多，为肌肉提供燃料并促进合成代谢"
+    },
+    "rest_day": {
+      "carb_adjustment": "-10%~-15%（活动量减少，需求降低）",
+      "protein_adjustment": "不变（持续支持肌肉修复，休息日也在合成）",
+      "fat_adjustment": "+5%~+10%（支持激素合成和脂溶性维生素吸收）",
+      "note": "休息日蛋白质不减，因为肌肉在休息日继续修复生长"
+    }
+  },
+  "hydration": {
+    "daily_baseline_ml_per_kg": 35,
+    "training_day_extra_ml": 500,
+    "note": "每公斤体重每天约需35ml水分，训练日额外补充500ml以上。运动中每15-20分钟补水150-250ml。"
+  },
+  "dietary_substitutions": [
+    {
+      "restriction": "lactose_intolerant",
+      "restriction_zh": "乳糖不耐受",
+      "avoid": ["普通牛奶", "酸奶（部分）", "乳清蛋白粉（含乳糖版本）", "冰淇淋", "黄油（大量）"],
+      "protein_alternatives": ["大豆蛋白粉/豌豆蛋白粉（无乳糖）", "鸡蛋/鸡蛋白", "鸡胸肉/鱼肉/牛肉", "豆腐/豆浆", "无乳糖乳清蛋白粉"],
+      "calcium_alternatives": ["卤水豆腐（钙含量高）", "深绿色蔬菜（菠菜、西蓝花）", "虾皮少量", "芝麻酱", "钙片补充剂"],
+      "dairy_alternatives": ["无乳糖牛奶（乳糖酶处理）", "燕麦奶（Oat Milk）", "豆浆（无糖）", "杏仁奶（注意蛋白质含量低）"],
+      "must_supplement": [],
+      "notes": "选择无乳糖乳清蛋白粉即可保留whey的快速吸收优势，无需完全放弃蛋白粉"
+    },
+    {
+      "restriction": "vegetarian",
+      "restriction_zh": "素食（含蛋奶）",
+      "avoid": ["肉类", "海鲜"],
+      "protein_alternatives": ["鸡蛋（全蛋或蛋清）", "豆腐/豆干", "豆类（黑豆、鹰嘴豆）", "希腊酸奶", "植物蛋白粉（豌豆/大豆）", "藜麦", "坚果酱"],
+      "calcium_alternatives": ["乳制品（奶酪、牛奶）", "豆腐", "绿叶蔬菜"],
+      "dairy_alternatives": [],
+      "must_supplement": ["维生素B12（建议补充）", "铁剂（建议定期检测并按需补充）"],
+      "notes": "植物蛋白赖氨酸含量较低，注意搭配不同蛋白质来源（豆类+谷物）以获得完整氨基酸谱"
+    },
+    {
+      "restriction": "vegan",
+      "restriction_zh": "纯素食",
+      "avoid": ["所有动物产品，包括肉、蛋、奶、蜂蜜"],
+      "protein_alternatives": ["豆腐/豆干/豆浆", "豆类（扁豆、黑豆、鹰嘴豆）", "豌豆蛋白粉", "大豆蛋白粉", "坚果和种子", "藜麦（完整氨基酸）", "天贝（Tempeh）", "毛豆"],
+      "calcium_alternatives": ["豆腐（卤水）", "强化植物奶", "绿叶蔬菜（甘蓝、菠菜）", "芝麻"],
+      "dairy_alternatives": ["燕麦奶", "豆浆", "椰奶", "杏仁奶"],
+      "must_supplement": ["维生素B12（纯素必须补充，无植物食品来源）", "维生素D3（选择植物来源如藻油）", "Omega-3（藻油，非鱼油）", "铁剂（建议定期检测）", "锌（建议定期检测）"],
+      "notes": "纯素饮食增肌难度较高，建议每日蛋白质摄入量提高到2.0-2.4g/kg以补偿植物蛋白质利用率较低的问题"
+    },
+    {
+      "restriction": "gluten_free",
+      "restriction_zh": "无麸质",
+      "avoid": ["小麦、大麦、黑麦制品", "普通面包/面条/饼干", "含麸质的燕麦（需选认证无麸质版本）", "大部分酱油（含小麦）"],
+      "protein_alternatives": ["肉、蛋、鱼等无影响", "豆类", "豆腐"],
+      "calcium_alternatives": [],
+      "dairy_alternatives": [],
+      "carb_alternatives": ["白米饭/糙米", "土豆/红薯", "玉米", "藜麦", "认证无麸质燕麦", "荞麦"],
+      "must_supplement": [],
+      "notes": "无麸质饮食一般不影响运动表现，主要注意碳水来源的替换"
+    }
+  ],
+  "supplements": [
+    {
+      "id": "creatine",
+      "name": "Creatine Monohydrate",
+      "name_zh": "肌酸（一水肌酸）",
+      "evidence_level": "A级（最高证据级别，数百项研究支持）",
+      "benefit": "增加肌肉内磷酸肌酸储量，提升爆发力和高强度训练表现，促进肌肉体积增长（细胞水化）",
+      "dosage": "每日3-5g，无需负荷期，长期服用即可",
+      "timing": "任意时间均可（不影响效果）。训练后随餐或蛋白质同服吸收略佳",
+      "suitable_for": ["muscle_gain", "body_recomposition", "general_fitness"],
+      "notes": "安全性极高，长期使用有充分安全证据。素食者效果更显著（因肉类肌酸摄入少）。乳糖不耐受者请选择纯肌酸粉"
+    },
+    {
+      "id": "whey_protein",
+      "name": "Whey Protein",
+      "name_zh": "乳清蛋白粉",
+      "evidence_level": "A级（经典运动营养补剂，大量研究支持）",
+      "benefit": "快速吸收的完整蛋白质来源，便于补足每日蛋白质目标，训练后快速启动肌肉蛋白合成",
+      "dosage": "每次20-40g，用于补足每日蛋白质总量不足的部分",
+      "timing": "训练后30-60分钟内最佳，也可在任何蛋白质摄入不足的时段使用",
+      "suitable_for": ["muscle_gain", "fat_loss", "body_recomposition", "general_fitness"],
+      "notes": "乳糖不耐受者选择WPI（乳清蛋白分离粉）或无乳糖版本。纯素者替换为豌豆蛋白粉或大豆蛋白粉"
+    },
+    {
+      "id": "caffeine",
+      "name": "Caffeine",
+      "name_zh": "咖啡因",
+      "evidence_level": "A级（广泛研究证实可提升运动表现）",
+      "benefit": "提高训练时专注力、降低疲劳感知、提升耐力和爆发力表现，约可提升运动表现3-7%",
+      "dosage": "训练前30-60分钟，3-6mg/kg体重（70kg成人约200-420mg，相当于2-4杯咖啡）",
+      "timing": "训练前30-60分钟",
+      "suitable_for": ["muscle_gain", "fat_loss", "body_recomposition", "general_fitness"],
+      "notes": "下午3点后训练的人需注意可能影响睡眠。对咖啡因敏感者从低剂量（100mg）开始。黑咖啡是最经济实惠的来源"
+    },
+    {
+      "id": "vitamin_d",
+      "name": "Vitamin D3",
+      "name_zh": "维生素D3",
+      "evidence_level": "B级（较强证据，对中国室内工作者尤其重要）",
+      "benefit": "支持肌肉功能、骨骼健康、免疫系统和激素合成（包括睾酮）。缺乏者补充可显著改善运动表现",
+      "dosage": "1000-2000 IU/天（室内工作者建议2000 IU）",
+      "timing": "与含脂肪的餐食同服，提高吸收率",
+      "suitable_for": ["muscle_gain", "fat_loss", "body_recomposition", "general_fitness"],
+      "notes": "中国大部分人存在维生素D不足（尤其是北方、室内工作者）。建议检测血清25(OH)D水平，目标值40-60 ng/mL"
+    },
+    {
+      "id": "omega3",
+      "name": "Omega-3 Fatty Acids (EPA/DHA)",
+      "name_zh": "Omega-3 脂肪酸（鱼油/藻油）",
+      "evidence_level": "B级（良好证据，多方面健康益处）",
+      "benefit": "减少训练引起的炎症和肌肉酸痛，改善关节健康，有助于减脂（提高胰岛素敏感性）",
+      "dosage": "每日1-3g EPA+DHA",
+      "timing": "随含脂肪餐食服用，减少鱼腥味反应",
+      "suitable_for": ["muscle_gain", "fat_loss", "body_recomposition", "general_fitness"],
+      "notes": "纯素者选择藻油（Algal Oil），而非鱼油。深海鱼（三文鱼、鲭鱼）每周3次也可替代补剂"
+    }
+  ]
+}
