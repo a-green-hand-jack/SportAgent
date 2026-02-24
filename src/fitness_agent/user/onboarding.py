@@ -16,7 +16,7 @@ import json
 from pathlib import Path
 from typing import Callable
 
-from fitness_agent.knowledge_base.models import Equipment, ExperienceLevel, GoalType
+from fitness_agent.knowledge_base.models import ContraindicationTag, Equipment, ExperienceLevel, GoalType
 from fitness_agent.user.calculator import enrich_profile
 from fitness_agent.user.models import UserProfile
 from fitness_agent.utils.logging import get_logger
@@ -160,6 +160,19 @@ _ACTIVITY_LABELS: dict[str, str] = {
     "very_active":       "高度活跃 (每周高强度运动 6-7 次)",
 }
 
+_INJURY_LABELS: dict[str, str] = {
+    ContraindicationTag.knee_injury.value:      "膝关节损伤 (knee_injury)",
+    ContraindicationTag.lower_back_pain.value:  "腰痛/下背痛 (lower_back_pain)",
+    ContraindicationTag.shoulder_injury.value:  "肩关节损伤 (shoulder_injury)",
+    ContraindicationTag.wrist_injury.value:     "手腕损伤 (wrist_injury)",
+    ContraindicationTag.neck_pain.value:        "颈部疼痛 (neck_pain)",
+    ContraindicationTag.hip_injury.value:       "髋关节损伤 (hip_injury)",
+    ContraindicationTag.ankle_injury.value:     "踝关节损伤 (ankle_injury)",
+    ContraindicationTag.herniated_disc.value:   "椎间盘突出 (herniated_disc)",
+    ContraindicationTag.hypertension.value:     "高血压 (hypertension)",
+    ContraindicationTag.elbow_injury.value:     "肘关节损伤 (elbow_injury)",
+}
+
 
 # ---------------------------------------------------------------------------
 # Main onboarding flow
@@ -282,12 +295,21 @@ def run_onboarding(
     eq_values = [k for k, v in _EQUIPMENT_LABELS.items() if v in eq_selected]
     available_equipment = [Equipment(e) for e in eq_values]
 
-    # --- Injuries / contraindications (optional) ---
-    print_fn("\n是否有受伤史或需要规避的动作？（可跳过直接回车）")
-    inj_raw = ask_fn("受伤部位（如 knee_injury, lower_back_pain，逗号分隔）: ").strip()
+    # --- Injuries / contraindications (optional, multi-select menu) ---
+    inj_choices = list(_INJURY_LABELS.values())
+    print_fn("\n是否有受伤史或需要规避的动作？（可跳过直接回车，直接按回车跳过）")
+    print_fn("\n受伤部位（多选）:")
+    for i, label in enumerate(inj_choices, 1):
+        print_fn(f"  {i}. {label}")
+    inj_raw = ask_fn("输入编号（多选用逗号分隔，直接回车跳过）: ").strip()
     injuries: list[str] = []
     if inj_raw:
-        injuries = [p.strip() for p in inj_raw.split(",") if p.strip()]
+        inj_keys = list(_INJURY_LABELS.keys())
+        for idx_str in [p.strip() for p in inj_raw.split(",") if p.strip()]:
+            if idx_str.isdigit() and 1 <= int(idx_str) <= len(inj_keys):
+                injuries.append(inj_keys[int(idx_str) - 1])
+            else:
+                print_fn(f"  ⚠️  跳过无效编号: {idx_str!r}")
 
     # --- Dietary restrictions (optional) ---
     diet_raw = ask_fn("\n饮食限制（如素食/乳糖不耐，可跳过直接回车）: ").strip()
