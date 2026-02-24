@@ -1,0 +1,188 @@
+"""Knowledge base Pydantic models: Exercise, FoodItem, TrainingRule."""
+from enum import Enum
+from typing import Any
+from pydantic import BaseModel, Field
+
+
+# ---------------------------------------------------------------------------
+# Enumerations
+# ---------------------------------------------------------------------------
+
+class Equipment(str, Enum):
+    bodyweight = "bodyweight"           # 徒手/自重
+    dumbbell = "dumbbell"               # 哑铃
+    barbell = "barbell"                 # 杠铃
+    kettlebell = "kettlebell"           # 壶铃
+    resistance_band = "resistance_band" # 弹力带
+    cable_machine = "cable_machine"     # 绳索/缆绳机
+    machine = "machine"                 # 固定器械
+    pull_up_bar = "pull_up_bar"         # 单杠/引体向上架
+    bench = "bench"                     # 训练凳（通常配合杠铃/哑铃）
+    ez_bar = "ez_bar"                   # EZ 弯举杆
+
+
+class MuscleGroup(str, Enum):
+    chest = "chest"               # 胸
+    back = "back"                 # 背（泛指）
+    lats = "lats"                 # 背阔肌
+    traps = "traps"               # 斜方肌
+    lower_back = "lower_back"     # 下背/竖脊肌
+    shoulders = "shoulders"       # 肩（泛指）
+    front_delt = "front_delt"     # 前三角
+    side_delt = "side_delt"       # 中三角
+    rear_delt = "rear_delt"       # 后三角
+    biceps = "biceps"             # 二头肌
+    triceps = "triceps"           # 三头肌
+    forearms = "forearms"         # 前臂
+    core = "core"                 # 核心（泛指）
+    abs = "abs"                   # 腹直肌
+    obliques = "obliques"         # 腹斜肌
+    quads = "quads"               # 股四头肌
+    hamstrings = "hamstrings"     # 腘绳肌
+    glutes = "glutes"             # 臀肌
+    calves = "calves"             # 小腿
+    hip_flexors = "hip_flexors"   # 髋屈肌
+    adductors = "adductors"       # 内收肌
+    full_body = "full_body"       # 全身
+
+
+class Difficulty(str, Enum):
+    beginner = "beginner"
+    intermediate = "intermediate"
+    advanced = "advanced"
+
+
+class ExerciseCategory(str, Enum):
+    strength = "strength"         # 力量训练
+    cardio = "cardio"             # 有氧
+    flexibility = "flexibility"   # 柔韧/拉伸
+    plyometric = "plyometric"     # 爆发力
+
+
+class MovementPattern(str, Enum):
+    push = "push"           # 推（水平/垂直）
+    pull = "pull"           # 拉（水平/垂直）
+    squat = "squat"         # 蹲
+    hinge = "hinge"         # 髋铰（硬拉系列）
+    carry = "carry"         # 负重行走
+    core = "core"           # 核心稳定/抗旋
+    cardio = "cardio"       # 有氧
+    isolation = "isolation" # 孤立动作
+
+
+class ContraindicationTag(str, Enum):
+    knee_injury = "knee_injury"           # 膝关节损伤
+    lower_back_pain = "lower_back_pain"   # 腰痛/下背痛
+    shoulder_injury = "shoulder_injury"   # 肩关节损伤
+    wrist_injury = "wrist_injury"         # 手腕损伤
+    neck_pain = "neck_pain"               # 颈部疼痛
+    hip_injury = "hip_injury"             # 髋关节损伤
+    ankle_injury = "ankle_injury"         # 踝关节损伤
+    herniated_disc = "herniated_disc"     # 椎间盘突出
+    hypertension = "hypertension"         # 高血压（屏气动作）
+    elbow_injury = "elbow_injury"         # 肘关节损伤
+
+
+# ---------------------------------------------------------------------------
+# Exercise
+# ---------------------------------------------------------------------------
+
+class Exercise(BaseModel):
+    id: str = Field(description="唯一 ID，snake_case，如 barbell_squat")
+    name: str = Field(description="英文名称")
+    name_zh: str = Field(description="中文名称")
+    category: ExerciseCategory
+    equipment: list[Equipment] = Field(description="所需器材（可多选，表示该动作的常见器材变体）")
+    primary_muscles: list[MuscleGroup] = Field(description="主要目标肌群")
+    secondary_muscles: list[MuscleGroup] = Field(default_factory=list, description="协同肌群")
+    difficulty: Difficulty
+    movement_pattern: MovementPattern
+    contraindications: list[ContraindicationTag] = Field(
+        default_factory=list, description="禁忌标签，带有这些标签的用户应排除此动作"
+    )
+    cues: list[str] = Field(default_factory=list, description="动作要领（中文）")
+    met_value: float | None = Field(default=None, description="代谢当量，有氧动作用于热量估算")
+
+
+# ---------------------------------------------------------------------------
+# FoodItem
+# ---------------------------------------------------------------------------
+
+class FoodCategory(str, Enum):
+    grain = "grain"           # 主食/谷物
+    meat = "meat"             # 畜肉
+    poultry = "poultry"       # 禽肉
+    seafood = "seafood"       # 海鲜
+    egg_dairy = "egg_dairy"   # 蛋奶
+    vegetable = "vegetable"   # 蔬菜
+    fruit = "fruit"           # 水果
+    nut_seed = "nut_seed"     # 坚果种子
+    legume = "legume"         # 豆类
+    oil_fat = "oil_fat"       # 油脂
+    condiment = "condiment"   # 调味品
+    supplement = "supplement" # 营养补剂/运动食品
+
+
+class FoodItem(BaseModel):
+    id: str
+    name: str = Field(description="英文名称")
+    name_zh: str = Field(description="中文名称")
+    category: FoodCategory
+    serving_size_g: float = Field(description="每份克数（100g 为标准）")
+    calories: float = Field(description="热量（kcal）")
+    protein_g: float = Field(description="蛋白质（g）")
+    carbs_g: float = Field(description="碳水化合物（g）")
+    fat_g: float = Field(description="脂肪（g）")
+    fiber_g: float = Field(default=0.0, description="膳食纤维（g）")
+
+
+# ---------------------------------------------------------------------------
+# TrainingRule
+# ---------------------------------------------------------------------------
+
+class RuleCategory(str, Enum):
+    volume = "volume"           # 训练容量
+    frequency = "frequency"     # 训练频率
+    intensity = "intensity"     # 训练强度
+    nutrition = "nutrition"     # 营养规则
+    progression = "progression" # 渐进超负荷
+    safety = "safety"           # 安全限制
+    recovery = "recovery"       # 恢复规则
+    structure = "structure"     # 计划结构（分化方式等）
+
+
+class GoalType(str, Enum):
+    muscle_gain = "muscle_gain"                   # 增肌
+    fat_loss = "fat_loss"                         # 减脂
+    body_recomposition = "body_recomposition"     # 体态改善
+    general_fitness = "general_fitness"           # 通用健身
+
+
+class ExperienceLevel(str, Enum):
+    beginner = "beginner"
+    intermediate = "intermediate"
+    advanced = "advanced"
+
+
+class RuleType(str, Enum):
+    constraint = "constraint"           # 硬约束（必须遵守）
+    recommendation = "recommendation"   # 软建议（尽量遵守）
+
+
+class TrainingRule(BaseModel):
+    id: str
+    category: RuleCategory
+    applies_to_goals: list[GoalType] = Field(
+        default_factory=list,
+        description="适用的目标类型，空列表表示适用所有目标"
+    )
+    applies_to_levels: list[ExperienceLevel] = Field(
+        default_factory=list,
+        description="适用的训练水平，空列表表示适用所有水平"
+    )
+    rule_type: RuleType
+    description: str = Field(description="规则的自然语言描述（中文），直接注入 LLM prompt")
+    parameters: dict[str, Any] | None = Field(
+        default=None,
+        description="数值参数，用于确定性计算"
+    )
