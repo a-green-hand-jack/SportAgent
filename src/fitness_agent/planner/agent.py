@@ -107,7 +107,7 @@ class PlannerAgent:
         response = self.client.chat(
             messages=[Message(role="user", content=user_message)],
             system=PLANNER_SYSTEM,
-            max_tokens=4096,
+            max_tokens=8192,
             temperature=0.7,
         )
         logger.info(
@@ -148,6 +148,32 @@ class PlannerAgent:
         return tags
 
     @staticmethod
+    def _patch_exercises(data: dict) -> dict:
+        """Best-effort fill of missing exercise fields from exercise_id.
+
+        LLMs occasionally omit ``exercise_name`` or ``exercise_name_zh``.
+        Rather than crashing, we derive sensible defaults from the
+        ``exercise_id`` (e.g. ``"dumbbell_curl"`` → ``"Dumbbell Curl"``).
+        """
+        for day in data.get("training_days", []):
+            for ex in day.get("exercises", []):
+                eid = ex.get("exercise_id", "")
+                if "exercise_name" not in ex or not ex["exercise_name"]:
+                    fallback = eid.replace("_", " ").title()
+                    logger.warning(
+                        f"Missing exercise_name for '{eid}' — using fallback: '{fallback}'"
+                    )
+                    ex["exercise_name"] = fallback
+                if "exercise_name_zh" not in ex or not ex["exercise_name_zh"]:
+                    # Use English name as fallback when Chinese name is missing
+                    fallback = ex.get("exercise_name", eid.replace("_", " ").title())
+                    logger.warning(
+                        f"Missing exercise_name_zh for '{eid}' — using fallback: '{fallback}'"
+                    )
+                    ex["exercise_name_zh"] = fallback
+        return data
+
+    @staticmethod
     def _parse_response(raw: str, profile: UserProfile) -> WeeklyPlan:
         """
         Strip markdown fences (if any) and parse the LLM output into a WeeklyPlan.
@@ -175,6 +201,9 @@ class PlannerAgent:
         data.setdefault("user_name", profile.name)
         data.setdefault("goal", profile.goal.value)
         data.setdefault("experience_level", profile.experience_level.value)
+
+        # Patch missing exercise-level fields before validation
+        PlannerAgent._patch_exercises(data)
 
         try:
             return WeeklyPlan.model_validate(data)
