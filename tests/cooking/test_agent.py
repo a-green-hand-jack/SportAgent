@@ -61,11 +61,13 @@ def profile() -> UserProfile:
 
 @pytest.fixture()
 def weekly_plan(profile: UserProfile) -> WeeklyPlan:
+    # Use realistic PlanAgent day_label format: "周X (Day N)"
+    _TRAINING_LABELS = ["周一 (Day 1)", "周二 (Day 2)", "周三 (Day 3)"]
     days = []
-    for i in range(1, 4):
+    for label in _TRAINING_LABELS:
         days.append(
             TrainingDay(
-                day_label=f"Day {i}",
+                day_label=label,
                 focus="Full body",
                 exercises=[
                     ExerciseSet(
@@ -85,7 +87,7 @@ def weekly_plan(profile: UserProfile) -> WeeklyPlan:
         goal=profile.goal,
         experience_level=profile.experience_level.value,
         training_days=days,
-        rest_days=["Day 4", "Day 5", "Day 6", "Day 7"],
+        rest_days=["周四 (Day 4)", "周五 (Day 5)", "周六 (Day 6)", "周日 (Day 7)"],
         daily_nutrition=DailyNutrition(
             calorie_target=profile.daily_calorie_target or 2500,
             protein_g=profile.daily_protein_target_g or 150,
@@ -1832,3 +1834,220 @@ class TestPipelineIntegration:
         # Our mock plan only has breakfast/lunch/dinner — training days
         # will trigger "缺少 pre_workout" and "缺少 post_workout" warnings
         assert "餐食结构问题" in plan.cooking_tips_zh
+
+
+# ---------------------------------------------------------------------------
+# V6: Training day data flow
+# ---------------------------------------------------------------------------
+
+class TestTrainingDayFlow:
+    """Verify training/rest day identification with realistic PlanAgent labels."""
+
+    def test_training_day_identified_in_prompt(self, profile, weekly_plan, kb) -> None:
+        """周一 (a training day) should be identified as 训练日 in the prompt."""
+        from fitness_agent.cooking.prompt import build_cooking_user_message
+
+        compatible_recipes = kb.get_compatible_recipes(profile.dietary_restrictions)
+        msg = build_cooking_user_message(
+            profile, weekly_plan, kb, compatible_recipes, day_label="周一",
+        )
+        assert "生成 **周一**（训练日）" in msg
+
+    def test_rest_day_identified_in_prompt(self, profile, weekly_plan, kb) -> None:
+        """周四 (a rest day) should be identified as 休息日 in the prompt."""
+        from fitness_agent.cooking.prompt import build_cooking_user_message
+
+        compatible_recipes = kb.get_compatible_recipes(profile.dietary_restrictions)
+        msg = build_cooking_user_message(
+            profile, weekly_plan, kb, compatible_recipes, day_label="周四",
+        )
+        assert "生成 **周四**（休息日）" in msg
+
+    def test_pipeline_sets_is_training_day_correctly(
+        self, kb, profile, weekly_plan
+    ) -> None:
+        """After pipeline, first 3 days should be training, last 4 rest."""
+        client = _make_llm_client(profile)
+        agent = CookingAgent(client=client, kb=kb)
+        agent._validate_dietary_compliance = lambda plan, banned: []
+        plan = agent.generate_cooking_plan(weekly_plan, profile)
+        for day in plan.daily_plans[:3]:
+            assert day.is_training_day is True, (
+                f"{day.day_label} should be training day"
+            )
+        for day in plan.daily_plans[3:]:
+            assert day.is_training_day is False, (
+                f"{day.day_label} should be rest day"
+            )
+
+
+# ---------------------------------------------------------------------------
+# V6: Protein boost buffer
+# ---------------------------------------------------------------------------
+
+class TestProteinBoostBuffer:
+    """Tests for V6 protein boost with buffer (trigger at 100%, aim target+5g)."""
+
+    def test_boost_triggers_below_100pct(self, kb, profile, weekly_plan) -> None:
+        """Day at ~99% of protein target should now get boosted."""
+        from fitness_agent.cooking.models import (
+            DayMealPlan, MacroBreakdown, Recipe, RecipeIngredient,
+        )
+
+        # Create a day with protein slightly below target
+        target = profile.daily_protein_target_g or 150.0
+        # chicken_breast: ~31g protein per 100g in KB
+        # 3 meals × 130g chicken = ~120g protein (below 150g target)
+        recipe = Recipe(
+            recipe_id="r1", name_zh="鸡胸饭", meal_type="lunch",
+            prep_time_minutes=5, cook_time_minutes=10,
+            ingredients=[
+                RecipeIngredient(food_id="chicken_breast", food_name_zh="鸡胸肉", amount_g=130),
+                RecipeIngredient(food_id="white_rice_cooked", food_name_zh="白米饭", amount_g=200),
+            ],
+            steps_zh=["步骤1"],
+            per_serving_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+        )
+        day = DayMealPlan(
+            day_label="周一", is_training_day=True,
+            meals=[recipe, recipe, recipe],
+            day_total_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+        )
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        agent._overwrite_macros_deterministic([day])
+
+        protein_before = day.day_total_macros.protein_g
+        assert protein_before < target, f"Setup: protein {protein_before}g should be below {target}g"
+
+        # Old logic (90% threshold) would NOT boost this because
+        # protein_before > target * 0.90. New logic triggers at 100%.
+        boost_aim = target + CookingAgent.PROTEIN_BOOST_BUFFER_G
+        agent._boost_protein_for_day(day, boost_aim)
+        agent._overwrite_macros_deterministic([day])
+
+        assert day.day_total_macros.protein_g >= target, (
+            f"After boost, protein {day.day_total_macros.protein_g}g should be >= {target}g"
+        )
+
+    def test_boost_aims_above_target(self, kb) -> None:
+        """After boost, protein should reach at least target (aim is target + buffer)."""
+        from fitness_agent.cooking.models import (
+            DayMealPlan, MacroBreakdown, Recipe, RecipeIngredient,
+        )
+
+        recipe = Recipe(
+            recipe_id="r1", name_zh="鸡胸饭", meal_type="lunch",
+            prep_time_minutes=5, cook_time_minutes=10,
+            ingredients=[
+                RecipeIngredient(food_id="chicken_breast", food_name_zh="鸡胸肉", amount_g=100),
+                RecipeIngredient(food_id="white_rice_cooked", food_name_zh="白米饭", amount_g=200),
+            ],
+            steps_zh=["步骤1"],
+            per_serving_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+        )
+        day = DayMealPlan(
+            day_label="周一", is_training_day=True,
+            meals=[recipe, recipe, recipe],
+            day_total_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+        )
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        agent._overwrite_macros_deterministic([day])
+
+        target = 140.0
+        buffer = CookingAgent.PROTEIN_BOOST_BUFFER_G
+        agent._boost_protein_for_day(day, target + buffer)
+        agent._overwrite_macros_deterministic([day])
+
+        assert day.day_total_macros.protein_g >= target, (
+            f"After boost with buffer, protein {day.day_total_macros.protein_g}g "
+            f"should be >= {target}g"
+        )
+
+
+# ---------------------------------------------------------------------------
+# V6: Meal calorie clamping
+# ---------------------------------------------------------------------------
+
+class TestMealCalorieClamping:
+    """Tests for _clamp_meal_calories() (V6)."""
+
+    @staticmethod
+    def _make_day_with_snack(
+        kb, snack_chicken_g: float, snack_rice_g: float,
+    ) -> "DayMealPlan":
+        from fitness_agent.cooking.models import (
+            DayMealPlan, MacroBreakdown, Recipe, RecipeIngredient,
+        )
+
+        snack = Recipe(
+            recipe_id="snack_1", name_zh="加餐", meal_type="snack",
+            prep_time_minutes=5, cook_time_minutes=5,
+            ingredients=[
+                RecipeIngredient(food_id="chicken_breast", food_name_zh="鸡胸肉",
+                                 amount_g=snack_chicken_g),
+                RecipeIngredient(food_id="white_rice_cooked", food_name_zh="白米饭",
+                                 amount_g=snack_rice_g),
+            ],
+            steps_zh=["步骤1"],
+            per_serving_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+        )
+        filler = Recipe(
+            recipe_id="filler", name_zh="主餐", meal_type="lunch",
+            prep_time_minutes=10, cook_time_minutes=15,
+            ingredients=[
+                RecipeIngredient(food_id="chicken_breast", food_name_zh="鸡胸肉", amount_g=150),
+                RecipeIngredient(food_id="white_rice_cooked", food_name_zh="白米饭", amount_g=200),
+            ],
+            steps_zh=["步骤1"],
+            per_serving_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+        )
+        day = DayMealPlan(
+            day_label="周一", is_training_day=True,
+            meals=[filler, snack, filler],
+            day_total_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+        )
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        agent._overwrite_macros_deterministic([day])
+        return day
+
+    def test_snack_clamped_when_over_400(self, kb) -> None:
+        """Snack exceeding 400 kcal should have ingredients scaled down."""
+        day = self._make_day_with_snack(kb, snack_chicken_g=200, snack_rice_g=300)
+        snack = day.meals[1]
+        before_cal = snack.per_serving_macros.calories
+        assert before_cal > 400, f"Setup: snack should exceed 400 kcal, got {before_cal}"
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        agent._clamp_meal_calories([day])
+        agent._overwrite_macros_deterministic([day])
+        after_cal = snack.per_serving_macros.calories
+        assert after_cal <= 401, f"After clamp, snack should be ≤400 kcal, got {after_cal}"
+
+    def test_snack_untouched_when_under_400(self, kb) -> None:
+        """Snack under 400 kcal should not be modified."""
+        day = self._make_day_with_snack(kb, snack_chicken_g=50, snack_rice_g=80)
+        amounts_before = [ing.amount_g for ing in day.meals[1].ingredients]
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        agent._clamp_meal_calories([day])
+        amounts_after = [ing.amount_g for ing in day.meals[1].ingredients]
+        assert amounts_before == amounts_after
+
+    def test_lunch_not_clamped(self, kb) -> None:
+        """Lunch (not in MEAL_CALORIE_HARD_CAPS) should never be clamped."""
+        day = self._make_day_with_snack(kb, snack_chicken_g=50, snack_rice_g=80)
+        lunch = day.meals[0]
+        amounts_before = [ing.amount_g for ing in lunch.ingredients]
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        agent._clamp_meal_calories([day])
+        amounts_after = [ing.amount_g for ing in lunch.ingredients]
+        assert amounts_before == amounts_after

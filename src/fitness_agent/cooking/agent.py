@@ -75,6 +75,7 @@ class CookingAgent:
     PROTEIN_COMPLIANCE_PCT = 90.0    # Min protein % of target (per day)
     PROTEIN_RICH_THRESHOLD = 15.0    # g/100g — foods above this are "protein-rich"
     POST_WORKOUT_MIN_PROTEIN_G = 35.0  # Min protein for post_workout meals
+    PROTEIN_BOOST_BUFFER_G = 5.0       # Aim 5g above target when boosting (absorbs rounding)
 
     # Food-ID validation
     MAX_UNKNOWN_FOOD_IDS_PER_BATCH = 2  # Tolerate at most 2 unknown food_ids before retry
@@ -87,6 +88,12 @@ class CookingAgent:
         "snack": (150, 350),
         "pre_workout": (150, 400),
         "post_workout": (200, 600),
+    }
+
+    # Hard calorie caps: meals exceeding these are scaled down post-scaling.
+    MEAL_CALORIE_HARD_CAPS: dict[str, float] = {
+        "snack": 400,
+        "pre_workout": 400,
     }
 
     # ---------------------------------------------------------------------------
@@ -182,12 +189,14 @@ class CookingAgent:
         self._overwrite_macros_deterministic(plan.daily_plans)
 
         # --- Step 5: protein boost (before calorie scaling!) ---
+        # Trigger: any day below the full protein target (not 90%).
+        # Aim: target + buffer to absorb rounding loss in Step 6b.
         protein_target = profile.daily_protein_target_g or 0.0
         if protein_target > 0:
-            min_protein = protein_target * self.PROTEIN_COMPLIANCE_PCT / 100
+            boost_aim = protein_target + self.PROTEIN_BOOST_BUFFER_G
             for day in plan.daily_plans:
-                if day.day_total_macros.protein_g < min_protein:
-                    self._boost_protein_for_day(day, protein_target)
+                if day.day_total_macros.protein_g < protein_target:
+                    self._boost_protein_for_day(day, boost_aim)
 
         # --- Step 6: deterministic calorie scaling ---
         for day in plan.daily_plans:
@@ -195,6 +204,9 @@ class CookingAgent:
                 base_calorie_target, day.is_training_day
             )
             self._scale_day_to_calorie_target(day, day_target)
+
+        # --- Step 6a: clamp per-meal calories for snack/pre_workout ---
+        self._clamp_meal_calories(plan.daily_plans)
 
         # --- Step 6b: round ingredient amounts to practical precision ---
         self._round_ingredient_amounts(plan.daily_plans)
@@ -575,6 +587,33 @@ class CookingAgent:
 
         # Recompute all macros from scaled ingredient amounts
         self._overwrite_macros_deterministic([day])
+
+    def _clamp_meal_calories(self, days: list[DayMealPlan]) -> None:
+        """Scale down individual meals that exceed their type's hard calorie ceiling.
+
+        Only applies to meal types listed in ``MEAL_CALORIE_HARD_CAPS``
+        (currently snack and pre_workout).  Macros are NOT recomputed here —
+        the caller must run ``_overwrite_macros_deterministic`` afterward.
+        """
+        for day in days:
+            for recipe in day.meals:
+                cap = self.MEAL_CALORIE_HARD_CAPS.get(recipe.meal_type)
+                if cap is None:
+                    continue
+                ing_pairs = [
+                    (ing.food_id, ing.amount_g) for ing in recipe.ingredients
+                ]
+                computed = self.kb.compute_ingredients_macros(ing_pairs)
+                actual_cal = computed["calories"]
+                if actual_cal <= cap:
+                    continue
+                factor = cap / actual_cal
+                logger.info(
+                    f"{day.day_label}/{recipe.name_zh} ({recipe.meal_type}): "
+                    f"{actual_cal:.0f} kcal > {cap:.0f} cap, scaling by {factor:.2f}"
+                )
+                for ing in recipe.ingredients:
+                    ing.amount_g = round(ing.amount_g * factor, 1)
 
     def _validate_protein_compliance(
         self,

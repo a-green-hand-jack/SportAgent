@@ -163,7 +163,19 @@ def build_cooking_user_message(
     )
 
     # --- Section 2: Training schedule ---
-    training_day_labels = [d.day_label for d in weekly_plan.training_days]
+    # Normalize training day labels to Chinese weekday prefix for robust matching.
+    # PlanAgent outputs day_label like "周一 (Day 1)" but CookingAgent iterates
+    # over _WEEK_LABELS ["周一", "周二", ...], so we extract the prefix.
+    training_day_labels: list[str] = []
+    for d in weekly_plan.training_days:
+        matched = False
+        for wl in _WEEK_LABELS:
+            if d.day_label.startswith(wl):
+                training_day_labels.append(wl)
+                matched = True
+                break
+        if not matched:
+            training_day_labels.append(d.day_label)
     rest_day_labels = weekly_plan.rest_days
     schedule_lines = ["## 训练日程\n"]
     schedule_lines.append(f"训练日（{len(training_day_labels)} 天）：")
