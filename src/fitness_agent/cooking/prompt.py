@@ -30,7 +30,7 @@ COOKING_SYSTEM = """\
 
 ## ⚠️ 最高优先级约束（不可违反）
 
-1. **daily_plans 数组长度必须精确等于 7** — 代表一周 7 天。
+1. **daily_plans 数组长度必须精确等于任务指定的天数（见用户消息末尾）**。
 2. 每天至少 3 餐（训练日需包含 pre_workout 和 post_workout 类型的餐食）。
 3. 食材的 food_id 必须来自提供的食谱参考库或食材数据库中的有效 ID。
 4. 每天的总热量必须接近对应目标（训练日和休息日目标不同），偏差不超过 ±10%。
@@ -114,14 +114,27 @@ COOKING_SYSTEM = """\
 # User message builder
 # ---------------------------------------------------------------------------
 
+# Full 7-day week labels in Chinese
+_WEEK_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+
+
 def build_cooking_user_message(
     profile: UserProfile,
     weekly_plan: WeeklyPlan,
     kb: KnowledgeBase,
     compatible_recipes: list[RecipeTemplate],
+    days_subset: list[str] | None = None,
 ) -> str:
     """
     Assemble the user message for the CookingAgent LLM call.
+
+    Parameters
+    ----------
+    days_subset:
+        Optional list of day labels (e.g. ["周一","周二","周三","周四"]) to
+        request in this call.  When None (default) all 7 days are requested.
+        Use this to split generation into smaller batches for providers with
+        limited output token windows (e.g. DeepSeek: 8192 tokens).
 
     Sections (in order):
     1. User profile summary
@@ -133,6 +146,8 @@ def build_cooking_user_message(
     7. PlanAgent's existing meal suggestions (as reference)
     8. Final instruction
     """
+    if days_subset is None:
+        days_subset = _WEEK_LABELS
     sections: list[str] = []
 
     # --- Section 1: User profile summary ---
@@ -213,17 +228,29 @@ def build_cooking_user_message(
         sections.append("\n".join(plan_ref_lines))
 
     # --- Section 8: Final instruction ---
-    sections.append(
-        f"## 任务\n\n"
-        f"请为 {profile.name} 生成一份完整的 7 天烹饪计划。\n\n"
-        f"要求：\n"
-        f"- 训练日（{', '.join(training_day_labels)}）每天含训练前餐和训练后餐\n"
-        f"- 休息日（{', '.join(rest_day_labels)}）每天 3-4 餐\n"
-        f"- 每天总热量控制在对应目标 ±10% 以内\n"
-        f"- 尽量复用食材，减少采购种类\n"
-        f"- 标注适合批量备餐的菜品\n"
-        f"- 烹饪步骤要具体可操作\n"
-        f"- 严格输出 JSON，格式遵循系统提示中的模板"
-    )
+    # Identify which of the requested days are training/rest
+    batch_training = [d for d in days_subset if d in training_day_labels]
+    batch_rest = [d for d in days_subset if d not in training_day_labels]
+    n_days = len(days_subset)
+
+    instruction_lines = [
+        f"## 任务\n",
+        f"请为 {profile.name} 生成以下 **{n_days} 天** 的烹饪计划（daily_plans 数组长度必须为 {n_days}）：",
+        f"**需要生成的天数**: {', '.join(days_subset)}\n",
+        "要求：",
+    ]
+    if batch_training:
+        instruction_lines.append(f"- 训练日（{', '.join(batch_training)}）每天含训练前餐和训练后餐")
+    if batch_rest:
+        instruction_lines.append(f"- 休息日（{', '.join(batch_rest)}）每天 3-4 餐")
+    instruction_lines += [
+        "- 每天总热量控制在对应目标 ±10% 以内",
+        "- 尽量复用食材，减少采购种类",
+        "- 标注适合批量备餐的菜品",
+        "- 烹饪步骤要具体可操作",
+        f"- 严格输出 JSON，daily_plans 恰好 {n_days} 个元素，格式遵循系统提示中的模板",
+        "- 不需要输出 meal_prep_suggestions 和 cooking_tips_zh（批次合并后统一生成）",
+    ]
+    sections.append("\n".join(instruction_lines))
 
     return "\n\n".join(sections)

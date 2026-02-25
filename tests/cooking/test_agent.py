@@ -100,7 +100,51 @@ def weekly_plan(profile: UserProfile) -> WeeklyPlan:
 # Mock LLM helpers
 # ---------------------------------------------------------------------------
 
-def _make_llm_client(json_response: str) -> MagicMock:
+def _make_llm_client(
+    profile: UserProfile,
+    training_days: int = 3,
+    base_cal: float | None = None,
+) -> MagicMock:
+    """Create a mock LLM client that returns batch-appropriate day subsets.
+
+    Uses call-order: first call → batch A (4 days), second call → batch B (3 days).
+    On retries (subsequent calls within the same batch), the same pattern repeats
+    with the same group of days.
+    """
+    _all_labels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+
+    def _side_effect(messages, **kwargs):
+        # Always read from the FIRST message (the original batch prompt).
+        # On retries, messages grows to [user, assistant, user(correction)],
+        # but messages[0] is still the original prompt which uniquely identifies
+        # the batch (batch A has 周一-周四, batch B has 周五-周日).
+        first_content = messages[0].content if messages else ""
+        requested = [lbl for lbl in _all_labels if lbl in first_content]
+        if not requested:
+            requested = _all_labels
+        json_str = _minimal_cooking_plan_json(
+            profile,
+            base_cal=base_cal,
+            training_days=training_days,
+            day_labels=requested,
+        )
+        return LLMResponse(
+            content=json_str,
+            provider="mock",
+            model="mock-model",
+            input_tokens=100,
+            output_tokens=200,
+        )
+
+    client = MagicMock()
+    client.provider = "mock"
+    client.model = "mock-model"
+    client.chat.side_effect = _side_effect
+    return client
+
+
+def _make_llm_client_fixed(json_response: str) -> MagicMock:
+    """Create a mock LLM client that always returns the same fixed response."""
     client = MagicMock()
     client.provider = "mock"
     client.model = "mock-model"
@@ -169,27 +213,34 @@ def _minimal_cooking_plan_json(
     profile: UserProfile,
     base_cal: float | None = None,
     training_days: int = 3,
+    day_labels: list[str] | None = None,
 ) -> str:
-    """Build a minimal valid cooking plan JSON that the mock LLM returns."""
+    """Build a minimal valid cooking plan JSON that the mock LLM returns.
+
+    When ``day_labels`` is given, only those days are included in the response,
+    matching the batched call structure (batch A: 4 days, batch B: 3 days).
+    """
     cal_target = base_cal or profile.daily_calorie_target or 2500
     training_cal = cal_target * 1.07
     rest_cal = cal_target * 0.96
 
-    day_labels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    all_labels = ["\u5468\u4e00", "\u5468\u4e8c", "\u5468\u4e09", "\u5468\u56db", "\u5468\u4e94", "\u5468\u516d", "\u5468\u65e5"]
+    labels_to_use = day_labels if day_labels is not None else all_labels
     days = []
-    for i in range(7):
-        is_training = i < training_days
+    for label in labels_to_use:
+        idx = all_labels.index(label) if label in all_labels else 0
+        is_training = idx < training_days
         day_cal = training_cal if is_training else rest_cal
         # Split calories across 3 meals
         meal_cal = day_cal / 3
 
         meals = [
-            _make_recipe_json(f"breakfast_{i}", "breakfast", meal_cal, 40),
-            _make_recipe_json(f"lunch_{i}", "lunch", meal_cal, 50),
-            _make_recipe_json(f"dinner_{i}", "dinner", meal_cal, 45),
+            _make_recipe_json(f"breakfast_{idx}", "breakfast", meal_cal, 40),
+            _make_recipe_json(f"lunch_{idx}", "lunch", meal_cal, 50),
+            _make_recipe_json(f"dinner_{idx}", "dinner", meal_cal, 45),
         ]
         days.append({
-            "day_label": day_labels[i],
+            "day_label": label,
             "is_training_day": is_training,
             "meals": meals,
             "day_total_macros": {
@@ -204,14 +255,14 @@ def _minimal_cooking_plan_json(
         "daily_plans": days,
         "meal_prep_suggestions": [
             {
-                "recipe_name_zh": "批量煮鸡胸",
-                "prep_day": "周日",
-                "covers_days": ["周一", "周二"],
-                "storage_zh": "冷藏3天",
-                "reheat_zh": "微波2分钟",
+                "recipe_name_zh": "\u6279\u91cf\u716e\u9e21\u80f8",
+                "prep_day": "\u5468\u65e5",
+                "covers_days": ["\u5468\u4e00", "\u5468\u4e8c"],
+                "storage_zh": "\u51b7\u85cf3\u5929",
+                "reheat_zh": "\u5fae\u6ce22\u5206\u949f",
             }
         ],
-        "cooking_tips_zh": "保持食材新鲜，注意蛋白摄入。",
+        "cooking_tips_zh": "\u4fdd\u6301\u98df\u6750\u65b0\u9c9c\uff0c\u6ce8\u610f\u86cb\u767d\u6444\u5165\u3002",
     }
     return json.dumps(plan, ensure_ascii=False)
 
@@ -224,19 +275,19 @@ class TestCookingAgent:
     def test_generate_returns_weekly_cooking_plan(
         self, kb, profile, weekly_plan
     ) -> None:
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         assert isinstance(plan, WeeklyCookingPlan)
 
     def test_plan_has_7_days(self, kb, profile, weekly_plan) -> None:
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         assert len(plan.daily_plans) == 7
 
     def test_plan_user_name_filled(self, kb, profile, weekly_plan) -> None:
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         assert plan.user_name == "CookBob"
@@ -255,34 +306,33 @@ class TestCookingAgent:
             available_equipment=[Equipment.bodyweight],
             activity_level="sedentary",
         )
-        client = _make_llm_client("{}")
+        client = _make_llm_client_fixed("{}")
         agent = CookingAgent(client=client, kb=kb)
         with pytest.raises(ValueError, match="enriched"):
             agent.generate_cooking_plan(weekly_plan, bare)
 
     def test_invalid_json_raises_runtime_error(self, kb, profile, weekly_plan) -> None:
-        client = _make_llm_client("This is not JSON.")
+        client = _make_llm_client_fixed("This is not JSON.")
         agent = CookingAgent(client=client, kb=kb)
         with pytest.raises(RuntimeError, match="not valid JSON"):
             agent.generate_cooking_plan(weekly_plan, profile)
 
     def test_strips_markdown_fences(self, kb, profile, weekly_plan) -> None:
-        raw = "```json\n" + _minimal_cooking_plan_json(profile) + "\n```"
-        client = _make_llm_client(raw)
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         assert isinstance(plan, WeeklyCookingPlan)
 
-    def test_llm_called_once_when_validation_passes(
+    def test_llm_called_twice_for_two_batches(
         self, kb, profile, weekly_plan
     ) -> None:
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        """With batched generation, exactly 2 LLM calls are made (4+3 days)."""
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
-        # Stub validators to return no warnings
         agent._validate_calorie_compliance = lambda plan, target: []
         agent._cross_validate_macros = lambda plan: []
         agent.generate_cooking_plan(weekly_plan, profile)
-        client.chat.assert_called_once()
+        assert client.chat.call_count == 2
 
 
 # ---------------------------------------------------------------------------
@@ -291,7 +341,7 @@ class TestCookingAgent:
 
 class TestShoppingListAggregation:
     def test_shopping_list_populated(self, kb, profile, weekly_plan) -> None:
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         assert len(plan.shopping_list) > 0
@@ -299,7 +349,7 @@ class TestShoppingListAggregation:
     def test_shopping_list_deduplicates_food_ids(
         self, kb, profile, weekly_plan
     ) -> None:
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         food_ids = [item.food_id for item in plan.shopping_list]
@@ -307,7 +357,7 @@ class TestShoppingListAggregation:
 
     def test_shopping_list_sums_amounts(self, kb, profile, weekly_plan) -> None:
         """chicken_breast appears in every meal (150g each × 3 meals × 7 days = 3150g)."""
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         chicken = next(
@@ -326,17 +376,17 @@ class TestShoppingListAggregation:
 class TestCalorieValidation:
     def test_no_warning_when_within_tolerance(self, kb, profile, weekly_plan) -> None:
         """Plan with calories matching targets should have no calorie warnings."""
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         # The minimal plan JSON is constructed to match targets
         base = profile.daily_calorie_target or 2500
-        warnings = agent._validate_calorie_compliance(plan, base)
+        warnings = agent._validate_calorie_compliance(plan.daily_plans, base)
         assert warnings == []
 
     def test_calorie_deviation_computed(self, kb, profile, weekly_plan) -> None:
         """Each day should have calorie_deviation_pct computed."""
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         for day in plan.daily_plans:
@@ -350,46 +400,41 @@ class TestCalorieValidation:
 
 class TestRetryLoop:
     def test_retries_on_calorie_violation(self, kb, profile, weekly_plan) -> None:
-        """When calorie validation always fails, agent retries max_retries times."""
+        """Batch-level retries: max_retries=1 means 2 calls per batch, 4 total."""
         max_retries = 1
-        responses = [_minimal_cooking_plan_json(profile)] * (max_retries + 1)
-        client = _make_multi_response_client(responses)
+        # Each batch gets max_retries+1 = 2 calls → 2 batches → 4 total calls
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb, max_retries=max_retries)
-        # Force calorie warnings every time
         agent._validate_calorie_compliance = lambda plan, target: [
             "- 周一（训练日）：3000 kcal，目标 2500 kcal，偏差 +20.0%"
         ]
         agent._cross_validate_macros = lambda plan: []
         agent.generate_cooking_plan(weekly_plan, profile)
-        assert client.chat.call_count == max_retries + 1
+        assert client.chat.call_count == (max_retries + 1) * 2
 
     def test_max_retries_respected(self, kb, profile, weekly_plan) -> None:
-        """Agent never exceeds max_retries+1 LLM calls."""
+        """Agent never exceeds (max_retries+1) × 2 LLM calls (two batches)."""
         max_retries = 2
-        total = max_retries + 1
-        responses = [_minimal_cooking_plan_json(profile)] * total
-        client = _make_multi_response_client(responses)
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb, max_retries=max_retries)
         agent._validate_calorie_compliance = lambda plan, target: ["- 偏差过大"]
         agent._cross_validate_macros = lambda plan: []
         agent.generate_cooking_plan(weekly_plan, profile)
-        assert client.chat.call_count == total
+        assert client.chat.call_count == (max_retries + 1) * 2
 
     def test_no_retry_when_all_valid(self, kb, profile, weekly_plan) -> None:
-        """No warnings → single LLM call."""
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        """No warnings → exactly 2 LLM calls (one per batch)."""
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb, max_retries=2)
         agent._validate_calorie_compliance = lambda plan, target: []
         agent._cross_validate_macros = lambda plan: []
         agent.generate_cooking_plan(weekly_plan, profile)
-        client.chat.assert_called_once()
+        assert client.chat.call_count == 2
 
     def test_warnings_appended_to_tips(self, kb, profile, weekly_plan) -> None:
         """Unresolved warnings after retries are written into cooking_tips_zh."""
-        max_retries = 1
-        responses = [_minimal_cooking_plan_json(profile)] * (max_retries + 1)
-        client = _make_multi_response_client(responses)
-        agent = CookingAgent(client=client, kb=kb, max_retries=max_retries)
+        client = _make_llm_client(profile)
+        agent = CookingAgent(client=client, kb=kb, max_retries=1)
         agent._validate_calorie_compliance = lambda plan, target: [
             "- 周一偏差 +20%"
         ]
@@ -398,13 +443,13 @@ class TestRetryLoop:
         assert "热量偏差提醒" in plan.cooking_tips_zh
 
     def test_correction_message_appended(self, kb, profile, weekly_plan) -> None:
-        """On retry, second LLM call has [user, assistant, user(correction)] messages."""
-        responses = [_minimal_cooking_plan_json(profile)] * 2
-        client = _make_multi_response_client(responses)
+        """On batch retry, the second call gets [user, assistant, user(correction)] messages."""
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb, max_retries=1)
         agent._validate_calorie_compliance = lambda plan, target: ["- 偏差"]
         agent._cross_validate_macros = lambda plan: []
         agent.generate_cooking_plan(weekly_plan, profile)
+        # Batch A is calls [0, 1]; call 1 (the retry) gets 3 messages
         second_kwargs = client.chat.call_args_list[1].kwargs
         msgs = second_kwargs["messages"]
         assert len(msgs) == 3
@@ -422,12 +467,12 @@ class TestCrossValidation:
         self, kb, profile, weekly_plan
     ) -> None:
         """Manually craft plan where LLM claims 100 kcal but KB computes much more."""
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         # Artificially set one recipe's reported macros to be very wrong
         plan.daily_plans[0].meals[0].per_serving_macros.calories = 50.0
-        warnings = agent._cross_validate_macros(plan)
+        warnings = agent._cross_validate_macros(plan.daily_plans)
         # Should detect the discrepancy
         assert len(warnings) > 0
 
@@ -435,7 +480,7 @@ class TestCrossValidation:
         self, kb, profile, weekly_plan
     ) -> None:
         """Recipes with unknown food_ids are silently skipped."""
-        client = _make_llm_client(_minimal_cooking_plan_json(profile))
+        client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         # Replace all food_ids with unknowns
@@ -443,7 +488,7 @@ class TestCrossValidation:
             for meal in day.meals:
                 for ing in meal.ingredients:
                     ing.food_id = "nonexistent_food_xyz"
-        warnings = agent._cross_validate_macros(plan)
+        warnings = agent._cross_validate_macros(plan.daily_plans)
         assert warnings == []
 
 

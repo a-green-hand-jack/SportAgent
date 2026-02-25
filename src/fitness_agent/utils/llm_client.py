@@ -77,6 +77,11 @@ _DEFAULT_MODELS: dict[str, str] = {
     **{name: cfg[2] for name, cfg in _OPENAI_COMPAT_PROVIDERS.items()},
 }
 
+# Per-provider hard limits on max_tokens (avoids 400 errors from stricter APIs)
+_MAX_TOKENS_CAP: dict[str, int] = {
+    "deepseek": 8192,
+}
+
 
 # ---------------------------------------------------------------------------
 # Abstract base
@@ -164,10 +169,18 @@ class OpenAICompatClient(BaseLLMClient):
             sdk_messages.append({"role": "system", "content": system})
         sdk_messages.extend({"role": m.role, "content": m.content} for m in messages)
 
+        # Respect per-provider token limits
+        cap = _MAX_TOKENS_CAP.get(self.provider)
+        effective_max_tokens = min(max_tokens, cap) if cap else max_tokens
+        if cap and max_tokens > cap:
+            logger.debug(
+                f"[{self.provider}] max_tokens {max_tokens} capped to {cap}"
+            )
+
         resp = self._client.chat.completions.create(
             model=self.model,
             messages=sdk_messages,
-            max_tokens=max_tokens,
+            max_tokens=effective_max_tokens,
             temperature=temperature,
         )
         usage = resp.usage

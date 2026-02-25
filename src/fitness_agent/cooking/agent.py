@@ -71,6 +71,9 @@ class CookingAgent:
     # Public API
     # ------------------------------------------------------------------
 
+    # Week days used for batching
+    _WEEK_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+
     def generate_cooking_plan(
         self,
         weekly_plan: WeeklyPlan,
@@ -78,6 +81,10 @@ class CookingAgent:
     ) -> WeeklyCookingPlan:
         """
         Generate a 7-day cooking plan for the given training plan + profile.
+
+        The plan is built via two LLM calls (days 1-4 then days 5-7) so that
+        the response fits within providers that cap output tokens at 8192
+        (e.g. DeepSeek).  Results are merged into a single WeeklyCookingPlan.
 
         The profile **must** be fully enriched (daily_calorie_target set).
 
@@ -105,62 +112,31 @@ class CookingAgent:
             f"(restrictions: {profile.dietary_restrictions})"
         )
 
-        # --- Step 2: build prompt ---
-        user_message = build_cooking_user_message(
-            profile, weekly_plan, self.kb, compatible_recipes
+        # --- Step 2: generate in two batches (days 1-4, days 5-7) ---
+        batch_a = self._WEEK_LABELS[:4]  # 周一~周四
+        batch_b = self._WEEK_LABELS[4:]  # 周五~周日
+
+        days_a = self._generate_batch(
+            profile, weekly_plan, compatible_recipes, batch_a
         )
-        logger.debug(f"Cooking prompt length: ~{len(user_message)} chars")
+        days_b = self._generate_batch(
+            profile, weekly_plan, compatible_recipes, batch_b
+        )
 
-        # --- Step 3: LLM call with generate-validate-fix retry loop ---
-        messages: list[Message] = [Message(role="user", content=user_message)]
-        plan: WeeklyCookingPlan | None = None
-        calorie_warnings: list[str] = []
-        macro_warnings: list[str] = []
+        all_days = days_a + days_b
 
-        for attempt in range(self.max_retries + 1):
-            logger.info(
-                f"Calling {self.client.provider}/{self.client.model} for cooking plan "
-                f"(attempt {attempt + 1}/{self.max_retries + 1})…"
-            )
-            response = self.client.chat(
-                messages=messages,
-                system=COOKING_SYSTEM,
-                max_tokens=12000,
-                temperature=0.7,
-            )
-            logger.info(
-                f"LLM responded: {response.total_tokens} tokens "
-                f"(in={response.input_tokens}, out={response.output_tokens})"
-            )
+        # --- Step 3: assemble a combined WeeklyCookingPlan ---
+        plan = WeeklyCookingPlan(
+            user_name=profile.name,
+            daily_plans=all_days,
+            meal_prep_suggestions=[],
+            shopping_list=[],
+            cooking_tips_zh="",
+        )
 
-            plan = self._parse_response(response.content, profile)
-
-            # --- Step 4 & 5: validate ---
-            calorie_warnings = self._validate_calorie_compliance(
-                plan, base_calorie_target
-            )
-            macro_warnings = self._cross_validate_macros(plan)
-
-            all_warnings = calorie_warnings + macro_warnings
-            if not all_warnings:
-                logger.info("All cooking validations passed.")
-                break
-
-            logger.info(
-                f"Cooking validation: {len(calorie_warnings)} calorie, "
-                f"{len(macro_warnings)} macro warning(s) "
-                f"(attempt {attempt + 1}/{self.max_retries + 1})."
-            )
-
-            if attempt < self.max_retries:
-                messages.append(Message(role="assistant", content=response.content))
-                correction = self._build_correction_message(
-                    calorie_warnings, macro_warnings
-                )
-                messages.append(Message(role="user", content=correction))
-
-        # --- Post-processing ---
-        assert plan is not None
+        # --- Step 4 & 5: validate the merged plan ---
+        calorie_warnings = self._validate_calorie_compliance(plan.daily_plans, base_calorie_target)
+        macro_warnings = self._cross_validate_macros(plan.daily_plans)
 
         # Append remaining warnings to cooking_tips_zh
         all_remaining = calorie_warnings + macro_warnings
@@ -202,6 +178,82 @@ class CookingAgent:
         return plan
 
     # ------------------------------------------------------------------
+    # Batch generation helper
+    # ------------------------------------------------------------------
+
+    def _generate_batch(
+        self,
+        profile: UserProfile,
+        weekly_plan: WeeklyPlan,
+        compatible_recipes: list,  # list[RecipeTemplate]
+        days_subset: list[str],
+    ) -> list:  # list[DayMealPlan]
+        """Run the LLM generate→validate→retry loop for a subset of days.
+
+        Returns the list of ``DayMealPlan`` objects for the requested days.
+        """
+        user_message = build_cooking_user_message(
+            profile, weekly_plan, self.kb, compatible_recipes,
+            days_subset=days_subset,
+        )
+        logger.debug(
+            f"Batch {days_subset}: prompt ~{len(user_message)} chars"
+        )
+
+        messages: list[Message] = [Message(role="user", content=user_message)]
+        batch_days: list = []
+        calorie_warnings: list[str] = []
+        macro_warnings: list[str] = []
+
+        for attempt in range(self.max_retries + 1):
+            logger.info(
+                f"Calling {self.client.provider}/{self.client.model} "
+                f"for days {days_subset} "
+                f"(attempt {attempt + 1}/{self.max_retries + 1})…"
+            )
+            response = self.client.chat(
+                messages=messages,
+                system=COOKING_SYSTEM,
+                max_tokens=8192,
+                temperature=0.7,
+            )
+            logger.info(
+                f"LLM responded: {response.total_tokens} tokens "
+                f"(in={response.input_tokens}, out={response.output_tokens})"
+            )
+
+            # Parse into a partial plan (only the days in this batch)
+            partial = self._parse_batch_response(response.content, profile)
+            batch_days = partial
+
+            # Light validation: just check days that were requested
+            base_cal = profile.daily_calorie_target or 0.0
+            calorie_warnings = self._validate_calorie_compliance(
+                batch_days, base_cal
+            )
+            macro_warnings = self._cross_validate_macros(batch_days)
+
+            all_warnings = calorie_warnings + macro_warnings
+            if not all_warnings:
+                logger.info(f"Batch {days_subset}: all validations passed.")
+                break
+
+            logger.info(
+                f"Batch {days_subset}: {len(calorie_warnings)} calorie, "
+                f"{len(macro_warnings)} macro warning(s) "
+                f"(attempt {attempt + 1}/{self.max_retries + 1})."
+            )
+
+            if attempt < self.max_retries:
+                messages.append(Message(role="assistant", content=response.content))
+                correction = self._build_correction_message(
+                    calorie_warnings, macro_warnings
+                )
+                messages.append(Message(role="user", content=correction))
+
+        return batch_days
+
+    # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
 
@@ -214,11 +266,11 @@ class CookingAgent:
         return base_target * self.REST_DAY_MULTIPLIER
 
     def _validate_calorie_compliance(
-        self, plan: WeeklyCookingPlan, base_calorie_target: float
+        self, days: list[DayMealPlan], base_calorie_target: float
     ) -> list[str]:
         """Check each day's total calories against the day-specific target."""
         warnings: list[str] = []
-        for day in plan.daily_plans:
+        for day in days:
             target = self._compute_day_calorie_target(
                 base_calorie_target, day.is_training_day
             )
@@ -234,7 +286,7 @@ class CookingAgent:
                 )
         return warnings
 
-    def _cross_validate_macros(self, plan: WeeklyCookingPlan) -> list[str]:
+    def _cross_validate_macros(self, days: list[DayMealPlan]) -> list[str]:
         """Cross-validate recipe macros using nutrition.json data.
 
         Recomputes calories from ingredient food_ids × amounts and compares
@@ -244,7 +296,7 @@ class CookingAgent:
         warnings: list[str] = []
         tolerance_pct = 20.0
 
-        for day in plan.daily_plans:
+        for day in days:
             for recipe in day.meals:
                 computed_cal = 0.0
                 has_known_food = False
@@ -361,4 +413,42 @@ class CookingAgent:
             raise RuntimeError(
                 f"Could not parse LLM output into WeeklyCookingPlan: {exc}\n\n"
                 f"Data keys: {list(data.keys())}"
+            ) from exc
+
+    @staticmethod
+    def _parse_batch_response(raw: str, profile: UserProfile) -> list:
+        """Parse a batch LLM response that contains only a ``daily_plans`` array.
+
+        The LLM is asked to return a JSON object with a ``daily_plans`` key
+        (same schema as the full plan, but only covering the requested subset of
+        days).  Returns a plain list of ``DayMealPlan`` objects.
+        """
+        text = raw.strip()
+
+        # Strip ```json ... ``` / ``` fences
+        if text.startswith("```"):
+            lines = text.split("\n")
+            end = -1 if lines[-1].strip() == "```" else len(lines)
+            text = "\n".join(lines[1:end])
+
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"LLM batch response is not valid JSON: {exc}\n\n"
+                f"Raw response:\n{raw[:500]}"
+            ) from exc
+
+        # Support both {"daily_plans": [...]} and a bare [...] array
+        if isinstance(data, list):
+            days_raw = data
+        else:
+            days_raw = data.get("daily_plans", [])
+
+        try:
+            return [DayMealPlan.model_validate(d) for d in days_raw]
+        except Exception as exc:
+            raise RuntimeError(
+                f"Could not parse batch DayMealPlan list: {exc}\n\n"
+                f"First item keys: {list(days_raw[0].keys()) if days_raw else '(empty)'}"
             ) from exc

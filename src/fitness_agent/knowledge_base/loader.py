@@ -210,17 +210,36 @@ class KnowledgeBase:
     def get_compatible_recipes(self, dietary_restrictions: list[str]) -> list[RecipeTemplate]:
         """Return recipes compatible with ALL given dietary restrictions.
 
-        A recipe is compatible if for each restriction it either:
+        A recipe is compatible if for each *known* restriction it either:
         (a) natively satisfies it (restriction in dietary_flags), or
         (b) has substitution entries for it (restriction in substitution_groups).
+
+        Restrictions that do not match any known KB key are silently skipped
+        here and left to the LLM to handle via the prompt (e.g. free-text
+        Chinese input such as '不能吃油腻食物').
         """
         if not dietary_restrictions:
             return list(self.recipes)
+
+        # Collect all known restriction keys across the recipe pool
+        known_keys: set[str] = set()
+        for r in self.recipes:
+            known_keys.update(r.dietary_flags)
+            known_keys.update(r.substitution_groups.keys())
+
+        # Only keep restrictions that are recognised KB keys
+        known_restrictions = [rest for rest in dietary_restrictions if rest in known_keys]
+
+        # If none of the user restrictions match KB keys, return everything –
+        # the LLM will apply the constraints via the prompt.
+        if not known_restrictions:
+            return list(self.recipes)
+
         return [
             r for r in self.recipes
             if all(
                 rest in r.dietary_flags or rest in r.substitution_groups
-                for rest in dietary_restrictions
+                for rest in known_restrictions
             )
         ]
 
