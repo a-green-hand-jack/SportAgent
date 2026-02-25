@@ -67,6 +67,15 @@ class CookingAgent:
     TRAINING_DAY_MULTIPLIER = 1.07   # +7%
     REST_DAY_MULTIPLIER = 0.96       # -4%
 
+    # Deterministic scaling constants
+    MAX_SCALE_FACTOR = 2.0           # Max ingredient scaling (prevent huge portions)
+    MIN_SCALE_FACTOR = 0.5           # Min ingredient scaling (prevent tiny portions)
+
+    # Protein compliance constants
+    PROTEIN_COMPLIANCE_PCT = 90.0    # Min protein % of target (per day)
+    PROTEIN_RICH_THRESHOLD = 15.0    # g/100g — foods above this are "protein-rich"
+    POST_WORKOUT_MIN_PROTEIN_G = 20.0  # Min protein for post_workout meals
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -149,12 +158,41 @@ class CookingAgent:
         # --- Step 4: deterministic macro overwrite on merged plan ---
         self._overwrite_macros_deterministic(plan.daily_plans)
 
-        # --- Step 5: post-assembly validation ---
-        calorie_warnings = self._validate_calorie_compliance(plan.daily_plans, base_calorie_target)
+        # --- Step 5: protein boost (before calorie scaling!) ---
+        protein_target = profile.daily_protein_target_g or 0.0
+        if protein_target > 0:
+            min_protein = protein_target * self.PROTEIN_COMPLIANCE_PCT / 100
+            for day in plan.daily_plans:
+                if day.day_total_macros.protein_g < min_protein:
+                    self._boost_protein_for_day(day, protein_target)
+
+        # --- Step 6: deterministic calorie scaling ---
+        for day in plan.daily_plans:
+            day_target = self._compute_day_calorie_target(
+                base_calorie_target, day.is_training_day
+            )
+            self._scale_day_to_calorie_target(day, day_target)
+
+        # --- Step 7: final deterministic overwrite (ensure consistency) ---
+        self._overwrite_macros_deterministic(plan.daily_plans)
+
+        # --- Step 8: final validation (warnings only, no more correction) ---
+        calorie_warnings = self._validate_calorie_compliance(
+            plan.daily_plans, base_calorie_target
+        )
+        protein_warnings = self._validate_protein_compliance(
+            plan.daily_plans, protein_target
+        )
+        post_workout_warnings = self._validate_post_workout_protein(
+            plan.daily_plans
+        )
         diversity_warnings = self._validate_diversity(plan.daily_plans)
 
         # Append remaining warnings to cooking_tips_zh
-        all_remaining = calorie_warnings + diversity_warnings
+        all_remaining = (
+            calorie_warnings + protein_warnings
+            + post_workout_warnings + diversity_warnings
+        )
         if all_remaining:
             parts = []
             if calorie_warnings:
@@ -162,6 +200,16 @@ class CookingAgent:
                     "📊 **热量偏差提醒**\n"
                     + "\n".join(calorie_warnings)
                     + "\n建议调整对应天数的食材份量。"
+                )
+            if protein_warnings:
+                parts.append(
+                    "🥩 **蛋白质不足提醒**\n"
+                    + "\n".join(protein_warnings)
+                )
+            if post_workout_warnings:
+                parts.append(
+                    "💪 **训练后餐蛋白质不足**\n"
+                    + "\n".join(post_workout_warnings)
                 )
             if diversity_warnings:
                 parts.append(
@@ -209,8 +257,10 @@ class CookingAgent:
         1. Call LLM and parse response.
         2. Overwrite all macro values deterministically from KB.
         3. Validate dietary compliance (banned food_ids).
-        4. Validate calorie compliance (training/rest day targets).
-        5. If warnings exist and retries remain, send correction and loop.
+        4. If dietary violations exist and retries remain, send correction and loop.
+
+        **Calorie / protein corrections are NOT retried here** — they are handled
+        deterministically in ``generate_cooking_plan()`` via ingredient scaling.
 
         Returns the list of ``DayMealPlan`` objects for the requested days.
         """
@@ -225,7 +275,6 @@ class CookingAgent:
         banned = banned_food_ids or set()
         messages: list[Message] = [Message(role="user", content=user_message)]
         batch_days: list = []
-        calorie_warnings: list[str] = []
         dietary_warnings: list[str] = []
 
         for attempt in range(self.max_retries + 1):
@@ -252,30 +301,22 @@ class CookingAgent:
             # Step 2: Deterministic macro overwrite (replaces LLM self-reported values)
             self._overwrite_macros_deterministic(batch_days)
 
-            # Step 3: Validate dietary compliance
+            # Step 3: Validate dietary compliance (only retry trigger)
             dietary_warnings = self._validate_dietary_compliance(batch_days, banned)
 
-            # Step 4: Validate calorie compliance (now against deterministic values)
-            base_cal = profile.daily_calorie_target or 0.0
-            calorie_warnings = self._validate_calorie_compliance(
-                batch_days, base_cal
-            )
-
-            all_warnings = dietary_warnings + calorie_warnings
-            if not all_warnings:
-                logger.info(f"Batch {days_subset}: all validations passed.")
+            if not dietary_warnings:
+                logger.info(f"Batch {days_subset}: dietary validation passed.")
                 break
 
             logger.info(
-                f"Batch {days_subset}: {len(dietary_warnings)} dietary, "
-                f"{len(calorie_warnings)} calorie warning(s) "
+                f"Batch {days_subset}: {len(dietary_warnings)} dietary warning(s) "
                 f"(attempt {attempt + 1}/{self.max_retries + 1})."
             )
 
             if attempt < self.max_retries:
                 messages.append(Message(role="assistant", content=response.content))
-                correction = self._build_correction_message(
-                    calorie_warnings, dietary_warnings
+                correction = self._build_dietary_correction_message(
+                    dietary_warnings
                 )
                 messages.append(Message(role="user", content=correction))
 
@@ -391,6 +432,141 @@ class CookingAgent:
 
         return warnings
 
+    # ------------------------------------------------------------------
+    # Deterministic calorie scaling & protein boost (V3)
+    # ------------------------------------------------------------------
+
+    def _scale_day_to_calorie_target(
+        self,
+        day: DayMealPlan,
+        target_cal: float,
+        tolerance_pct: float | None = None,
+    ) -> None:
+        """Deterministically scale all ingredient amounts so daily calories hit the target.
+
+        Uniform scaling preserves the LLM-chosen ingredient ratios.
+        The scale factor is clamped to [MIN_SCALE_FACTOR, MAX_SCALE_FACTOR]
+        to prevent unreasonable portions.  After scaling, macros are recomputed
+        via ``_overwrite_macros_deterministic``.
+        """
+        actual_cal = day.day_total_macros.calories
+        if actual_cal <= 0 or target_cal <= 0:
+            return  # nothing to scale
+
+        tol = tolerance_pct if tolerance_pct is not None else self.calorie_tolerance_pct
+        deviation_pct = abs(actual_cal - target_cal) / target_cal * 100
+        if deviation_pct <= tol:
+            return  # already within tolerance
+
+        raw_factor = target_cal / actual_cal
+        factor = max(self.MIN_SCALE_FACTOR, min(self.MAX_SCALE_FACTOR, raw_factor))
+
+        for recipe in day.meals:
+            for ing in recipe.ingredients:
+                ing.amount_g = round(ing.amount_g * factor, 1)
+
+        # Recompute all macros from scaled ingredient amounts
+        self._overwrite_macros_deterministic([day])
+
+    def _validate_protein_compliance(
+        self,
+        days: list[DayMealPlan],
+        daily_protein_target: float,
+    ) -> list[str]:
+        """Check that each day's protein >= PROTEIN_COMPLIANCE_PCT % of target.
+
+        Returns a list of warning strings for non-compliant days.
+        """
+        if daily_protein_target <= 0:
+            return []
+
+        min_protein = daily_protein_target * self.PROTEIN_COMPLIANCE_PCT / 100
+        warnings: list[str] = []
+        for day in days:
+            actual = day.day_total_macros.protein_g
+            if actual < min_protein:
+                pct = actual / daily_protein_target * 100
+                warnings.append(
+                    f"- {day.day_label}：蛋白质 {actual:.0f}g，"
+                    f"目标 {daily_protein_target:.0f}g 的 {pct:.0f}%"
+                    f"（最低要求 {self.PROTEIN_COMPLIANCE_PCT:.0f}%）"
+                )
+        return warnings
+
+    def _boost_protein_for_day(
+        self, day: DayMealPlan, target_protein: float
+    ) -> None:
+        """Increase protein-rich ingredient amounts to close the protein gap.
+
+        Only scales ingredients whose food has protein_g/100g >= PROTEIN_RICH_THRESHOLD.
+        The extra grams are distributed proportionally to each high-protein
+        ingredient's current protein contribution.  After boosting, macros are
+        recomputed via ``_overwrite_macros_deterministic``.
+        """
+        actual_protein = day.day_total_macros.protein_g
+        if actual_protein >= target_protein:
+            return  # already sufficient
+
+        gap = target_protein - actual_protein
+
+        # Collect high-protein ingredients and their current protein contributions
+        protein_sources: list[tuple[RecipeIngredient, float]] = []
+        for recipe in day.meals:
+            for ing in recipe.ingredients:
+                food = self.kb.get_food_by_id(ing.food_id)
+                if food is None:
+                    continue
+                protein_per_100g = food.protein_g / food.serving_size_g * 100
+                if protein_per_100g >= self.PROTEIN_RICH_THRESHOLD:
+                    current_protein = food.protein_g / food.serving_size_g * ing.amount_g
+                    protein_sources.append((ing, current_protein))
+
+        if not protein_sources:
+            logger.warning(
+                f"{day.day_label}: no protein-rich ingredients found, "
+                f"cannot boost protein (gap={gap:.1f}g)"
+            )
+            return
+
+        total_existing_protein = sum(p for _, p in protein_sources)
+        if total_existing_protein <= 0:
+            return
+
+        # Distribute gap proportionally
+        for ing, contribution in protein_sources:
+            food = self.kb.get_food_by_id(ing.food_id)
+            if food is None:
+                continue
+            share = contribution / total_existing_protein
+            extra_protein_needed = gap * share
+            protein_per_g = food.protein_g / food.serving_size_g
+            if protein_per_g > 0:
+                extra_amount_g = extra_protein_needed / protein_per_g
+                ing.amount_g = round(ing.amount_g + extra_amount_g, 1)
+
+        # Recompute all macros
+        self._overwrite_macros_deterministic([day])
+
+    def _validate_post_workout_protein(
+        self, days: list[DayMealPlan]
+    ) -> list[str]:
+        """Check that post_workout meals have >= POST_WORKOUT_MIN_PROTEIN_G protein.
+
+        Returns a list of warning strings for non-compliant post-workout meals.
+        """
+        warnings: list[str] = []
+        for day in days:
+            for recipe in day.meals:
+                if recipe.meal_type != "post_workout":
+                    continue
+                protein = recipe.per_serving_macros.protein_g
+                if protein < self.POST_WORKOUT_MIN_PROTEIN_G:
+                    warnings.append(
+                        f"- {day.day_label}/{recipe.name_zh}：训练后餐蛋白质"
+                        f" {protein:.0f}g < {self.POST_WORKOUT_MIN_PROTEIN_G:.0f}g"
+                    )
+        return warnings
+
     def _compute_day_calorie_target(
         self, base_target: float, is_training_day: bool
     ) -> float:
@@ -458,11 +634,32 @@ class CookingAgent:
         return warnings
 
     @staticmethod
+    def _build_dietary_correction_message(
+        dietary_warnings: list[str],
+    ) -> str:
+        """Build a follow-up user message for dietary violations only."""
+        warning_text = "\n".join(dietary_warnings)
+        return (
+            f"烹饪计划存在饮食限制违规，请调整：\n\n"
+            f"【饮食限制违规】\n{warning_text}\n\n"
+            "调整要求：\n"
+            "- 不要改变天数和整体餐食结构\n"
+            "- 将禁用食材替换为同类别的合规食材\n"
+            "- 保持每餐的营养比例和总热量基本不变\n"
+            "- 返回完整修正后的 JSON（格式与之前相同，不要有任何额外文字）"
+        )
+
+    @staticmethod
     def _build_correction_message(
         calorie_warnings: list[str],
         dietary_warnings: list[str],
     ) -> str:
-        """Build a follow-up user message asking the LLM to fix issues."""
+        """Build a follow-up user message asking the LLM to fix issues.
+
+        .. deprecated:: V3
+            Use ``_build_dietary_correction_message`` instead.
+            Kept for backward compatibility.
+        """
         parts = []
         if dietary_warnings:
             parts.append(

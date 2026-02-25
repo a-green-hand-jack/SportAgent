@@ -35,7 +35,11 @@ COOKING_SYSTEM = """\
 3. 食材的 food_id 必须来自提供的食谱参考库或食材数据库中的有效 ID。
 4. 每天的总热量必须接近对应目标（训练日和休息日目标不同），偏差不超过 ±10%。
 5. 蛋白质每天不低于目标值的 90%。
-6. 输出纯 JSON，不含任何 markdown 代码块、注释或额外文字。
+6. 训练后餐（post_workout）蛋白质必须 >= 20g（快速吸收蛋白质来源：鸡胸肉、鱼肉、蛋白粉等）。
+7. 输出纯 JSON，不含任何 markdown 代码块、注释或额外文字。
+
+注意：食材用量的精确热量/蛋白质将由系统自动微调。你只需选择合理的食材搭配和大致用量，
+系统会自动调整份量以匹配热量目标。请专注于食材多样性和烹饪实用性。
 
 ## 训练日 vs 休息日营养差异
 
@@ -240,9 +244,15 @@ def build_cooking_user_message(
         "要求：",
     ]
     if batch_training:
-        instruction_lines.append(f"- 训练日（{', '.join(batch_training)}）每天含训练前餐和训练后餐")
+        instruction_lines.append(
+            f"- 训练日（{', '.join(batch_training)}）每天至少 5 餐"
+            f"（含 pre_workout、post_workout 和至少 1 份 snack 加餐）"
+        )
     if batch_rest:
-        instruction_lines.append(f"- 休息日（{', '.join(batch_rest)}）每天 3-4 餐")
+        instruction_lines.append(
+            f"- 休息日（{', '.join(batch_rest)}）每天 4-5 餐"
+            f"（无训练前/后餐，需通过加餐或增加主餐份量来补偿热量，确保总热量达标）"
+        )
     instruction_lines += [
         "- 每天总热量控制在对应目标 ±10% 以内",
         "- 尽量复用食材，减少采购种类",
