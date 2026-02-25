@@ -112,15 +112,27 @@ class CookingAgent:
             f"(restrictions: {profile.dietary_restrictions})"
         )
 
+        # --- Step 1b: compute banned food IDs for dietary enforcement ---
+        banned_food_ids = self.kb.get_banned_food_ids(
+            profile.dietary_restrictions
+        )
+        if banned_food_ids:
+            logger.info(
+                f"Dietary enforcement: {len(banned_food_ids)} banned food IDs "
+                f"for restrictions {profile.dietary_restrictions}"
+            )
+
         # --- Step 2: generate in two batches (days 1-4, days 5-7) ---
         batch_a = self._WEEK_LABELS[:4]  # 周一~周四
         batch_b = self._WEEK_LABELS[4:]  # 周五~周日
 
         days_a = self._generate_batch(
-            profile, weekly_plan, compatible_recipes, batch_a
+            profile, weekly_plan, compatible_recipes, batch_a,
+            banned_food_ids=banned_food_ids,
         )
         days_b = self._generate_batch(
-            profile, weekly_plan, compatible_recipes, batch_b
+            profile, weekly_plan, compatible_recipes, batch_b,
+            banned_food_ids=banned_food_ids,
         )
 
         all_days = days_a + days_b
@@ -134,12 +146,15 @@ class CookingAgent:
             cooking_tips_zh="",
         )
 
-        # --- Step 4 & 5: validate the merged plan ---
+        # --- Step 4: deterministic macro overwrite on merged plan ---
+        self._overwrite_macros_deterministic(plan.daily_plans)
+
+        # --- Step 5: post-assembly validation ---
         calorie_warnings = self._validate_calorie_compliance(plan.daily_plans, base_calorie_target)
-        macro_warnings = self._cross_validate_macros(plan.daily_plans)
+        diversity_warnings = self._validate_diversity(plan.daily_plans)
 
         # Append remaining warnings to cooking_tips_zh
-        all_remaining = calorie_warnings + macro_warnings
+        all_remaining = calorie_warnings + diversity_warnings
         if all_remaining:
             parts = []
             if calorie_warnings:
@@ -148,11 +163,10 @@ class CookingAgent:
                     + "\n".join(calorie_warnings)
                     + "\n建议调整对应天数的食材份量。"
                 )
-            if macro_warnings:
+            if diversity_warnings:
                 parts.append(
-                    "⚠️ **营养交叉验证提醒**\n"
-                    + "\n".join(macro_warnings)
-                    + "\n部分食谱的实际热量与标注值有差异，请核实食材用量。"
+                    "🔄 **多样性提醒**\n"
+                    + "\n".join(diversity_warnings)
                 )
             warning_text = "（以下为系统自动检测的改进建议）\n\n" + "\n\n".join(parts)
             plan.cooking_tips_zh = (
@@ -187,8 +201,16 @@ class CookingAgent:
         weekly_plan: WeeklyPlan,
         compatible_recipes: list,  # list[RecipeTemplate]
         days_subset: list[str],
+        banned_food_ids: set[str] | None = None,
     ) -> list:  # list[DayMealPlan]
         """Run the LLM generate→validate→retry loop for a subset of days.
+
+        Pipeline per attempt:
+        1. Call LLM and parse response.
+        2. Overwrite all macro values deterministically from KB.
+        3. Validate dietary compliance (banned food_ids).
+        4. Validate calorie compliance (training/rest day targets).
+        5. If warnings exist and retries remain, send correction and loop.
 
         Returns the list of ``DayMealPlan`` objects for the requested days.
         """
@@ -200,10 +222,11 @@ class CookingAgent:
             f"Batch {days_subset}: prompt ~{len(user_message)} chars"
         )
 
+        banned = banned_food_ids or set()
         messages: list[Message] = [Message(role="user", content=user_message)]
         batch_days: list = []
         calorie_warnings: list[str] = []
-        macro_warnings: list[str] = []
+        dietary_warnings: list[str] = []
 
         for attempt in range(self.max_retries + 1):
             logger.info(
@@ -222,32 +245,37 @@ class CookingAgent:
                 f"(in={response.input_tokens}, out={response.output_tokens})"
             )
 
-            # Parse into a partial plan (only the days in this batch)
+            # Step 1: Parse
             partial = self._parse_batch_response(response.content, profile)
             batch_days = partial
 
-            # Light validation: just check days that were requested
+            # Step 2: Deterministic macro overwrite (replaces LLM self-reported values)
+            self._overwrite_macros_deterministic(batch_days)
+
+            # Step 3: Validate dietary compliance
+            dietary_warnings = self._validate_dietary_compliance(batch_days, banned)
+
+            # Step 4: Validate calorie compliance (now against deterministic values)
             base_cal = profile.daily_calorie_target or 0.0
             calorie_warnings = self._validate_calorie_compliance(
                 batch_days, base_cal
             )
-            macro_warnings = self._cross_validate_macros(batch_days)
 
-            all_warnings = calorie_warnings + macro_warnings
+            all_warnings = dietary_warnings + calorie_warnings
             if not all_warnings:
                 logger.info(f"Batch {days_subset}: all validations passed.")
                 break
 
             logger.info(
-                f"Batch {days_subset}: {len(calorie_warnings)} calorie, "
-                f"{len(macro_warnings)} macro warning(s) "
+                f"Batch {days_subset}: {len(dietary_warnings)} dietary, "
+                f"{len(calorie_warnings)} calorie warning(s) "
                 f"(attempt {attempt + 1}/{self.max_retries + 1})."
             )
 
             if attempt < self.max_retries:
                 messages.append(Message(role="assistant", content=response.content))
                 correction = self._build_correction_message(
-                    calorie_warnings, macro_warnings
+                    calorie_warnings, dietary_warnings
                 )
                 messages.append(Message(role="user", content=correction))
 
@@ -256,6 +284,112 @@ class CookingAgent:
     # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
+
+    def _overwrite_macros_deterministic(self, days: list[DayMealPlan]) -> None:
+        """Replace all LLM-reported macro values with KB-computed deterministic values.
+
+        For each recipe in each day:
+        1. Compute per_serving_macros from ingredient food_ids × amounts.
+        2. Overwrite the recipe's per_serving_macros.
+        3. Recompute and overwrite day_total_macros as the sum of all meals.
+
+        Unknown food_ids contribute 0 to the totals (logged as warnings).
+        """
+        for day in days:
+            day_cal = 0.0
+            day_pro = 0.0
+            day_carb = 0.0
+            day_fat = 0.0
+
+            for recipe in day.meals:
+                ing_pairs = [
+                    (ing.food_id, ing.amount_g) for ing in recipe.ingredients
+                ]
+                computed = self.kb.compute_ingredients_macros(ing_pairs)
+
+                recipe.per_serving_macros = MacroBreakdown(
+                    calories=computed["calories"],
+                    protein_g=computed["protein_g"],
+                    carbs_g=computed["carbs_g"],
+                    fat_g=computed["fat_g"],
+                )
+
+                day_cal += computed["calories"]
+                day_pro += computed["protein_g"]
+                day_carb += computed["carbs_g"]
+                day_fat += computed["fat_g"]
+
+            day.day_total_macros = MacroBreakdown(
+                calories=round(day_cal, 1),
+                protein_g=round(day_pro, 1),
+                carbs_g=round(day_carb, 1),
+                fat_g=round(day_fat, 1),
+            )
+
+    def _validate_dietary_compliance(
+        self, days: list[DayMealPlan], banned_food_ids: set[str]
+    ) -> list[str]:
+        """Scan all ingredient food_ids against the banned set.
+
+        Returns a list of warning strings for each violation found.
+        """
+        if not banned_food_ids:
+            return []
+
+        warnings: list[str] = []
+        for day in days:
+            for recipe in day.meals:
+                for ing in recipe.ingredients:
+                    if ing.food_id in banned_food_ids:
+                        warnings.append(
+                            f"- {day.day_label}/{recipe.name_zh}：食材 '{ing.food_id}'"
+                            f"（{ing.food_name_zh}）违反饮食限制"
+                        )
+        return warnings
+
+    def _validate_diversity(self, days: list[DayMealPlan]) -> list[str]:
+        """Check recipe diversity across days (warning only, no retry).
+
+        Checks:
+        1. recipe_id repetition > 50% of total meals → warning
+        2. protein source variety < 3 unique protein food_ids → warning
+        """
+        warnings: list[str] = []
+
+        # Check recipe repetition
+        all_recipe_ids: list[str] = []
+        for day in days:
+            for recipe in day.meals:
+                all_recipe_ids.append(recipe.recipe_id)
+
+        if all_recipe_ids:
+            from collections import Counter
+            counts = Counter(all_recipe_ids)
+            most_common_count = counts.most_common(1)[0][1]
+            total = len(all_recipe_ids)
+            if most_common_count > total * 0.5:
+                top_id = counts.most_common(1)[0][0]
+                warnings.append(
+                    f"食谱多样性不足：'{top_id}' 出现 {most_common_count}/{total} 次"
+                )
+
+        # Check protein source variety
+        protein_categories = {"meat", "poultry", "seafood", "egg_dairy", "legume"}
+        protein_food_ids: set[str] = set()
+        for day in days:
+            for recipe in day.meals:
+                for ing in recipe.ingredients:
+                    food = self.kb.get_food_by_id(ing.food_id)
+                    if food and food.category.value in protein_categories:
+                        protein_food_ids.add(ing.food_id)
+
+        if len(protein_food_ids) < 3 and len(days) >= 3:
+            warnings.append(
+                f"蛋白质来源不足：仅 {len(protein_food_ids)} 种"
+                f"（建议至少 3 种不同蛋白质食材）"
+            )
+
+        return warnings
 
     def _compute_day_calorie_target(
         self, base_target: float, is_training_day: bool
@@ -326,22 +460,25 @@ class CookingAgent:
     @staticmethod
     def _build_correction_message(
         calorie_warnings: list[str],
-        macro_warnings: list[str],
+        dietary_warnings: list[str],
     ) -> str:
-        """Build a follow-up user message asking the LLM to fix calorie issues."""
+        """Build a follow-up user message asking the LLM to fix issues."""
         parts = []
+        if dietary_warnings:
+            parts.append(
+                "【饮食限制违规】\n" + "\n".join(dietary_warnings)
+                + "\n请将上述禁用食材替换为符合饮食限制的替代品。"
+            )
         if calorie_warnings:
             parts.append("【每日热量偏差超限】\n" + "\n".join(calorie_warnings))
-        if macro_warnings:
-            parts.append("【食谱营养标注与实际不符】\n" + "\n".join(macro_warnings))
         joined = "\n\n".join(parts)
         return (
             f"烹饪计划存在以下问题，请调整：\n\n{joined}\n\n"
             "调整要求：\n"
-            "- 不要改变天数（必须 7 天）和整体餐食结构\n"
+            "- 不要改变天数和整体餐食结构\n"
+            "- 饮食违规：将禁用食材替换为同类别的合规食材\n"
             "- 热量偏高：减少碳水或脂肪较高的食材用量，或替换为低热量食材\n"
             "- 热量偏低：增加食材份量或添加一份加餐\n"
-            "- 营养标注不符：根据实际食材用量修正 per_serving_macros\n"
             "- 返回完整修正后的 JSON（格式与之前相同，不要有任何额外文字）"
         )
 

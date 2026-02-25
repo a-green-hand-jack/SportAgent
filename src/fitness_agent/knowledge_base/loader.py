@@ -243,6 +243,61 @@ class KnowledgeBase:
             )
         ]
 
+    def get_banned_food_ids(self, dietary_restrictions: list[str]) -> set[str]:
+        """Return the set of food IDs banned by the given dietary restrictions.
+
+        Logic:
+        1. Find matching DietarySubstitution entries in nutrition_principles.
+        2. Collect their ``banned_food_tags``.
+        3. For every FoodItem whose ``dietary_tags`` intersect the banned set,
+           add the food ID to the result.
+        """
+        if not dietary_restrictions:
+            return set()
+
+        np = self.nutrition_principles
+        if np is None:
+            return set()
+
+        # Collect all banned tags from matched substitutions
+        banned_tags: set[str] = set()
+        for restriction in dietary_restrictions:
+            sub = np.get_substitution(restriction)
+            if sub is not None:
+                banned_tags.update(sub.banned_food_tags)
+
+        if not banned_tags:
+            return set()
+
+        # Scan all foods for tag intersection
+        banned_ids: set[str] = set()
+        for food in self.foods:
+            if set(food.dietary_tags) & banned_tags:
+                banned_ids.add(food.id)
+
+        return banned_ids
+
+    def compute_ingredients_macros(
+        self,
+        ingredients: list[tuple[str, float]],
+    ) -> dict[str, float]:
+        """Deterministically compute total macros from a list of (food_id, amount_g).
+
+        Unknown food_ids are skipped with a warning.  Returns rounded values.
+        """
+        totals = {"calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
+        for food_id, amount_g in ingredients:
+            food = self.get_food_by_id(food_id)
+            if food is None:
+                logger.warning(f"Unknown food_id: {food_id}")
+                continue
+            scale = amount_g / food.serving_size_g
+            totals["calories"] += food.calories * scale
+            totals["protein_g"] += food.protein_g * scale
+            totals["carbs_g"] += food.carbs_g * scale
+            totals["fat_g"] += food.fat_g * scale
+        return {k: round(v, 1) for k, v in totals.items()}
+
     def compute_recipe_macros(self, recipe: RecipeTemplate) -> dict[str, float]:
         """Deterministically compute macros from ingredient food_ids × amounts.
 

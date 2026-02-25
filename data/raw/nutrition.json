@@ -9,7 +9,11 @@
     "protein_g": 2.7,
     "carbs_g": 28.2,
     "fat_g": 0.3,
-    "fiber_g": 0.4
+    "fiber_g": 0.4,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "brown_rice",
@@ -21,7 +25,11 @@
     "protein_g": 2.7,
     "carbs_g": 25.6,
     "fat_g": 1.0,
-    "fiber_g": 1.8
+    "fiber_g": 1.8,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "oats",
@@ -33,7 +41,11 @@
     "protein_g": 16.9,
     "carbs_g": 66.3,
     "fat_g": 6.9,
-    "fiber_g": 10.6
+    "fiber_g": 10.6,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "whole_wheat_bread",
@@ -45,7 +57,11 @@
     "protein_g": 13.0,
     "carbs_g": 41.0,
     "fat_g": 3.4,
-    "fiber_g": 7.0
+    "fiber_g": 7.0,
+    "dietary_tags": [
+      "plant",
+      "gluten"
+    ]
   },
   {
     "id": "potato",
@@ -57,7 +73,11 @@
     "protein_g": 2.0,
     "carbs_g": 17.0,
     "fat_g": 0.1,
-    "fiber_g": 2.2
+    "fiber_g": 2.2,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "sweet_potato",
@@ -69,7 +89,11 @@
     "protein_g": 1.6,
     "carbs_g": 20.1,
     "fat_g": 0.1,
-    "fiber_g": 3.0
+    "fiber_g": 3.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "quinoa",
@@ -81,7 +105,11 @@
     "protein_g": 4.4,
     "carbs_g": 21.3,
     "fat_g": 1.9,
-    "fiber_g": 2.8
+    "fiber_g": 2.8,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "buckwheat",
@@ -93,7 +121,11 @@
     "protein_g": 13.3,
     "carbs_g": 71.5,
     "fat_g": 3.4,
-    "fiber_g": 10.0
+    "fiber_g": 10.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "corn",
@@ -105,7 +137,11 @@
     "protein_g": 3.2,
     "carbs_g": 19.0,
     "fat_g": 1.2,
-    "fiber_g": 2.7
+    "fiber_g": 2.7,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "barley",
@@ -117,7 +153,11 @@
     "protein_g": 12.5,
     "carbs_g": 73.5,
     "fat_g": 2.3,
-    "fiber_g": 17.3
+    "fiber_g": 17.3,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "millet",
@@ -129,7 +169,11 @@
     "protein_g": 11.0,
     "carbs_g": 72.9,
     "fat_g": 4.2,
-    "fiber_g": 8.5
+    "fiber_g": 8.5,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "pasta",
@@ -141,7 +185,11 @@
     "protein_g": 5.1,
     "carbs_g": 25.0,
     "fat_g": 1.1,
-    "fiber_g": 1.8
+    "fiber_g": 1.8,
+    "dietary_tags": [
+      "plant",
+      "gluten"
+    ]
   },
   {
     "id": "bread",
@@ -153,7 +201,11 @@
     "protein_g": 9.0,
     "carbs_g": 49.0,
     "fat_g": 3.2,
-    "fiber_g": 2.7
+    "fiber_g": 2.7,
+    "dietary_tags": [
+      "plant",
+      "gluten"
+    ]
   },
   {
     "id": "noodles",
@@ -165,7 +217,11 @@
     "protein_g": 4.5,
     "carbs_g": 25.0,
     "fat_g": 2.1,
-    "fiber_g": 1.2
+    "fiber_g": 1.2,
+    "dietary_tags": [
+      "plant",
+      "gluten"
+    ]
   },
   {
     "id": "taro",
@@ -177,7 +233,11 @@
     "protein_g": 1.5,
     "carbs_g": 26.5,
     "fat_g": 0.2,
-    "fiber_g": 4.1
+    "fiber_g": 4.1,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "beef_sirloin",
@@ -189,7 +249,11 @@
     "protein_g": 20.0,
     "carbs_g": 0.0,
     "fat_g": 13.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "beef_ribeye",
@@ -201,7 +265,11 @@
     "protein_g": 18.0,
     "carbs_g": 0.0,
     "fat_g": 24.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "beef_brisket",
@@ -213,7 +281,11 @@
     "protein_g": 17.0,
     "carbs_g": 0.0,
     "fat_g": 20.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "pork_loin",
@@ -225,7 +297,11 @@
     "protein_g": 21.0,
     "carbs_g": 0.0,
     "fat_g": 6.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "pork_belly",
@@ -237,7 +313,11 @@
     "protein_g": 9.3,
     "carbs_g": 0.0,
     "fat_g": 53.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "pork_shoulder",
@@ -249,7 +329,11 @@
     "protein_g": 16.0,
     "carbs_g": 0.0,
     "fat_g": 19.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "lamb_leg",
@@ -261,7 +345,11 @@
     "protein_g": 20.0,
     "carbs_g": 0.0,
     "fat_g": 13.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "lamb_chop",
@@ -273,7 +361,11 @@
     "protein_g": 18.0,
     "carbs_g": 0.0,
     "fat_g": 18.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "beef_ground",
@@ -285,7 +377,11 @@
     "protein_g": 17.0,
     "carbs_g": 0.0,
     "fat_g": 20.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "pork_ground",
@@ -297,7 +393,11 @@
     "protein_g": 16.0,
     "carbs_g": 0.0,
     "fat_g": 21.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "beef_flank",
@@ -309,7 +409,11 @@
     "protein_g": 19.0,
     "carbs_g": 0.0,
     "fat_g": 12.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "pork_tenderloin",
@@ -321,7 +425,11 @@
     "protein_g": 21.0,
     "carbs_g": 0.0,
     "fat_g": 6.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "lamb_shoulder",
@@ -333,7 +441,11 @@
     "protein_g": 16.0,
     "carbs_g": 0.0,
     "fat_g": 24.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "meat",
+      "animal_product"
+    ]
   },
   {
     "id": "chicken_breast",
@@ -345,7 +457,11 @@
     "protein_g": 31.0,
     "carbs_g": 0.0,
     "fat_g": 3.6,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "poultry",
+      "animal_product"
+    ]
   },
   {
     "id": "chicken_thigh",
@@ -357,7 +473,11 @@
     "protein_g": 26.0,
     "carbs_g": 0.0,
     "fat_g": 10.9,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "poultry",
+      "animal_product"
+    ]
   },
   {
     "id": "duck_meat",
@@ -369,7 +489,11 @@
     "protein_g": 18.0,
     "carbs_g": 0.0,
     "fat_g": 28.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "poultry",
+      "animal_product"
+    ]
   },
   {
     "id": "turkey_breast",
@@ -381,7 +505,11 @@
     "protein_g": 29.0,
     "carbs_g": 0.0,
     "fat_g": 1.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "poultry",
+      "animal_product"
+    ]
   },
   {
     "id": "chicken_wing",
@@ -393,7 +521,11 @@
     "protein_g": 30.0,
     "carbs_g": 0.0,
     "fat_g": 8.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "poultry",
+      "animal_product"
+    ]
   },
   {
     "id": "chicken_drumstick",
@@ -405,7 +537,11 @@
     "protein_g": 28.0,
     "carbs_g": 0.0,
     "fat_g": 5.7,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "poultry",
+      "animal_product"
+    ]
   },
   {
     "id": "goose_meat",
@@ -417,7 +553,11 @@
     "protein_g": 16.0,
     "carbs_g": 0.0,
     "fat_g": 33.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "poultry",
+      "animal_product"
+    ]
   },
   {
     "id": "quail_meat",
@@ -429,7 +569,11 @@
     "protein_g": 22.0,
     "carbs_g": 0.0,
     "fat_g": 4.5,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "poultry",
+      "animal_product"
+    ]
   },
   {
     "id": "salmon",
@@ -441,7 +585,11 @@
     "protein_g": 20.0,
     "carbs_g": 0.0,
     "fat_g": 13.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "seafood",
+      "animal_product"
+    ]
   },
   {
     "id": "tuna",
@@ -453,7 +601,11 @@
     "protein_g": 30.0,
     "carbs_g": 0.0,
     "fat_g": 6.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "seafood",
+      "animal_product"
+    ]
   },
   {
     "id": "shrimp",
@@ -465,7 +617,11 @@
     "protein_g": 24.0,
     "carbs_g": 0.2,
     "fat_g": 0.3,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "seafood",
+      "animal_product"
+    ]
   },
   {
     "id": "cod",
@@ -477,7 +633,11 @@
     "protein_g": 18.0,
     "carbs_g": 0.0,
     "fat_g": 0.7,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "seafood",
+      "animal_product"
+    ]
   },
   {
     "id": "mackerel",
@@ -489,7 +649,11 @@
     "protein_g": 19.0,
     "carbs_g": 0.0,
     "fat_g": 14.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "seafood",
+      "animal_product"
+    ]
   },
   {
     "id": "sardine",
@@ -501,7 +665,11 @@
     "protein_g": 25.0,
     "carbs_g": 0.0,
     "fat_g": 11.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "seafood",
+      "animal_product"
+    ]
   },
   {
     "id": "tilapia",
@@ -513,7 +681,11 @@
     "protein_g": 20.0,
     "carbs_g": 0.0,
     "fat_g": 1.7,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "seafood",
+      "animal_product"
+    ]
   },
   {
     "id": "trout",
@@ -525,7 +697,11 @@
     "protein_g": 21.0,
     "carbs_g": 0.0,
     "fat_g": 6.6,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "seafood",
+      "animal_product"
+    ]
   },
   {
     "id": "crab",
@@ -537,7 +713,11 @@
     "protein_g": 18.0,
     "carbs_g": 0.0,
     "fat_g": 1.5,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "seafood",
+      "animal_product"
+    ]
   },
   {
     "id": "lobster",
@@ -549,7 +729,11 @@
     "protein_g": 19.0,
     "carbs_g": 0.5,
     "fat_g": 0.9,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "seafood",
+      "animal_product"
+    ]
   },
   {
     "id": "egg",
@@ -561,7 +745,11 @@
     "protein_g": 13.0,
     "carbs_g": 1.1,
     "fat_g": 11.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "egg",
+      "animal_product"
+    ]
   },
   {
     "id": "egg_white",
@@ -573,7 +761,11 @@
     "protein_g": 11.0,
     "carbs_g": 0.7,
     "fat_g": 0.2,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "egg",
+      "animal_product"
+    ]
   },
   {
     "id": "milk",
@@ -585,7 +777,11 @@
     "protein_g": 3.2,
     "carbs_g": 4.8,
     "fat_g": 3.3,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "yogurt",
@@ -597,7 +793,11 @@
     "protein_g": 3.5,
     "carbs_g": 4.7,
     "fat_g": 3.3,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "greek_yogurt",
@@ -609,7 +809,11 @@
     "protein_g": 10.0,
     "carbs_g": 3.6,
     "fat_g": 0.4,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "cheese_cheddar",
@@ -621,7 +825,11 @@
     "protein_g": 25.0,
     "carbs_g": 1.3,
     "fat_g": 33.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "cheese_mozzarella",
@@ -633,7 +841,11 @@
     "protein_g": 28.0,
     "carbs_g": 3.1,
     "fat_g": 17.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "cottage_cheese",
@@ -645,7 +857,11 @@
     "protein_g": 11.0,
     "carbs_g": 3.4,
     "fat_g": 4.3,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "butter",
@@ -657,7 +873,11 @@
     "protein_g": 0.9,
     "carbs_g": 0.1,
     "fat_g": 81.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "cream",
@@ -669,7 +889,11 @@
     "protein_g": 2.1,
     "carbs_g": 2.8,
     "fat_g": 37.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "broccoli",
@@ -681,7 +905,11 @@
     "protein_g": 2.8,
     "carbs_g": 6.6,
     "fat_g": 0.4,
-    "fiber_g": 2.6
+    "fiber_g": 2.6,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "spinach",
@@ -693,7 +921,11 @@
     "protein_g": 2.9,
     "carbs_g": 3.6,
     "fat_g": 0.4,
-    "fiber_g": 2.2
+    "fiber_g": 2.2,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "tomato",
@@ -705,7 +937,11 @@
     "protein_g": 0.9,
     "carbs_g": 3.9,
     "fat_g": 0.2,
-    "fiber_g": 1.2
+    "fiber_g": 1.2,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "cucumber",
@@ -717,7 +953,11 @@
     "protein_g": 0.7,
     "carbs_g": 3.6,
     "fat_g": 0.1,
-    "fiber_g": 0.5
+    "fiber_g": 0.5,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "carrot",
@@ -729,7 +969,11 @@
     "protein_g": 0.9,
     "carbs_g": 9.6,
     "fat_g": 0.2,
-    "fiber_g": 2.8
+    "fiber_g": 2.8,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "celery",
@@ -741,7 +985,11 @@
     "protein_g": 0.7,
     "carbs_g": 3.0,
     "fat_g": 0.2,
-    "fiber_g": 1.6
+    "fiber_g": 1.6,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "bell_pepper",
@@ -753,7 +1001,11 @@
     "protein_g": 1.0,
     "carbs_g": 6.0,
     "fat_g": 0.3,
-    "fiber_g": 2.1
+    "fiber_g": 2.1,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "onion",
@@ -765,7 +1017,11 @@
     "protein_g": 1.1,
     "carbs_g": 9.3,
     "fat_g": 0.1,
-    "fiber_g": 1.7
+    "fiber_g": 1.7,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "garlic",
@@ -777,7 +1033,11 @@
     "protein_g": 6.4,
     "carbs_g": 33.1,
     "fat_g": 0.5,
-    "fiber_g": 2.1
+    "fiber_g": 2.1,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "lettuce",
@@ -789,7 +1049,11 @@
     "protein_g": 1.4,
     "carbs_g": 2.9,
     "fat_g": 0.2,
-    "fiber_g": 1.3
+    "fiber_g": 1.3,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "cabbage",
@@ -801,7 +1065,11 @@
     "protein_g": 1.3,
     "carbs_g": 5.8,
     "fat_g": 0.1,
-    "fiber_g": 2.5
+    "fiber_g": 2.5,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "cauliflower",
@@ -813,7 +1081,11 @@
     "protein_g": 1.9,
     "carbs_g": 5.0,
     "fat_g": 0.3,
-    "fiber_g": 2.0
+    "fiber_g": 2.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "zucchini",
@@ -825,7 +1097,11 @@
     "protein_g": 1.2,
     "carbs_g": 3.1,
     "fat_g": 0.3,
-    "fiber_g": 1.0
+    "fiber_g": 1.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "eggplant",
@@ -837,7 +1113,11 @@
     "protein_g": 1.0,
     "carbs_g": 5.9,
     "fat_g": 0.2,
-    "fiber_g": 3.0
+    "fiber_g": 3.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "mushroom",
@@ -849,7 +1129,11 @@
     "protein_g": 3.1,
     "carbs_g": 3.3,
     "fat_g": 0.3,
-    "fiber_g": 1.0
+    "fiber_g": 1.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "asparagus",
@@ -861,7 +1145,11 @@
     "protein_g": 2.2,
     "carbs_g": 3.9,
     "fat_g": 0.1,
-    "fiber_g": 2.1
+    "fiber_g": 2.1,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "green_bean",
@@ -873,7 +1161,11 @@
     "protein_g": 1.8,
     "carbs_g": 7.0,
     "fat_g": 0.1,
-    "fiber_g": 3.4
+    "fiber_g": 3.4,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "kale",
@@ -885,7 +1177,11 @@
     "protein_g": 4.3,
     "carbs_g": 8.8,
     "fat_g": 0.9,
-    "fiber_g": 3.6
+    "fiber_g": 3.6,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "pumpkin",
@@ -897,7 +1193,11 @@
     "protein_g": 1.0,
     "carbs_g": 6.5,
     "fat_g": 0.1,
-    "fiber_g": 0.5
+    "fiber_g": 0.5,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "radish",
@@ -909,7 +1209,11 @@
     "protein_g": 0.7,
     "carbs_g": 3.4,
     "fat_g": 0.1,
-    "fiber_g": 1.6
+    "fiber_g": 1.6,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "banana",
@@ -921,7 +1225,11 @@
     "protein_g": 1.1,
     "carbs_g": 22.8,
     "fat_g": 0.3,
-    "fiber_g": 2.6
+    "fiber_g": 2.6,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "apple",
@@ -933,7 +1241,11 @@
     "protein_g": 0.3,
     "carbs_g": 13.8,
     "fat_g": 0.2,
-    "fiber_g": 2.4
+    "fiber_g": 2.4,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "blueberry",
@@ -945,7 +1257,11 @@
     "protein_g": 0.7,
     "carbs_g": 14.5,
     "fat_g": 0.3,
-    "fiber_g": 2.4
+    "fiber_g": 2.4,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "strawberry",
@@ -957,7 +1273,11 @@
     "protein_g": 0.7,
     "carbs_g": 7.7,
     "fat_g": 0.3,
-    "fiber_g": 2.0
+    "fiber_g": 2.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "orange",
@@ -969,7 +1289,11 @@
     "protein_g": 0.9,
     "carbs_g": 11.8,
     "fat_g": 0.1,
-    "fiber_g": 2.4
+    "fiber_g": 2.4,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "grape",
@@ -981,7 +1305,11 @@
     "protein_g": 0.7,
     "carbs_g": 18.1,
     "fat_g": 0.2,
-    "fiber_g": 0.9
+    "fiber_g": 0.9,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "watermelon",
@@ -993,7 +1321,11 @@
     "protein_g": 0.6,
     "carbs_g": 7.6,
     "fat_g": 0.2,
-    "fiber_g": 0.4
+    "fiber_g": 0.4,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "pear",
@@ -1005,7 +1337,11 @@
     "protein_g": 0.4,
     "carbs_g": 15.2,
     "fat_g": 0.1,
-    "fiber_g": 3.1
+    "fiber_g": 3.1,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "peach",
@@ -1017,7 +1353,11 @@
     "protein_g": 0.9,
     "carbs_g": 9.5,
     "fat_g": 0.3,
-    "fiber_g": 1.5
+    "fiber_g": 1.5,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "kiwi",
@@ -1029,7 +1369,11 @@
     "protein_g": 1.1,
     "carbs_g": 14.7,
     "fat_g": 0.5,
-    "fiber_g": 3.0
+    "fiber_g": 3.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "pineapple",
@@ -1041,7 +1385,11 @@
     "protein_g": 0.5,
     "carbs_g": 13.1,
     "fat_g": 0.1,
-    "fiber_g": 1.4
+    "fiber_g": 1.4,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "mango",
@@ -1053,7 +1401,11 @@
     "protein_g": 0.8,
     "carbs_g": 15.0,
     "fat_g": 0.4,
-    "fiber_g": 1.6
+    "fiber_g": 1.6,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "almond",
@@ -1065,7 +1417,11 @@
     "protein_g": 21.2,
     "carbs_g": 21.6,
     "fat_g": 49.9,
-    "fiber_g": 12.5
+    "fiber_g": 12.5,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "peanut",
@@ -1077,7 +1433,11 @@
     "protein_g": 25.8,
     "carbs_g": 16.1,
     "fat_g": 49.2,
-    "fiber_g": 8.5
+    "fiber_g": 8.5,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "walnut",
@@ -1089,7 +1449,11 @@
     "protein_g": 15.2,
     "carbs_g": 13.7,
     "fat_g": 65.2,
-    "fiber_g": 6.7
+    "fiber_g": 6.7,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "sunflower_seed",
@@ -1101,7 +1465,11 @@
     "protein_g": 20.8,
     "carbs_g": 20.0,
     "fat_g": 51.5,
-    "fiber_g": 8.6
+    "fiber_g": 8.6,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "cashew",
@@ -1113,7 +1481,11 @@
     "protein_g": 18.2,
     "carbs_g": 30.2,
     "fat_g": 43.9,
-    "fiber_g": 3.3
+    "fiber_g": 3.3,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "pistachio",
@@ -1125,7 +1497,11 @@
     "protein_g": 20.3,
     "carbs_g": 27.2,
     "fat_g": 45.4,
-    "fiber_g": 10.6
+    "fiber_g": 10.6,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "chia_seed",
@@ -1137,7 +1513,11 @@
     "protein_g": 16.5,
     "carbs_g": 42.1,
     "fat_g": 30.7,
-    "fiber_g": 34.4
+    "fiber_g": 34.4,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "flaxseed",
@@ -1149,7 +1529,11 @@
     "protein_g": 18.3,
     "carbs_g": 28.9,
     "fat_g": 42.2,
-    "fiber_g": 27.3
+    "fiber_g": 27.3,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "chickpea",
@@ -1161,7 +1545,11 @@
     "protein_g": 19.3,
     "carbs_g": 60.7,
     "fat_g": 6.0,
-    "fiber_g": 17.4
+    "fiber_g": 17.4,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "black_bean",
@@ -1173,7 +1561,11 @@
     "protein_g": 21.6,
     "carbs_g": 62.4,
     "fat_g": 1.4,
-    "fiber_g": 15.5
+    "fiber_g": 15.5,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "tofu",
@@ -1185,7 +1577,11 @@
     "protein_g": 8.1,
     "carbs_g": 1.9,
     "fat_g": 4.8,
-    "fiber_g": 0.3
+    "fiber_g": 0.3,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "edamame",
@@ -1197,7 +1593,11 @@
     "protein_g": 11.9,
     "carbs_g": 10.3,
     "fat_g": 5.2,
-    "fiber_g": 5.2
+    "fiber_g": 5.2,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "red_bean",
@@ -1209,7 +1609,11 @@
     "protein_g": 22.5,
     "carbs_g": 61.3,
     "fat_g": 1.1,
-    "fiber_g": 15.2
+    "fiber_g": 15.2,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "lentil",
@@ -1221,7 +1625,11 @@
     "protein_g": 25.8,
     "carbs_g": 60.1,
     "fat_g": 1.1,
-    "fiber_g": 30.5
+    "fiber_g": 30.5,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "soybean",
@@ -1233,7 +1641,11 @@
     "protein_g": 36.5,
     "carbs_g": 30.2,
     "fat_g": 19.9,
-    "fiber_g": 9.3
+    "fiber_g": 9.3,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "green_pea",
@@ -1245,7 +1657,11 @@
     "protein_g": 5.4,
     "carbs_g": 14.5,
     "fat_g": 0.4,
-    "fiber_g": 5.1
+    "fiber_g": 5.1,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "kidney_bean",
@@ -1257,7 +1673,11 @@
     "protein_g": 23.6,
     "carbs_g": 60.0,
     "fat_g": 0.8,
-    "fiber_g": 24.9
+    "fiber_g": 24.9,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "mung_bean",
@@ -1269,7 +1689,11 @@
     "protein_g": 23.9,
     "carbs_g": 62.6,
     "fat_g": 1.2,
-    "fiber_g": 16.3
+    "fiber_g": 16.3,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "olive_oil",
@@ -1281,7 +1705,11 @@
     "protein_g": 0.0,
     "carbs_g": 0.0,
     "fat_g": 100.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "peanut_oil",
@@ -1293,7 +1721,11 @@
     "protein_g": 0.0,
     "carbs_g": 0.0,
     "fat_g": 100.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "coconut_oil",
@@ -1305,7 +1737,11 @@
     "protein_g": 0.0,
     "carbs_g": 0.0,
     "fat_g": 100.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "butter",
@@ -1317,7 +1753,11 @@
     "protein_g": 0.9,
     "carbs_g": 0.1,
     "fat_g": 81.1,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "canola_oil",
@@ -1329,7 +1769,11 @@
     "protein_g": 0.0,
     "carbs_g": 0.0,
     "fat_g": 100.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "whey_protein_powder",
@@ -1341,7 +1785,11 @@
     "protein_g": 80.0,
     "carbs_g": 10.0,
     "fat_g": 5.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "casein",
@@ -1353,7 +1801,11 @@
     "protein_g": 85.0,
     "carbs_g": 5.0,
     "fat_g": 3.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "dairy",
+      "animal_product"
+    ]
   },
   {
     "id": "creatine",
@@ -1365,7 +1817,11 @@
     "protein_g": 0.0,
     "carbs_g": 0.0,
     "fat_g": 0.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "bcaa",
@@ -1377,7 +1833,11 @@
     "protein_g": 100.0,
     "carbs_g": 0.0,
     "fat_g": 0.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "glutamine",
@@ -1389,7 +1849,11 @@
     "protein_g": 100.0,
     "carbs_g": 0.0,
     "fat_g": 0.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "soy_sauce",
@@ -1401,7 +1865,11 @@
     "protein_g": 8.1,
     "carbs_g": 4.9,
     "fat_g": 0.1,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "oyster_sauce",
@@ -1413,7 +1881,10 @@
     "protein_g": 1.4,
     "carbs_g": 10.3,
     "fat_g": 0.2,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "animal_product"
+    ]
   },
   {
     "id": "vinegar",
@@ -1425,7 +1896,11 @@
     "protein_g": 0.0,
     "carbs_g": 0.9,
     "fat_g": 0.0,
-    "fiber_g": 0.0
+    "fiber_g": 0.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   },
   {
     "id": "honey",
@@ -1437,7 +1912,10 @@
     "protein_g": 0.3,
     "carbs_g": 82.4,
     "fat_g": 0.0,
-    "fiber_g": 0.2
+    "fiber_g": 0.2,
+    "dietary_tags": [
+      "animal_product"
+    ]
   },
   {
     "id": "peanut_butter",
@@ -1449,6 +1927,10 @@
     "protein_g": 25.1,
     "carbs_g": 20.0,
     "fat_g": 50.4,
-    "fiber_g": 6.0
+    "fiber_g": 6.0,
+    "dietary_tags": [
+      "plant",
+      "vegan"
+    ]
   }
 ]

@@ -50,7 +50,8 @@
       "calcium_alternatives": ["卤水豆腐（钙含量高）", "深绿色蔬菜（菠菜、西蓝花）", "虾皮少量", "芝麻酱", "钙片补充剂"],
       "dairy_alternatives": ["无乳糖牛奶（乳糖酶处理）", "燕麦奶（Oat Milk）", "豆浆（无糖）", "杏仁奶（注意蛋白质含量低）"],
       "must_supplement": [],
-      "notes": "选择无乳糖乳清蛋白粉即可保留whey的快速吸收优势，无需完全放弃蛋白粉"
+      "notes": "选择无乳糖乳清蛋白粉即可保留whey的快速吸收优势，无需完全放弃蛋白粉",
+      "banned_food_tags": ["dairy"]
     },
     {
       "restriction": "vegetarian",
@@ -60,7 +61,8 @@
       "calcium_alternatives": ["乳制品（奶酪、牛奶）", "豆腐", "绿叶蔬菜"],
       "dairy_alternatives": [],
       "must_supplement": ["维生素B12（建议补充）", "铁剂（建议定期检测并按需补充）"],
-      "notes": "植物蛋白赖氨酸含量较低，注意搭配不同蛋白质来源（豆类+谷物）以获得完整氨基酸谱"
+      "notes": "植物蛋白赖氨酸含量较低，注意搭配不同蛋白质来源（豆类+谷物）以获得完整氨基酸谱",
+      "banned_food_tags": ["meat", "poultry", "seafood"]
     },
     {
       "restriction": "vegan",
@@ -70,7 +72,8 @@
       "calcium_alternatives": ["豆腐（卤水）", "强化植物奶", "绿叶蔬菜（甘蓝、菠菜）", "芝麻"],
       "dairy_alternatives": ["燕麦奶", "豆浆", "椰奶", "杏仁奶"],
       "must_supplement": ["维生素B12（纯素必须补充，无植物食品来源）", "维生素D3（选择植物来源如藻油）", "Omega-3（藻油，非鱼油）", "铁剂（建议定期检测）", "锌（建议定期检测）"],
-      "notes": "纯素饮食增肌难度较高，建议每日蛋白质摄入量提高到2.0-2.4g/kg以补偿植物蛋白质利用率较低的问题"
+      "notes": "纯素饮食增肌难度较高，建议每日蛋白质摄入量提高到2.0-2.4g/kg以补偿植物蛋白质利用率较低的问题",
+      "banned_food_tags": ["animal_product"]
     },
     {
       "restriction": "gluten_free",
@@ -81,7 +84,8 @@
       "dairy_alternatives": [],
       "carb_alternatives": ["白米饭/糙米", "土豆/红薯", "玉米", "藜麦", "认证无麸质燕麦", "荞麦"],
       "must_supplement": [],
-      "notes": "无麸质饮食一般不影响运动表现，主要注意碳水来源的替换"
+      "notes": "无麸质饮食一般不影响运动表现，主要注意碳水来源的替换",
+      "banned_food_tags": ["gluten"]
     }
   ],
   "supplements": [

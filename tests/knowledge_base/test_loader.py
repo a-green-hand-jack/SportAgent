@@ -640,3 +640,80 @@ class TestRecipeQueries:
             recipes_path=None,
         )
         assert kb.format_recipes_for_prompt() == ""
+
+
+# ---------------------------------------------------------------------------
+# Dietary tags & banned food IDs
+# ---------------------------------------------------------------------------
+
+class TestDietaryTags:
+    def test_food_item_has_dietary_tags(self, kb_with_recipes: KnowledgeBase) -> None:
+        """chicken_breast should have poultry and animal_product tags."""
+        food = kb_with_recipes.get_food_by_id("chicken_breast")
+        assert food is not None
+        assert "poultry" in food.dietary_tags
+        assert "animal_product" in food.dietary_tags
+
+    def test_plant_food_has_vegan_tag(self, kb_with_recipes: KnowledgeBase) -> None:
+        """broccoli should have plant and vegan tags."""
+        food = kb_with_recipes.get_food_by_id("broccoli")
+        assert food is not None
+        assert "plant" in food.dietary_tags
+        assert "vegan" in food.dietary_tags
+
+    def test_dairy_food_has_dairy_tag(self, kb_with_recipes: KnowledgeBase) -> None:
+        """whey_protein should have dairy and animal_product tags."""
+        food = kb_with_recipes.get_food_by_id("whey_protein")
+        assert food is not None
+        assert "dairy" in food.dietary_tags
+        assert "animal_product" in food.dietary_tags
+
+    def test_egg_food_has_egg_tag(self, kb_with_recipes: KnowledgeBase) -> None:
+        """egg_whole should have egg and animal_product tags."""
+        food = kb_with_recipes.get_food_by_id("egg_whole")
+        assert food is not None
+        assert "egg" in food.dietary_tags
+        assert "animal_product" in food.dietary_tags
+
+
+class TestGetBannedFoodIds:
+    def test_no_restriction_returns_empty(self, kb_with_recipes: KnowledgeBase) -> None:
+        banned = kb_with_recipes.get_banned_food_ids([])
+        assert banned == set()
+
+    def test_vegetarian_bans_poultry(self, kb_with_recipes: KnowledgeBase) -> None:
+        banned = kb_with_recipes.get_banned_food_ids(["vegetarian"])
+        assert "chicken_breast" in banned
+
+    def test_vegetarian_does_not_ban_egg(self, kb_with_recipes: KnowledgeBase) -> None:
+        banned = kb_with_recipes.get_banned_food_ids(["vegetarian"])
+        assert "egg_whole" not in banned
+
+    def test_vegetarian_does_not_ban_plant(self, kb_with_recipes: KnowledgeBase) -> None:
+        banned = kb_with_recipes.get_banned_food_ids(["vegetarian"])
+        assert "broccoli" not in banned
+        assert "white_rice_cooked" not in banned
+
+    def test_unknown_restriction_returns_empty(self, kb_with_recipes: KnowledgeBase) -> None:
+        """Unknown restriction (no matching DietarySubstitution) → empty set."""
+        banned = kb_with_recipes.get_banned_food_ids(["keto"])
+        assert banned == set()
+
+
+class TestComputeIngredientsMacros:
+    def test_basic_computation(self, kb_with_recipes: KnowledgeBase) -> None:
+        """Compute macros for chicken_breast 150g + white_rice_cooked 200g."""
+        ingredients = [("chicken_breast", 150.0), ("white_rice_cooked", 200.0)]
+        macros = kb_with_recipes.compute_ingredients_macros(ingredients)
+        # chicken 150g: 165*1.5=247.5 cal, rice 200g: 130*2=260 cal → ~507.5
+        assert macros["calories"] > 0
+        assert abs(macros["calories"] - 507.5) < 1.0
+
+    def test_unknown_food_id_skipped(self, kb_with_recipes: KnowledgeBase) -> None:
+        ingredients = [("nonexistent_food", 100.0)]
+        macros = kb_with_recipes.compute_ingredients_macros(ingredients)
+        assert macros["calories"] == 0.0
+
+    def test_empty_list(self, kb_with_recipes: KnowledgeBase) -> None:
+        macros = kb_with_recipes.compute_ingredients_macros([])
+        assert macros["calories"] == 0.0

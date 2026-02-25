@@ -51,7 +51,8 @@
       "dairy_alternatives": ["无乳糖牛奶", "燕麦奶", "豆浆"],
       "carb_alternatives": [],
       "must_supplement": [],
-      "notes": "选择无乳糖乳清蛋白粉即可"
+      "notes": "选择无乳糖乳清蛋白粉即可",
+      "banned_food_tags": ["dairy"]
     },
     {
       "restriction": "vegetarian",
@@ -62,7 +63,8 @@
       "dairy_alternatives": [],
       "carb_alternatives": [],
       "must_supplement": ["维生素B12"],
-      "notes": "注意补充完整氨基酸"
+      "notes": "注意补充完整氨基酸",
+      "banned_food_tags": ["meat", "poultry", "seafood"]
     }
   ],
   "supplements": [

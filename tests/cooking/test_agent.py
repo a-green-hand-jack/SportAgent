@@ -180,6 +180,8 @@ def _make_recipe_json(
     meal_type: str = "lunch",
     calories: float = 800,
     protein: float = 50,
+    chicken_g: float = 150,
+    rice_g: float = 200,
 ) -> dict:
     return {
         "recipe_id": recipe_id,
@@ -191,12 +193,12 @@ def _make_recipe_json(
             {
                 "food_id": "chicken_breast",
                 "food_name_zh": "鸡胸肉",
-                "amount_g": 150,
+                "amount_g": chicken_g,
             },
             {
                 "food_id": "white_rice_cooked",
                 "food_name_zh": "白米饭",
-                "amount_g": 200,
+                "amount_g": rice_g,
             },
         ],
         "steps_zh": ["步骤1", "步骤2", "步骤3"],
@@ -224,6 +226,15 @@ def _minimal_cooking_plan_json(
     training_cal = cal_target * 1.07
     rest_cal = cal_target * 0.96
 
+    # Scale ingredient amounts so KB-computed macros match calorie targets.
+    # chicken_breast: 165 kcal/100g, white_rice_cooked: 130 kcal/100g
+    # With ratio 3:4 (chicken:rice), cal_per_meal = 10.15 * k where k = chicken_g / 3
+    # So k = cal_per_meal / 10.15, chicken_g = 3k, rice_g = 4k
+    def _scale_amounts(day_cal: float) -> tuple[float, float]:
+        meal_cal = day_cal / 3
+        k = meal_cal / 10.15  # 1.65*3 + 1.30*4 = 10.15 per unit k
+        return round(3 * k, 1), round(4 * k, 1)
+
     all_labels = ["\u5468\u4e00", "\u5468\u4e8c", "\u5468\u4e09", "\u5468\u56db", "\u5468\u4e94", "\u5468\u516d", "\u5468\u65e5"]
     labels_to_use = day_labels if day_labels is not None else all_labels
     days = []
@@ -231,13 +242,16 @@ def _minimal_cooking_plan_json(
         idx = all_labels.index(label) if label in all_labels else 0
         is_training = idx < training_days
         day_cal = training_cal if is_training else rest_cal
-        # Split calories across 3 meals
         meal_cal = day_cal / 3
+        chicken_g, rice_g = _scale_amounts(day_cal)
 
         meals = [
-            _make_recipe_json(f"breakfast_{idx}", "breakfast", meal_cal, 40),
-            _make_recipe_json(f"lunch_{idx}", "lunch", meal_cal, 50),
-            _make_recipe_json(f"dinner_{idx}", "dinner", meal_cal, 45),
+            _make_recipe_json(f"breakfast_{idx}", "breakfast", meal_cal, 40,
+                              chicken_g=chicken_g, rice_g=rice_g),
+            _make_recipe_json(f"lunch_{idx}", "lunch", meal_cal, 50,
+                              chicken_g=chicken_g, rice_g=rice_g),
+            _make_recipe_json(f"dinner_{idx}", "dinner", meal_cal, 45,
+                              chicken_g=chicken_g, rice_g=rice_g),
         ]
         days.append({
             "day_label": label,
@@ -330,7 +344,7 @@ class TestCookingAgent:
         client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         agent._validate_calorie_compliance = lambda plan, target: []
-        agent._cross_validate_macros = lambda plan: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
         agent.generate_cooking_plan(weekly_plan, profile)
         assert client.chat.call_count == 2
 
@@ -356,7 +370,7 @@ class TestShoppingListAggregation:
         assert len(food_ids) == len(set(food_ids)), "Shopping list should have unique food_ids"
 
     def test_shopping_list_sums_amounts(self, kb, profile, weekly_plan) -> None:
-        """chicken_breast appears in every meal (150g each × 3 meals × 7 days = 3150g)."""
+        """chicken_breast total should be sum of all meals across 7 days."""
         client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb)
         plan = agent.generate_cooking_plan(weekly_plan, profile)
@@ -365,8 +379,15 @@ class TestShoppingListAggregation:
             None,
         )
         assert chicken is not None
-        # Each day has 3 meals, each with 150g chicken. 7 days.
-        assert chicken.total_amount_g == 150 * 3 * 7
+        # Verify total is sum of all individual meal ingredient amounts
+        expected_total = sum(
+            ing.amount_g
+            for day in plan.daily_plans
+            for meal in day.meals
+            for ing in meal.ingredients
+            if ing.food_id == "chicken_breast"
+        )
+        assert abs(chicken.total_amount_g - expected_total) < 0.1
 
 
 # ---------------------------------------------------------------------------
@@ -408,7 +429,7 @@ class TestRetryLoop:
         agent._validate_calorie_compliance = lambda plan, target: [
             "- 周一（训练日）：3000 kcal，目标 2500 kcal，偏差 +20.0%"
         ]
-        agent._cross_validate_macros = lambda plan: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
         agent.generate_cooking_plan(weekly_plan, profile)
         assert client.chat.call_count == (max_retries + 1) * 2
 
@@ -418,7 +439,7 @@ class TestRetryLoop:
         client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb, max_retries=max_retries)
         agent._validate_calorie_compliance = lambda plan, target: ["- 偏差过大"]
-        agent._cross_validate_macros = lambda plan: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
         agent.generate_cooking_plan(weekly_plan, profile)
         assert client.chat.call_count == (max_retries + 1) * 2
 
@@ -427,7 +448,7 @@ class TestRetryLoop:
         client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb, max_retries=2)
         agent._validate_calorie_compliance = lambda plan, target: []
-        agent._cross_validate_macros = lambda plan: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
         agent.generate_cooking_plan(weekly_plan, profile)
         assert client.chat.call_count == 2
 
@@ -438,7 +459,7 @@ class TestRetryLoop:
         agent._validate_calorie_compliance = lambda plan, target: [
             "- 周一偏差 +20%"
         ]
-        agent._cross_validate_macros = lambda plan: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         assert "热量偏差提醒" in plan.cooking_tips_zh
 
@@ -447,7 +468,7 @@ class TestRetryLoop:
         client = _make_llm_client(profile)
         agent = CookingAgent(client=client, kb=kb, max_retries=1)
         agent._validate_calorie_compliance = lambda plan, target: ["- 偏差"]
-        agent._cross_validate_macros = lambda plan: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
         agent.generate_cooking_plan(weekly_plan, profile)
         # Batch A is calls [0, 1]; call 1 (the retry) gets 3 messages
         second_kwargs = client.chat.call_args_list[1].kwargs
@@ -506,3 +527,277 @@ class TestCalorieTargetComputation:
         agent = CookingAgent.__new__(CookingAgent)
         target = agent._compute_day_calorie_target(2500, is_training_day=False)
         assert target == 2500 * 0.96
+
+
+# ---------------------------------------------------------------------------
+# V2: Deterministic macro overwrite
+# ---------------------------------------------------------------------------
+
+class TestDeterministicMacroOverwrite:
+    def test_overwrite_replaces_llm_values(self, kb, profile, weekly_plan) -> None:
+        """After overwrite, macros should match KB computation, not LLM values."""
+        client = _make_llm_client(profile)
+        agent = CookingAgent(client=client, kb=kb)
+        agent._validate_calorie_compliance = lambda plan, target: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
+        plan = agent.generate_cooking_plan(weekly_plan, profile)
+
+        # After generation, macros should be deterministic.
+        # Verify by recomputing for first meal and comparing.
+        first_meal = plan.daily_plans[0].meals[0]
+        ing_pairs = [(ing.food_id, ing.amount_g) for ing in first_meal.ingredients]
+        expected = kb.compute_ingredients_macros(ing_pairs)
+        assert abs(first_meal.per_serving_macros.calories - expected["calories"]) < 0.1
+
+    def test_day_total_macros_are_sum_of_meals(self, kb, profile, weekly_plan) -> None:
+        """day_total_macros should be the exact sum of per_serving_macros."""
+        client = _make_llm_client(profile)
+        agent = CookingAgent(client=client, kb=kb)
+        agent._validate_calorie_compliance = lambda plan, target: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
+        plan = agent.generate_cooking_plan(weekly_plan, profile)
+
+        for day in plan.daily_plans:
+            sum_cal = sum(m.per_serving_macros.calories for m in day.meals)
+            assert abs(day.day_total_macros.calories - sum_cal) < 0.2
+
+    def test_calorie_deviation_based_on_deterministic_values(
+        self, kb, profile, weekly_plan
+    ) -> None:
+        """calorie_deviation_pct should be computed from KB-computed values."""
+        client = _make_llm_client(profile)
+        agent = CookingAgent(client=client, kb=kb)
+        agent._validate_calorie_compliance = lambda plan, target: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
+        plan = agent.generate_cooking_plan(weekly_plan, profile)
+
+        base = profile.daily_calorie_target or 2500
+        for day in plan.daily_plans:
+            target = base * (1.07 if day.is_training_day else 0.96)
+            expected_dev = (day.day_total_macros.calories - target) / target * 100
+            assert abs(day.calorie_deviation_pct - round(expected_dev, 1)) < 0.2
+
+
+# ---------------------------------------------------------------------------
+# V2: Dietary compliance validation
+# ---------------------------------------------------------------------------
+
+class TestDietaryCompliance:
+    def test_catches_banned_food(self, kb) -> None:
+        """Should detect chicken_breast in a plan when vegetarian restriction applies."""
+        from fitness_agent.cooking.models import (
+            DayMealPlan,
+            MacroBreakdown,
+            Recipe,
+            RecipeIngredient,
+        )
+
+        recipe = Recipe(
+            recipe_id="test",
+            name_zh="鸡胸饭",
+            meal_type="lunch",
+            prep_time_minutes=5,
+            cook_time_minutes=10,
+            ingredients=[
+                RecipeIngredient(
+                    food_id="chicken_breast", food_name_zh="鸡胸肉", amount_g=150
+                ),
+            ],
+            steps_zh=["步骤1", "步骤2"],
+            per_serving_macros=MacroBreakdown(
+                calories=250, protein_g=30, carbs_g=0, fat_g=5
+            ),
+        )
+        day = DayMealPlan(
+            day_label="周一",
+            is_training_day=True,
+            meals=[recipe, recipe, recipe],
+            day_total_macros=MacroBreakdown(
+                calories=750, protein_g=90, carbs_g=0, fat_g=15
+            ),
+        )
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        banned = kb.get_banned_food_ids(["vegetarian"])
+        warnings = agent._validate_dietary_compliance([day], banned)
+        assert len(warnings) > 0
+        assert "chicken_breast" in warnings[0]
+
+    def test_no_violation_for_plant_foods(self, kb) -> None:
+        """Plant foods should not trigger any warnings for vegetarian."""
+        from fitness_agent.cooking.models import (
+            DayMealPlan,
+            MacroBreakdown,
+            Recipe,
+            RecipeIngredient,
+        )
+
+        recipe = Recipe(
+            recipe_id="tofu_dish",
+            name_zh="白米豆腐",
+            meal_type="lunch",
+            prep_time_minutes=5,
+            cook_time_minutes=10,
+            ingredients=[
+                RecipeIngredient(
+                    food_id="white_rice_cooked", food_name_zh="白米饭", amount_g=200
+                ),
+                RecipeIngredient(
+                    food_id="broccoli", food_name_zh="西兰花", amount_g=100
+                ),
+            ],
+            steps_zh=["步骤1", "步骤2"],
+            per_serving_macros=MacroBreakdown(
+                calories=300, protein_g=10, carbs_g=60, fat_g=2
+            ),
+        )
+        day = DayMealPlan(
+            day_label="周一",
+            is_training_day=True,
+            meals=[recipe, recipe, recipe],
+            day_total_macros=MacroBreakdown(
+                calories=900, protein_g=30, carbs_g=180, fat_g=6
+            ),
+        )
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        banned = kb.get_banned_food_ids(["vegetarian"])
+        warnings = agent._validate_dietary_compliance([day], banned)
+        assert warnings == []
+
+    def test_empty_banned_set_no_warnings(self, kb) -> None:
+        """No dietary restrictions → no warnings regardless of ingredients."""
+        from fitness_agent.cooking.models import (
+            DayMealPlan,
+            MacroBreakdown,
+            Recipe,
+            RecipeIngredient,
+        )
+
+        recipe = Recipe(
+            recipe_id="test",
+            name_zh="鸡胸饭",
+            meal_type="lunch",
+            prep_time_minutes=5,
+            cook_time_minutes=10,
+            ingredients=[
+                RecipeIngredient(
+                    food_id="chicken_breast", food_name_zh="鸡胸肉", amount_g=150
+                ),
+            ],
+            steps_zh=["步骤1", "步骤2"],
+            per_serving_macros=MacroBreakdown(
+                calories=250, protein_g=30, carbs_g=0, fat_g=5
+            ),
+        )
+        day = DayMealPlan(
+            day_label="周一",
+            is_training_day=True,
+            meals=[recipe, recipe, recipe],
+            day_total_macros=MacroBreakdown(
+                calories=750, protein_g=90, carbs_g=0, fat_g=15
+            ),
+        )
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        warnings = agent._validate_dietary_compliance([day], set())
+        assert warnings == []
+
+
+# ---------------------------------------------------------------------------
+# V2: Diversity validation
+# ---------------------------------------------------------------------------
+
+class TestDiversityValidation:
+    def test_warns_on_recipe_repetition(self, kb) -> None:
+        """recipe_id repeated > 50% should trigger warning."""
+        from fitness_agent.cooking.models import (
+            DayMealPlan,
+            MacroBreakdown,
+            Recipe,
+            RecipeIngredient,
+        )
+
+        same_recipe = Recipe(
+            recipe_id="same_dish",
+            name_zh="同一道菜",
+            meal_type="lunch",
+            prep_time_minutes=5,
+            cook_time_minutes=10,
+            ingredients=[
+                RecipeIngredient(
+                    food_id="chicken_breast", food_name_zh="鸡胸肉", amount_g=150
+                ),
+            ],
+            steps_zh=["步骤1", "步骤2"],
+            per_serving_macros=MacroBreakdown(
+                calories=250, protein_g=30, carbs_g=0, fat_g=5
+            ),
+        )
+        # 3 days × 3 meals = 9 meals, all with same recipe_id
+        days = []
+        for label in ["周一", "周二", "周三"]:
+            days.append(DayMealPlan(
+                day_label=label,
+                is_training_day=True,
+                meals=[same_recipe, same_recipe, same_recipe],
+                day_total_macros=MacroBreakdown(
+                    calories=750, protein_g=90, carbs_g=0, fat_g=15
+                ),
+            ))
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        warnings = agent._validate_diversity(days)
+        assert any("多样性" in w for w in warnings)
+
+    def test_warns_on_low_protein_variety(self, kb) -> None:
+        """Only 1 protein source across 3+ days should trigger warning."""
+        from fitness_agent.cooking.models import (
+            DayMealPlan,
+            MacroBreakdown,
+            Recipe,
+            RecipeIngredient,
+        )
+
+        recipe = Recipe(
+            recipe_id="chicken_only",
+            name_zh="鸡胸饭",
+            meal_type="lunch",
+            prep_time_minutes=5,
+            cook_time_minutes=10,
+            ingredients=[
+                RecipeIngredient(
+                    food_id="chicken_breast", food_name_zh="鸡胸肉", amount_g=150
+                ),
+                RecipeIngredient(
+                    food_id="white_rice_cooked", food_name_zh="白米饭", amount_g=200
+                ),
+            ],
+            steps_zh=["步骤1", "步骤2"],
+            per_serving_macros=MacroBreakdown(
+                calories=500, protein_g=40, carbs_g=60, fat_g=10
+            ),
+        )
+        days = []
+        for i, label in enumerate(["周一", "周二", "周三"]):
+            days.append(DayMealPlan(
+                day_label=label,
+                is_training_day=True,
+                meals=[
+                    recipe.model_copy(update={"recipe_id": f"r{i}_1"}),
+                    recipe.model_copy(update={"recipe_id": f"r{i}_2"}),
+                    recipe.model_copy(update={"recipe_id": f"r{i}_3"}),
+                ],
+                day_total_macros=MacroBreakdown(
+                    calories=1500, protein_g=120, carbs_g=180, fat_g=30
+                ),
+            ))
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        warnings = agent._validate_diversity(days)
+        assert any("蛋白质来源" in w for w in warnings)

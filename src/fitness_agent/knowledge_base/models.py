@@ -134,6 +134,10 @@ class FoodItem(BaseModel):
     carbs_g: float = Field(description="碳水化合物（g）")
     fat_g: float = Field(description="脂肪（g）")
     fiber_g: float = Field(default=0.0, description="膳食纤维（g）")
+    dietary_tags: list[str] = Field(
+        default_factory=list,
+        description="饮食属性标签，如 ['meat', 'poultry'] 或 ['plant', 'vegan']",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +191,10 @@ class DietarySubstitution(BaseModel):
     carb_alternatives: list[str] = Field(default_factory=list)
     must_supplement: list[str] = Field(default_factory=list)
     notes: str = ""
+    banned_food_tags: list[str] = Field(
+        default_factory=list,
+        description="该饮食限制禁止使用的食材标签列表",
+    )
 
 
 class SupplementInfo(BaseModel):
