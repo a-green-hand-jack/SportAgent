@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CookingPlan v2 评审</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#06060b;--s1:#0e0e16;--s2:#16161f;--s3:#1e1e2a;--bd:#252535;
+    --t:#e4e4ef;--td:#8585a0;--tm:#55556a;
+    --orange:#ff6b35;--blue:#4a9eff;--green:#34d399;--purple:#a78bfa;
+    --yellow:#fbbf24;--cyan:#22d3ee;--red:#ef4444;--pink:#f472b6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--t);font-family:'Noto Sans SC',sans-serif;line-height:1.8;}
+  .container{max-width:1080px;margin:0 auto;padding:56px 36px;}
+  code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--s2);padding:2px 6px;border-radius:4px;color:var(--td);}
+
+  /* Header */
+  .hdr{margin-bottom:56px;}
+  .hdr-sup{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--yellow);text-transform:uppercase;letter-spacing:4px;margin-bottom:12px;}
+  .hdr h1{font-family:'Playfair Display',serif;font-size:34px;font-weight:900;margin-bottom:14px;}
+  .hdr-desc{font-size:14px;color:var(--td);max-width:780px;line-height:1.9;}
+
+  /* Score banner */
+  .score-banner{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:48px;}
+  .score-card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:20px;text-align:center;}
+  .score-card .label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+  .score-card .value{font-family:'Playfair Display',serif;font-size:32px;font-weight:900;}
+  .score-card .sub{font-size:11px;color:var(--td);margin-top:4px;}
+
+  /* Section */
+  .sec{margin-bottom:52px;}
+  .sec-head{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--bd);}
+  .sec-num{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:3px 10px;border-radius:5px;}
+  .sec-title{font-size:18px;font-weight:800;}
+
+  /* Table */
+  .tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;}
+  .tbl th,.tbl td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--bd);}
+  .tbl th{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:1px;background:var(--s1);}
+  .tbl td{color:var(--td);}
+  .tbl tr:hover td{background:var(--s1);}
+
+  /* Cards */
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:22px 26px;margin-bottom:12px;}
+  .card-h{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .card-icon{font-size:17px;}
+  .card-title{font-size:14px;font-weight:700;}
+  .card-body{font-size:13px;color:var(--td);line-height:1.9;}
+  .card-tag{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;margin-left:auto;}
+
+  .p0{background:rgba(239,68,68,0.1);color:var(--red);border:1px solid rgba(239,68,68,0.2);}
+  .p1{background:rgba(255,107,53,0.1);color:var(--orange);border:1px solid rgba(255,107,53,0.2);}
+  .p2{background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid rgba(251,191,36,0.2);}
+
+  /* Progress bars */
+  .prog-row{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:12px;}
+  .prog-label{width:50px;text-align:right;color:var(--td);font-weight:600;flex-shrink:0;}
+  .prog-bar{flex:1;height:18px;background:var(--s2);border-radius:4px;overflow:hidden;position:relative;}
+  .prog-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff;font-weight:600;}
+  .prog-target{position:absolute;height:100%;width:2px;background:var(--t);opacity:0.5;top:0;}
+  .prog-note{width:100px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--td);flex-shrink:0;}
+
+  /* Verdict */
+  .verdict{background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:30px;}
+  .verdict h3{font-size:17px;font-weight:700;margin-bottom:14px;}
+  .verdict p{font-size:13px;color:var(--td);line-height:1.9;margin-bottom:10px;}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .highlight{color:var(--t);font-weight:600;}
+
+  .grade{display:inline-block;font-family:'Playfair Display',serif;font-size:28px;font-weight:900;padding:4px 14px;border-radius:8px;margin-right:8px;}
+  .grade-up{color:var(--green);}
+  .grade-same{color:var(--yellow);}
+  .grade-down{color:var(--red);}
+
+  @media(max-width:768px){.score-banner,.two-col{grid-template-columns:1fr;}.container{padding:40px 18px;}}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="hdr">
+    <div class="hdr-sup">CookingPlan v2 · Evaluation Report</div>
+    <h1>CookingPlan v2 评审报告</h1>
+    <div class="hdr-desc">
+      基于食物营养数据库对 v2 输出的每一种食材进行了确定性热量验算，并与标注热量、目标热量进行三方对比。同时检查了菜品多样性、饮食限制合规、蛋白质达标率等维度。
+    </div>
+  </div>
+
+  <!-- Score Banner -->
+  <div class="score-banner">
+    <div class="score-card">
+      <div class="label">综合评级</div>
+      <div class="value" style="color:var(--yellow);">B</div>
+      <div class="sub">v1 为 C+ → 有进步</div>
+    </div>
+    <div class="score-card">
+      <div class="label">热量达标天数</div>
+      <div class="value" style="color:var(--orange);">4<span style="font-size:16px;color:var(--td);">/7</span></div>
+      <div class="sub">计算值口径 ±10%</div>
+    </div>
+    <div class="score-card">
+      <div class="label">标注精度</div>
+      <div class="value" style="color:var(--green);">85%</div>
+      <div class="sub">28/33 道菜偏差 ≤15%</div>
+    </div>
+    <div class="score-card">
+      <div class="label">饮食限制合规</div>
+      <div class="value" style="color:var(--green);">✓</div>
+      <div class="sub">无乳制品违规</div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 1: 热量验算 ===== -->
+  <div class="sec">
+    <div class="sec-head">
+      <span class="sec-num" style="background:rgba(255,107,53,0.08);color:var(--orange);border:1px solid rgba(255,107,53,0.2);">01</span>
+      <span class="sec-title">每日热量：标注 vs 计算 vs 目标</span>
+    </div>
+
+    <!-- Visual bars -->
+    <div class="card">
+      <div class="card-body" style="margin-bottom:8px;font-size:11px;color:var(--tm);">
+        白色竖线 = 目标热量 | 柱形 = 确定性计算值 | 括号内 = 标注值
+      </div>
+
+      <div class="prog-row">
+        <div class="prog-label">周一</div>
+        <div class="prog-bar">
+          <div class="prog-fill" style="width:88%;background:var(--green);">2583</div>
+          <div class="prog-target" style="left:91%;"></div>
+        </div>
+        <div class="prog-note">✅ -3.3% (标注2663)</div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-label">周二</div>
+        <div class="prog-bar">
+          <div class="prog-fill" style="width:73%;background:var(--red);">2160</div>
+          <div class="prog-target" style="left:91%;"></div>
+        </div>
+        <div class="prog-note">❌ -19.2% (标注2363)</div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-label">周三</div>
+        <div class="prog-bar">
+          <div class="prog-fill" style="width:95%;background:var(--green);">2797</div>
+          <div class="prog-target" style="left:91%;"></div>
+        </div>
+        <div class="prog-note">✅ +4.7% (标注2852)</div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-label">周四</div>
+        <div class="prog-bar">
+          <div class="prog-fill" style="width:86%;background:var(--green);">2531</div>
+          <div class="prog-target" style="left:91%;"></div>
+        </div>
+        <div class="prog-note">✅ -5.3% (标注2695)</div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-label">周五</div>
+        <div class="prog-bar">
+          <div class="prog-fill" style="width:85%;background:var(--green);">2507</div>
+          <div class="prog-target" style="left:91%;"></div>
+        </div>
+        <div class="prog-note">✅ -6.2% (标注2620)</div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-label" style="color:var(--cyan);">周六</div>
+        <div class="prog-bar">
+          <div class="prog-fill" style="width:70%;background:var(--red);">2056</div>
+          <div class="prog-target" style="left:82%;"></div>
+        </div>
+        <div class="prog-note">❌ -14.2% (标注2086)</div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-label" style="color:var(--cyan);">周日</div>
+        <div class="prog-bar">
+          <div class="prog-fill" style="width:64%;background:var(--red);">1893</div>
+          <div class="prog-target" style="left:82%;"></div>
+        </div>
+        <div class="prog-note">❌ -21.0% (标注2038)</div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--orange);">
+      <div class="card-h">
+        <span class="card-icon">📊</span>
+        <span class="card-title">热量验算核心发现</span>
+      </div>
+      <div class="card-body">
+        <span class="highlight">好消息：标注精度大幅提升。</span>33 道菜中 28 道标注偏差 ≤15%，多数在 5-7% 范围内，说明 LLM 的热量估算能力比 v1 有明显改善。只有 3 道菜偏差超 15%：彩椒牛肉丝（+22.6%）、金枪鱼红薯（+20.8%）、金枪鱼意面沙拉（+18.3%），且全部是标注偏高——LLM 高估了这几道菜的热量。
+        <br><br>
+        <span class="highlight">坏消息：3 天热量严重不达标，且系统未自动修正。</span>周二实际 2160 kcal（差 512 kcal）、周六实际 2056 kcal（差 341 kcal）、周日实际 1893 kcal（差 504 kcal）。系统自己标注了"4/7 天达标"，说明它知道有问题，但没有触发自动修正循环——这是 v1 review 中指出的同一个问题，尚未解决。
+        <br><br>
+        <span class="highlight">另一个层面：</span>即使标注值接近真实值，周二的标注值 2363 kcal 本身也与目标 2672 kcal 差了 -11.6%，说明 LLM 在编排食谱时就没有凑够目标热量。这是"编排能力"的问题，不只是"计算精度"的问题。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 2: 蛋白质 ===== -->
+  <div class="sec">
+    <div class="sec-head">
+      <span class="sec-num" style="background:rgba(239,68,68,0.08);color:var(--red);border:1px solid rgba(239,68,68,0.2);">02</span>
+      <span class="sec-title">蛋白质达标分析（新发现的严重问题）</span>
+    </div>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>日期</th><th>计算蛋白质</th><th>目标(~140g)</th><th>偏差</th><th>判定</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>周一</td><td style="color:var(--green);">187g</td><td>140g</td><td>+34%</td><td>✅ 充裕</td></tr>
+        <tr><td style="color:var(--red);font-weight:700;">周二</td><td style="color:var(--red);font-weight:700;">102g</td><td>140g</td><td style="color:var(--red);">-27%</td><td>❌ 严重不足</td></tr>
+        <tr><td>周三</td><td style="color:var(--green);">171g</td><td>140g</td><td>+22%</td><td>✅ 充裕</td></tr>
+        <tr><td>周四</td><td style="color:var(--green);">142g</td><td>140g</td><td>+1%</td><td>✅ 刚好达标</td></tr>
+        <tr><td>周五</td><td style="color:var(--green);">173g</td><td>140g</td><td>+24%</td><td>✅ 充裕</td></tr>
+        <tr><td style="color:var(--red);font-weight:700;">周六</td><td style="color:var(--red);font-weight:700;">117g</td><td>140g</td><td style="color:var(--red);">-16%</td><td>❌ 不足</td></tr>
+        <tr><td style="color:var(--orange);font-weight:700;">周日</td><td style="color:var(--orange);">129g</td><td>140g</td><td style="color:var(--orange);">-8%</td><td>⚠️ 偏低</td></tr>
+      </tbody>
+    </table>
+
+    <div class="card" style="border-left:3px solid var(--red);">
+      <div class="card-h">
+        <span class="card-icon">🚨</span>
+        <span class="card-title">周二蛋白质仅 102g，是全周最严重的营养缺陷</span>
+      </div>
+      <div class="card-body">
+        问题根源：周二的 post_workout 选择了"豆腐莓果奶昔"（蛋白质仅 9.8g），而不是像其他训练日那样安排鸡胸肉饭或金枪鱼。训练后是蛋白质摄入的关键窗口，只给 10g 蛋白质相当于"浪费"了这个窗口。同时 pre_workout 是纯红薯（4g 蛋白质），全天的高蛋白餐食只有早餐的鸡蛋和晚餐的牛肉丝。
+        <br><br>
+        建议：训练后这餐应该是全天蛋白质最密集的一餐（目标 ≥ 40g），不应该安排低蛋白的水果奶昔。可以改为鸡胸肉配红薯或蛋白粉奶昔（无乳糖植物蛋白粉）。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 3: 与 v1 对比 ===== -->
+  <div class="sec">
+    <div class="sec-head">
+      <span class="sec-num" style="background:rgba(52,211,153,0.08);color:var(--green);border:1px solid rgba(52,211,153,0.2);">03</span>
+      <span class="sec-title">v1 → v2 改进对比</span>
+    </div>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>维度</th><th>v1</th><th>v2</th><th>变化</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>单菜热量标注精度</td>
+          <td>部分菜偏差 27-40%</td>
+          <td>85% 的菜偏差 ≤15%</td>
+          <td style="color:var(--green);">⬆ 大幅改善</td>
+        </tr>
+        <tr>
+          <td>乳糖不耐受合规</td>
+          <td>❌ 出现 200g cottage cheese</td>
+          <td>✅ 全周无乳制品</td>
+          <td style="color:var(--green);">⬆ 已修复</td>
+        </tr>
+        <tr>
+          <td>菜品多样性</td>
+          <td>鸡胸饭出现 3 次，花生酱吐司 3 次</td>
+          <td>所有菜品最多出现 2 次</td>
+          <td style="color:var(--green);">⬆ 改善</td>
+        </tr>
+        <tr>
+          <td>蛋白质来源多样性</td>
+          <td>主要靠鸡胸肉+乳清蛋白</td>
+          <td>鸡、牛、猪、鱼、豆腐、蛋 6 类</td>
+          <td style="color:var(--green);">⬆ 明显改善</td>
+        </tr>
+        <tr>
+          <td>热量达标天数(±10%)</td>
+          <td>~4/7 天</td>
+          <td>4/7 天（计算口径）</td>
+          <td style="color:var(--yellow);">→ 持平</td>
+        </tr>
+        <tr>
+          <td>周末热量不足</td>
+          <td>周六 -11.6%</td>
+          <td>周六 -14.2%、周日 -21.0%</td>
+          <td style="color:var(--red);">⬇ 恶化</td>
+        </tr>
+        <tr>
+          <td>自动修正循环</td>
+          <td>❌ 发现问题不修正</td>
+          <td>❌ 仍然只给提示不修正</td>
+          <td style="color:var(--red);">→ 未解决</td>
+        </tr>
+        <tr>
+          <td>蛋白质每日验证</td>
+          <td>未验证</td>
+          <td>未验证（周二仅 102g）</td>
+          <td style="color:var(--red);">→ 未解决</td>
+        </tr>
+        <tr>
+          <td>大米生/熟标注</td>
+          <td>不一致</td>
+          <td>统一标"煮熟"但仍有歧义</td>
+          <td style="color:var(--yellow);">→ 微改善</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== SECTION 4: 具体问题 ===== -->
+  <div class="sec">
+    <div class="sec-head">
+      <span class="sec-num" style="background:rgba(251,191,36,0.08);color:var(--yellow);border:1px solid rgba(251,191,36,0.2);">04</span>
+      <span class="sec-title">具体问题清单</span>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--red);">
+      <div class="card-h">
+        <span class="card-icon">🔴</span>
+        <span class="card-title">自动修正循环仍然缺失</span>
+        <span class="card-tag p0">P0</span>
+      </div>
+      <div class="card-body">
+        系统标注"热量达标 4/7 天"并在底部给出偏差提示，但没有触发自动调整。这是 v1 review 中就指出的核心架构问题。CookingAgent 需要在检测到偏差 >10% 时，自动增加食材分量或补充加餐，而不是把"建议调整"留给用户。这不是 prompt 层面能解决的——需要在 agent 的控制流中加入循环逻辑。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--red);">
+      <div class="card-h">
+        <span class="card-icon">🔴</span>
+        <span class="card-title">周二训练后餐蛋白质严重不足</span>
+        <span class="card-tag p0">P0</span>
+      </div>
+      <div class="card-body">
+        周二 post_workout 是"豆腐莓果奶昔"（~10g 蛋白质），全天蛋白质仅 102g（目标 140g，缺口 27%）。训练后餐是全天蛋白质的关键锚点，需要一条约束规则：<code>post_workout.protein ≥ 35g</code>。这是知识层面的缺失——CookingAgent 不知道训练后蛋白质的重要性。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--orange);">
+      <div class="card-h">
+        <span class="card-icon">🟠</span>
+        <span class="card-title">休息日热量系统性偏低</span>
+        <span class="card-tag p1">P1</span>
+      </div>
+      <div class="card-body">
+        周六 2056 kcal（差 341）、周日 1893 kcal（差 504）。两个休息日都只安排了 4 餐且没有 pre/post_workout 加餐，但没有在正餐中补偿缺失的加餐热量。休息日虽然热量目标低于训练日，但也只低了 ~275 kcal，不应该低 400-500 kcal。需要一条规则：休息日要么增加每餐分量，要么增加一份高质量加餐来补偿没有训练加餐的缺口。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--orange);">
+      <div class="card-h">
+        <span class="card-icon">🟠</span>
+        <span class="card-title">周三没有零食/加餐，只有 4 餐</span>
+        <span class="card-tag p1">P1</span>
+      </div>
+      <div class="card-body">
+        训练日结构应该是 5 餐（breakfast + pre + post + dinner + snack），但周三只有 4 餐（没有 snack）。虽然热量恰好够了（2797 kcal），但这意味着每餐热量偏高。pre_workout 的"香蕉燕麦能量球"标注 667 kcal，对于训练前加餐来说偏重。更好的做法是降低 pre_workout 热量并补充一份 snack。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--yellow);">
+      <div class="card-h">
+        <span class="card-icon">🟡</span>
+        <span class="card-title">90g 全麦面包 = "约 3 片"还是"两片"？</span>
+        <span class="card-tag p2">P2</span>
+      </div>
+      <div class="card-body">
+        周一花生酱吐司标注"90g (约3片)"，周五同一道菜标注"90g (两片)"，周六三明治也是"90g (两片)"。90g 全麦面包大约是 2.5 片（每片约 35-40g）。应该统一标注，否则用户会困惑到底用几片。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--yellow);">
+      <div class="card-h">
+        <span class="card-icon">🟡</span>
+        <span class="card-title">鸡蛋个数标注不一致</span>
+        <span class="card-tag p2">P2</span>
+      </div>
+      <div class="card-body">
+        150g 鸡蛋有时标注"约3个"（周一松饼），有时标注"两个鸡蛋"（周六三明治、周日早餐盘）。150g ÷ 50g/个 = 3 个蛋。"两个鸡蛋"对应的应该是 100g。同一道菜（蔬菜鸡蛋全麦三明治）周三用 200g"约4个"，周六用 150g"两个鸡蛋"——后者标注有误。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 5: 做得好的地方 ===== -->
+  <div class="sec">
+    <div class="sec-head">
+      <span class="sec-num" style="background:rgba(52,211,153,0.08);color:var(--green);border:1px solid rgba(52,211,153,0.2);">05</span>
+      <span class="sec-title">做得好的地方</span>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-h"><span class="card-icon">✅</span><span class="card-title">乳糖限制完全合规</span></div>
+        <div class="card-body">全周零乳制品。豆腐替代奶酪、椰子油替代黄油、豆浆替代牛奶，所有替换都合理。v1 的 cottage cheese 问题已彻底修复。</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="card-icon">✅</span><span class="card-title">蛋白质来源丰富</span></div>
+        <div class="card-body">覆盖 6 大类：鸡胸肉、牛里脊、猪里脊、鳕鱼、金枪鱼、豆腐/毛豆 + 鸡蛋。比 v1 的"鸡胸肉+蛋白粉"有质的飞跃。</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="card-icon">✅</span><span class="card-title">菜品多样性达标</span></div>
+        <div class="card-body">所有菜品最多出现 2 次，满足"同一道菜一周 ≤ 2 次"的约束。食谱风格多样：中式炒菜、日式清蒸、西式三明治/沙拉、创意奶昔。</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="card-icon">✅</span><span class="card-title">食谱可执行性高</span></div>
+        <div class="card-body">每道菜步骤清晰，食材用量精确到克数，准备时间标注实用。大部分菜品简单易做，适合健身人群的日常烹饪能力。"减脂版麻婆豆腐"、"香蕉燕麦能量球"等创意菜品是亮点。</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="card-icon">✅</span><span class="card-title">热量标注精度大幅提升</span></div>
+        <div class="card-body">85% 的菜品标注偏差 ≤15%（v1 约 60%），多数在 5% 左右。说明 LLM 的估算在"合理范围"内，虽然仍需确定性计算替代，但进步明显。</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="card-icon">✅</span><span class="card-title">采购清单完整</span></div>
+        <div class="card-body">39 种食材按分类汇总，用量准确。"水 200g"这种条目可以去掉（不需要购买），但整体实用性很好。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 6: Agent 改进建议 ===== -->
+  <div class="sec">
+    <div class="sec-head">
+      <span class="sec-num" style="background:rgba(167,139,250,0.08);color:var(--purple);border:1px solid rgba(167,139,250,0.2);">06</span>
+      <span class="sec-title">对 CookingAgent 的改进建议（系统层面）</span>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--red);">
+      <div class="card-h">
+        <span class="card-icon">🔧</span>
+        <span class="card-title">必须实现自动修正循环</span>
+        <span class="card-tag p0">P0 · 架构</span>
+      </div>
+      <div class="card-body">
+        这是连续两个版本的同一个问题。CookingAgent 的控制流应该是：生成 → 验证（热量±10%、蛋白质≥90%目标）→ 不通过则自动调整 → 再验证 → 最多 3 轮。当前只做到了"生成 → 验证 → 输出提示"，缺少中间的自动调整环节。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--red);">
+      <div class="card-h">
+        <span class="card-icon">📏</span>
+        <span class="card-title">增加"每餐蛋白质下限"约束规则</span>
+        <span class="card-tag p0">P0 · 规则</span>
+      </div>
+      <div class="card-body">
+        新增规则：<code>post_workout.protein ≥ 35g</code>，<code>lunch/dinner.protein ≥ 25g</code>。这可以防止周二那种"训练后只给 10g 蛋白质"的极端情况。同时增加每日蛋白质验证维度。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--orange);">
+      <div class="card-h">
+        <span class="card-icon">📏</span>
+        <span class="card-title">增加"休息日餐食结构"约束规则</span>
+        <span class="card-tag p1">P1 · 规则</span>
+      </div>
+      <div class="card-body">
+        休息日没有 pre/post_workout 加餐，但热量目标只比训练日低 ~10%。当前的休息日少了一餐但没有补偿，导致热量系统性不足。规则：休息日正餐平均热量应比训练日正餐高 ~15%，或者增加一份 300-400 kcal 的加餐。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--yellow);">
+      <div class="card-h">
+        <span class="card-icon">📏</span>
+        <span class="card-title">统一食材单位标注规范</span>
+        <span class="card-tag p2">P2 · 规则</span>
+      </div>
+      <div class="card-body">
+        在 system prompt 或规则集中明确：鸡蛋 1 个 = 50g；全麦面包 1 片 = 35g；大米标注一律用"(煮熟)"并注明"(生重约 Xg)"。避免同一食材在不同位置标注不一致。
+      </div>
+    </div>
+  </div>
+
+  <!-- Verdict -->
+  <div class="verdict">
+    <h3><span class="grade grade-up">B</span>从 C+ 进步到 B，但核心架构问题未解决</h3>
+    <p>
+      v2 在<span class="highlight">表面质量</span>上有明显进步：饮食限制合规了、菜品更多样了、蛋白质来源更丰富了、单菜热量标注更准了。这些是 prompt 层面优化的成果。
+    </p>
+    <p>
+      但<span class="highlight">深层架构问题</span>没有解决：自动修正循环仍然缺失，3/7 天热量不达标只给了文字提示而没有自动修正；缺少蛋白质每日验证，导致周二出现 102g 的极端低值；休息日没有补偿"少一餐"的热量缺口。
+    </p>
+    <p>
+      这些问题不是通过改 prompt 能解决的——它们需要在 CookingAgent 的<span class="highlight">控制流</span>中增加验证-修正循环，在<span class="highlight">规则集</span>中增加每餐蛋白质下限和休息日餐食结构约束。这是 v3 需要重点突破的方向。
+    </p>
+    <p style="margin-top:16px;color:var(--tm);font-size:12px;">
+      评分说明：A = 可交付用户，B = 大部分可用但有明显缺陷，C = 基本框架有但问题较多，D = 不可用。v2 从 C+ 升至 B，下一步目标是 B+ → A-。
+    </p>
+  </div>
+
+  <div style="text-align:center;padding:36px 0;border-top:1px solid var(--bd);color:var(--tm);font-size:11px;font-family:'JetBrains Mono',monospace;margin-top:36px;">
+    CookingPlan v2 · Evaluation · 2026
+  </div>
+
+</div>
+</body>
+</html>
