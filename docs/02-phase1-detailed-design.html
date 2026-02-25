@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 1 详细设计 · 规划 Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #06060b;
+    --surface: #0e0e16;
+    --surface-2: #16161f;
+    --surface-3: #1e1e2a;
+    --border: #252535;
+    --border-light: #35354a;
+    --text: #e4e4ef;
+    --text-dim: #8585a0;
+    --text-muted: #55556a;
+    --orange: #ff6b35;
+    --blue: #4a9eff;
+    --green: #34d399;
+    --purple: #a78bfa;
+    --yellow: #fbbf24;
+    --cyan: #22d3ee;
+    --pink: #f472b6;
+    --red: #ef4444;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Noto Sans SC',sans-serif; line-height:1.8; overflow-x:hidden; }
+  .container { max-width:1100px; margin:0 auto; padding:72px 36px; }
+  code { font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--surface-2); padding:2px 6px; border-radius:4px; color:var(--text-dim); }
+
+  .header { margin-bottom:72px; }
+  .header-sup { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--orange); text-transform:uppercase; letter-spacing:4px; margin-bottom:16px; }
+  .header h1 { font-family:'Playfair Display',serif; font-size:40px; font-weight:900; margin-bottom:16px; }
+  .header-desc { font-size:14px; color:var(--text-dim); max-width:740px; line-height:1.9; }
+
+  /* Section */
+  .section { margin-bottom:72px; }
+  .section-head { display:flex; align-items:center; gap:14px; margin-bottom:28px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+  .section-num { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; padding:4px 11px; border-radius:5px; }
+  .section-title { font-size:22px; font-weight:800; }
+
+  /* Version blocks */
+  .version-block { margin-bottom:56px; }
+  .version-header { display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+  .version-badge { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; padding:5px 14px; border-radius:6px; }
+  .version-name { font-size:18px; font-weight:800; }
+
+  .vb-static .version-badge { background:rgba(255,107,53,0.1); color:var(--orange); border:1px solid rgba(255,107,53,0.2); }
+  .vb-static .version-name { color:var(--orange); }
+  .vb-dynamic .version-badge { background:rgba(34,211,238,0.1); color:var(--cyan); border:1px solid rgba(34,211,238,0.2); }
+  .vb-dynamic .version-name { color:var(--cyan); }
+  .vb-evolve .version-badge { background:rgba(52,211,153,0.1); color:var(--green); border:1px solid rgba(52,211,153,0.2); }
+  .vb-evolve .version-name { color:var(--green); }
+
+  .version-desc { font-size:14px; color:var(--text-dim); line-height:1.9; margin-bottom:24px; max-width:800px; }
+
+  /* Cards */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 28px; margin-bottom:14px; }
+  .card-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .card-icon { font-size:20px; }
+  .card-title { font-size:15px; font-weight:700; }
+  .card-body { font-size:13px; color:var(--text-dim); line-height:1.9; }
+  .card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; padding:3px 8px; border-radius:4px; text-transform:uppercase; letter-spacing:1px; margin-left:auto; }
+
+  .tag-agent { background:rgba(255,107,53,0.1); color:var(--orange); border:1px solid rgba(255,107,53,0.15); }
+  .tag-kb { background:rgba(251,191,36,0.1); color:var(--yellow); border:1px solid rgba(251,191,36,0.15); }
+  .tag-data { background:rgba(74,158,255,0.1); color:var(--blue); border:1px solid rgba(74,158,255,0.15); }
+  .tag-ux { background:rgba(167,139,250,0.1); color:var(--purple); border:1px solid rgba(167,139,250,0.15); }
+
+  /* Sub-agent cards */
+  .sub-agents { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:24px; }
+  .sub-agent { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; position:relative; overflow:hidden; }
+  .sub-agent::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+  .sa-cooking::before { background:var(--yellow); }
+  .sa-gym::before { background:var(--cyan); }
+  .sa-kb::before { background:var(--green); }
+  .sa-plan::before { background:var(--orange); }
+  .sub-agent-name { font-size:15px; font-weight:700; margin-bottom:4px; }
+  .sa-cooking .sub-agent-name { color:var(--yellow); }
+  .sa-gym .sub-agent-name { color:var(--cyan); }
+  .sa-kb .sub-agent-name { color:var(--green); }
+  .sa-plan .sub-agent-name { color:var(--orange); }
+  .sub-agent-sub { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-muted); margin-bottom:12px; }
+  .sub-agent-desc { font-size:12px; color:var(--text-dim); line-height:1.8; }
+  .sub-agent-outputs { margin-top:12px; display:flex; flex-wrap:wrap; gap:6px; }
+  .output-tag { font-family:'JetBrains Mono',monospace; font-size:9px; padding:2px 7px; border-radius:3px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-muted); }
+
+  /* Flow diagram */
+  .flow-box { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:36px; margin-bottom:24px; }
+  .flow-title { text-align:center; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:2px; margin-bottom:28px; }
+  .flow-row { display:flex; align-items:center; justify-content:center; gap:0; flex-wrap:wrap; }
+  .flow-step { text-align:center; padding:14px 18px; min-width:120px; }
+  .flow-step-box { background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:6px; }
+  .flow-step-icon { font-size:22px; margin-bottom:4px; }
+  .flow-step-name { font-size:12px; font-weight:600; }
+  .flow-step-detail { font-size:10px; color:var(--text-dim); }
+  .flow-arrow { color:var(--orange); font-size:18px; flex-shrink:0; padding:0 4px; }
+  .flow-note { text-align:center; margin-top:16px; font-size:12px; color:var(--text-muted); font-style:italic; padding:14px; background:var(--surface-2); border-radius:8px; border:1px dashed var(--border); }
+
+  /* Cascade diagram */
+  .cascade-box { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px; margin-bottom:24px; }
+  .cascade-title { font-size:14px; font-weight:700; color:var(--cyan); margin-bottom:20px; }
+  .cascade-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:13px; }
+  .cascade-trigger { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.15); color:var(--red); padding:6px 12px; border-radius:8px; font-size:12px; min-width:200px; }
+  .cascade-arrow { color:var(--text-muted); font-size:14px; flex-shrink:0; }
+  .cascade-effects { display:flex; gap:6px; flex-wrap:wrap; }
+  .cascade-effect { background:var(--surface-2); border:1px solid var(--border); padding:6px 10px; border-radius:6px; font-size:11px; color:var(--text-dim); }
+
+  /* Schedule integration */
+  .schedule-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+  .schedule-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; text-align:center; }
+  .schedule-icon { font-size:28px; margin-bottom:8px; }
+  .schedule-name { font-size:13px; font-weight:600; margin-bottom:4px; }
+  .schedule-desc { font-size:11px; color:var(--text-dim); line-height:1.6; }
+
+  /* KB evolution */
+  .kb-dual { display:grid; grid-template-columns:1fr 1fr; gap:3px; background:var(--border); border-radius:12px; overflow:hidden; margin-top:16px; }
+  .kb-side { background:var(--surface); padding:24px; }
+  .kb-side-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:2px; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .kb-side:first-child .kb-side-label { color:var(--green); }
+  .kb-side:last-child .kb-side-label { color:var(--purple); }
+  .kb-side-body { font-size:13px; color:var(--text-dim); line-height:1.9; }
+
+  /* Summary */
+  .summary { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px; }
+  .summary h3 { font-size:17px; font-weight:700; margin-bottom:16px; color:var(--orange); }
+  .summary p { font-size:14px; color:var(--text-dim); line-height:1.9; margin-bottom:12px; }
+  .summary-table { width:100%; border-collapse:collapse; margin-top:20px; font-size:12px; }
+  .summary-table th, .summary-table td { padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); }
+  .summary-table th { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; background:var(--surface-2); }
+  .summary-table td { color:var(--text-dim); }
+
+  .footer { text-align:center; padding:40px 0; border-top:1px solid var(--border); color:var(--text-muted); font-size:11px; font-family:'JetBrains Mono',monospace; }
+
+  @media (max-width:768px) {
+    .sub-agents, .schedule-grid, .kb-dual { grid-template-columns:1fr; }
+    .flow-row { flex-direction:column; }
+    .flow-arrow { transform:rotate(90deg); }
+    .cascade-row { flex-direction:column; align-items:flex-start; }
+    .container { padding:48px 20px; }
+    .header h1 { font-size:28px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-sup">Phase 1 · Detailed Design</div>
+    <h1>规划 Agent 详细设计</h1>
+    <div class="header-desc">
+      Phase 1 的目标是独立完成规划 Agent 的全部能力。从"一次性生成计划"出发，逐步进化为"能交互、能感知日程、能自我学习"的智能健身管家。分为三个子版本：静态规划（v0.1.x）、动态交互（v0.2.x）、自进化（v0.3.x）。
+    </div>
+  </div>
+
+  <!-- ============ v0.1.x 静态规划 ============ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num" style="background:rgba(255,107,53,0.08);color:var(--orange);border:1px solid rgba(255,107,53,0.2);">01</span>
+      <span class="section-title">v0.1.x · 静态规划</span>
+    </div>
+
+    <!-- v0.1.0 -->
+    <div class="version-block vb-static">
+      <div class="version-header">
+        <span class="version-badge">v0.1.0</span>
+        <span class="version-name">用户初始化 + 基础 Plan 生成</span>
+      </div>
+
+      <div class="version-desc">
+        系统的起点。通过结构化问答收集用户信息，由 PlanAgent 基于知识库生成个性化的周训练计划和每日营养方案。计划生成后经过多轮"生成-验证-修正"循环确保质量（训练量达标、热量匹配、伤病安全）。这个版本已经基本实现并经过了多轮迭代验证。
+      </div>
+
+      <div class="flow-box">
+        <div class="flow-title">v0.1.0 核心流程</div>
+        <div class="flow-row">
+          <div class="flow-step">
+            <div class="flow-step-box">
+              <div class="flow-step-icon">👤</div>
+              <div class="flow-step-name">用户信息收集</div>
+            </div>
+            <div class="flow-step-detail">身体 / 目标 / 器材<br>伤病 / 饮食限制 / 作息</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-box">
+              <div class="flow-step-icon">📚</div>
+              <div class="flow-step-name">知识库加载</div>
+            </div>
+            <div class="flow-step-detail">动作库 / 规则集<br>营养原则 / 解剖知识</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-box">
+              <div class="flow-step-icon">🧠</div>
+              <div class="flow-step-name">PlanAgent 生成</div>
+            </div>
+            <div class="flow-step-detail">LLM 推理<br>约束空间内编排</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-box">
+              <div class="flow-step-icon">✅</div>
+              <div class="flow-step-name">多轮验证</div>
+            </div>
+            <div class="flow-step-detail">训练量 / 时长<br>热量 / 伤病检查</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-box">
+              <div class="flow-step-icon">📋</div>
+              <div class="flow-step-name">输出 Plan</div>
+            </div>
+            <div class="flow-step-detail">周训练计划<br>每日营养方案</div>
+          </div>
+        </div>
+        <div class="flow-note">多轮循环：验证不通过 → 反馈给 LLM → 修正 → 再验证 → 直到所有检查通过</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">📊</span>
+          <span class="card-title">Plan 的输出内容</span>
+          <span class="card-tag tag-agent">PlanAgent</span>
+        </div>
+        <div class="card-body">
+          每日营养目标（热量 / 蛋白质 / 碳水 / 脂肪）、推荐餐食框架（早中晚 + 加餐，含替换选项）、每周 5 天的训练安排（每天含热身 → 训练动作表 → 拉伸）、每个动作的起始重量和组次数建议、4 周渐进规划框架、教练建议（渐进规则、伤病注意事项、恢复建议）。
+        </div>
+      </div>
+    </div>
+
+    <!-- v0.1.x -->
+    <div class="version-block vb-static">
+      <div class="version-header">
+        <span class="version-badge">v0.1.x</span>
+        <span class="version-name">精细化 Guidance — 子 Agent 细粒度指导</span>
+      </div>
+
+      <div class="version-desc">
+        v0.1.0 生成的 Plan 是"骨架"——它告诉用户每天练什么、吃什么。但用户可能不知道"鸡胸肉 150g + 糙米饭 200g"具体怎么做，也不知道"哑铃罗马尼亚硬拉"的每个细节该怎么执行。v0.1.x 引入专门的子 Agent 来生成更细粒度的 Guidance（指导），把 Plan 从"菜单"变成"带步骤的食谱"和"带教练提示的训练卡"。
+      </div>
+
+      <div class="sub-agents">
+        <div class="sub-agent sa-cooking">
+          <div class="sub-agent-name">🍳 CookingAgent</div>
+          <div class="sub-agent-sub">饮食精细化指导</div>
+          <div class="sub-agent-desc">
+            接收 PlanAgent 输出的每日营养目标和推荐食材，生成具体可操作的饮食指导：详细的烹饪步骤（而不只是食材列表）、食材替换方案（等营养素替换矩阵）、一周的采购清单、备餐建议（如何一次性准备多天的食物）。热量交叉验证：确保推荐餐食的实际热量与目标偏差在 ±10% 以内。
+          </div>
+          <div class="sub-agent-outputs">
+            <span class="output-tag">食谱步骤</span>
+            <span class="output-tag">采购清单</span>
+            <span class="output-tag">替换矩阵</span>
+            <span class="output-tag">热量验证</span>
+            <span class="output-tag">备餐方案</span>
+          </div>
+        </div>
+
+        <div class="sub-agent sa-gym">
+          <div class="sub-agent-name">🏋️ GYMAgent</div>
+          <div class="sub-agent-sub">训练精细化指导</div>
+          <div class="sub-agent-desc">
+            接收 PlanAgent 输出的训练计划，生成具体可执行的训练指导：每个动作的 2-3 条核心执行要点（cues）、伤病动作的具体适配方案（如"手腕伤 → 使用对握"）、4 周的具体渐进参数表（而非文字描述）、每日训练卡格式（按执行顺序排列的完整指令）。训练时长验证：确保每天总时长在用户设定范围内。
+          </div>
+          <div class="sub-agent-outputs">
+            <span class="output-tag">动作 cues</span>
+            <span class="output-tag">伤病适配</span>
+            <span class="output-tag">渐进参数表</span>
+            <span class="output-tag">每日训练卡</span>
+            <span class="output-tag">时长验证</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-box">
+        <div class="flow-title">Plan → Guidance 的生成流程</div>
+        <div class="flow-row">
+          <div class="flow-step">
+            <div class="flow-step-box" style="border-color:rgba(255,107,53,0.3);">
+              <div class="flow-step-icon">📋</div>
+              <div class="flow-step-name">Plan（骨架）</div>
+            </div>
+            <div class="flow-step-detail">PlanAgent 输出<br>周计划 + 营养目标</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-box" style="border-color:rgba(251,191,36,0.3);">
+              <div class="flow-step-icon">🍳</div>
+              <div class="flow-step-name">CookingAgent</div>
+            </div>
+            <div class="flow-step-detail">食谱 / 采购清单<br>热量验证</div>
+          </div>
+          <div class="flow-arrow" style="color:var(--text-muted);">+</div>
+          <div class="flow-step">
+            <div class="flow-step-box" style="border-color:rgba(34,211,238,0.3);">
+              <div class="flow-step-icon">🏋️</div>
+              <div class="flow-step-name">GYMAgent</div>
+            </div>
+            <div class="flow-step-detail">训练卡 / cues<br>渐进表 / 时长验证</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-box" style="border-color:rgba(52,211,153,0.3);">
+              <div class="flow-step-icon">📖</div>
+              <div class="flow-step-name">完整 Guidance</div>
+            </div>
+            <div class="flow-step-detail">用户直接可执行<br>的完整指南</div>
+          </div>
+        </div>
+        <div class="flow-note">Plan 是"做什么"，Guidance 是"怎么做"。用户最终看到的是 Plan + Guidance 的合体。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ v0.2.x 动态交互 ============ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num" style="background:rgba(34,211,238,0.08);color:var(--cyan);border:1px solid rgba(34,211,238,0.2);">02</span>
+      <span class="section-title">v0.2.x · 动态交互</span>
+    </div>
+
+    <!-- User dialog -->
+    <div class="version-block vb-dynamic">
+      <div class="version-header">
+        <span class="version-badge">v0.2.0</span>
+        <span class="version-name">对话式调整 — 牵一发而动全身</span>
+      </div>
+
+      <div class="version-desc">
+        v0.1.x 的计划是"一次性生成"的，但现实中用户的需求时刻在变化。v0.2.x 让系统具备与用户对话并动态调整的能力。核心挑战：局部修改需要触发全局调整。用户说"今天想吃面条"，系统不能只是换一餐——它需要重新计算这一天的热量分配，可能还要调整其他餐来补偿营养差异。用户说"周三加班不能练了"，系统需要把周三的训练量重新分配到其他训练日，确保周训练量不下降。
+      </div>
+
+      <div class="cascade-box">
+        <div class="cascade-title">🔗 级联调整示例</div>
+
+        <div class="cascade-row">
+          <div class="cascade-trigger">💬 "今天晚餐想吃面条"</div>
+          <div class="cascade-arrow">→</div>
+          <div class="cascade-effects">
+            <span class="cascade-effect">替换晚餐食谱</span>
+            <span class="cascade-effect">重算晚餐热量</span>
+            <span class="cascade-effect">调整午餐/加餐补偿</span>
+            <span class="cascade-effect">更新采购清单</span>
+          </div>
+        </div>
+
+        <div class="cascade-row">
+          <div class="cascade-trigger">💬 "周三要加班没法练"</div>
+          <div class="cascade-arrow">→</div>
+          <div class="cascade-effects">
+            <span class="cascade-effect">取消周三训练</span>
+            <span class="cascade-effect">重分配训练量到其他日</span>
+            <span class="cascade-effect">调整周三饮食（非训练日热量）</span>
+            <span class="cascade-effect">更新周训练量验证</span>
+          </div>
+        </div>
+
+        <div class="cascade-row">
+          <div class="cascade-trigger">💬 "做深蹲膝盖有点不舒服"</div>
+          <div class="cascade-arrow">→</div>
+          <div class="cascade-effects">
+            <span class="cascade-effect">替换深蹲为低膝盖压力动作</span>
+            <span class="cascade-effect">调整下肢训练编排</span>
+            <span class="cascade-effect">更新伤病记录</span>
+            <span class="cascade-effect">建议就医检查</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">💾</span>
+          <span class="card-title">对话记录与状态持久化</span>
+          <span class="card-tag tag-data">状态</span>
+        </div>
+        <div class="card-body">
+          每次用户交互都需要被记录和持久化。系统需要维护：当前活跃的 Plan 版本（每次调整生成新版本，保留历史）、用户偏好的累积记录（"不喜欢吃鸡胸肉"、"周末更喜欢跑步"）、调整的原因和上下文（方便 Agent 在未来主动避免类似冲突）。这些记录也是 v0.3.x KBAgent 理解用户偏好的基础数据。
+        </div>
+      </div>
+    </div>
+
+    <!-- Schedule awareness -->
+    <div class="version-block vb-dynamic">
+      <div class="version-header">
+        <span class="version-badge">v0.2.x</span>
+        <span class="version-name">日程感知 — 主动适配用户生活</span>
+      </div>
+
+      <div class="version-desc">
+        从"用户告诉我变化"进化为"我主动感知变化"。通过导入 ICS 日历文件或对接日历 API，Agent 能提前感知用户的日程安排，主动调整训练和饮食计划。
+      </div>
+
+      <div class="schedule-grid">
+        <div class="schedule-card">
+          <div class="schedule-icon">📅</div>
+          <div class="schedule-name">工作日历</div>
+          <div class="schedule-desc">识别会议密集日 → 安排轻量训练或休息日。识别出差日期 → 切换为酒店可执行方案。识别下班时间 → 调整训练前后饮食时间窗口。</div>
+        </div>
+        <div class="schedule-card">
+          <div class="schedule-icon">🩸</div>
+          <div class="schedule-name">经期追踪</div>
+          <div class="schedule-desc">经期阶段 → 降低训练强度，增加铁质摄入。卵泡期 → 适合高强度训练。黄体期 → 关注恢复，减少大重量训练。根据周期自动调整计划。</div>
+        </div>
+        <div class="schedule-card">
+          <div class="schedule-icon">✈️</div>
+          <div class="schedule-name">出行与社交</div>
+          <div class="schedule-desc">旅行期间 → 提供无器材训练方案。朋友聚餐 → 调整当天其他餐热量预算。节假日 → 弹性方案，允许适度放松。</div>
+        </div>
+        <div class="schedule-card">
+          <div class="schedule-icon">😴</div>
+          <div class="schedule-name">作息与恢复</div>
+          <div class="schedule-desc">睡眠不足 → 降低训练容量。连续高强度训练后 → 主动安排额外恢复日。考试/deadline 周 → 简化方案减轻心理负担。</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">📎</span>
+          <span class="card-title">ICS 文件 / 日历 API 集成</span>
+          <span class="card-tag tag-data">数据源</span>
+        </div>
+        <div class="card-body">
+          用户可以上传 ICS 文件或连接 Google Calendar / Apple Calendar。Agent 解析日程事件，提取关键信息（时间、地点、类型），判断对训练和饮食的影响，并提前（比如前一天晚上）主动调整次日的计划。日程变更也会触发级联调整。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ v0.3.x 自进化 ============ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num" style="background:rgba(52,211,153,0.08);color:var(--green);border:1px solid rgba(52,211,153,0.2);">03</span>
+      <span class="section-title">v0.3.x · 自进化</span>
+    </div>
+
+    <div class="version-block vb-evolve">
+      <div class="version-header">
+        <span class="version-badge">v0.3.x</span>
+        <span class="version-name">KBAgent — 知识库自动进化</span>
+      </div>
+
+      <div class="version-desc">
+        知识库不是一成不变的。KBAgent 负责让系统的知识持续增长和优化。它有两个维度的工作：从外部世界获取新知识，以及根据用户的偏好调整知识侧重。
+      </div>
+
+      <div class="kb-dual">
+        <div class="kb-side">
+          <div class="kb-side-label">🌐 外部知识获取</div>
+          <div class="kb-side-body">
+            从互联网、学术论文、权威书籍中获取最新的运动科学和营养学知识。新发表的研究结果（如"最新研究表明每周 12-20 组训练量对增肌最优"）经过可信度评估后可以更新规则集中的参数。新的训练方法、食谱、营养补剂信息也可以被纳入知识库。关键：所有新知识必须经过验证流程（来源可信度评估 + 与现有知识的一致性检查）才能被采纳，避免引入错误信息。
+          </div>
+        </div>
+        <div class="kb-side">
+          <div class="kb-side-label">👤 用户偏好适配</div>
+          <div class="kb-side-body">
+            通过分析用户的历史对话和行为模式，KBAgent 主动调整知识储备的侧重方向。比如用户经常问素食相关问题 → 主动丰富素食蛋白质来源和素食食谱知识。用户多次反馈某类食物不喜欢 → 自动扩展该类食物的替代品知识。用户的训练偏好（喜欢自由重量 vs 器械）→ 丰富对应方向的动作变体知识。这让系统的知识库成为"为这个用户量身定制"的。
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">🔒</span>
+          <span class="card-title">知识更新的安全机制</span>
+          <span class="card-tag tag-kb">KBAgent</span>
+        </div>
+        <div class="card-body">
+          KBAgent 的更新不是无约束的。核心安全机制包括：新知识的来源可信度评分（学术论文 > 权威机构 > 专业媒体 > 普通网页）、与现有核心规则集的冲突检测（新知识不能直接覆盖核心安全规则）、更新记录和回滚能力（每次更新都有完整日志，发现问题可以回滚）、以及定期的人工审核检查点。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SUMMARY ============ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num" style="background:rgba(255,107,53,0.08);color:var(--orange);border:1px solid rgba(255,107,53,0.2);">04</span>
+      <span class="section-title">Phase 1 全景一览</span>
+    </div>
+
+    <div class="summary">
+      <h3>从静态到动态到自进化</h3>
+      <p>
+        Phase 1 的核心逻辑是一条清晰的进化路径：v0.1.x 解决"能不能生成一个好计划"的问题（已基本完成），v0.1.x 的后半段通过子 Agent 解决"计划的每个细节是否足够具体和可执行"的问题，v0.2.x 解决"计划能不能适应用户的真实生活"的问题，v0.3.x 解决"系统的知识能不能持续进步"的问题。
+      </p>
+
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>版本</th>
+            <th>核心能力</th>
+            <th>涉及的 Agent</th>
+            <th>用户体验变化</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color:var(--orange);">v0.1.0</td>
+            <td>基础 Plan 生成 + 多轮验证</td>
+            <td>PlanAgent</td>
+            <td>输入信息 → 得到一个周计划</td>
+          </tr>
+          <tr>
+            <td style="color:var(--orange);">v0.1.x</td>
+            <td>精细化 Guidance（食谱 + 训练卡）</td>
+            <td>PlanAgent + CookingAgent + GYMAgent</td>
+            <td>得到完整的、可直接执行的每日指南</td>
+          </tr>
+          <tr>
+            <td style="color:var(--cyan);">v0.2.0</td>
+            <td>对话式调整 + 级联更新</td>
+            <td>PlanAgent + CookingAgent + GYMAgent</td>
+            <td>可以随时说"我想改…"，系统自动调整全局</td>
+          </tr>
+          <tr>
+            <td style="color:var(--cyan);">v0.2.x</td>
+            <td>日程感知（ICS / 经期 / 作息）</td>
+            <td>PlanAgent + CalendarSync</td>
+            <td>系统主动根据日程调整计划，用户无需操心</td>
+          </tr>
+          <tr>
+            <td style="color:var(--green);">v0.3.x</td>
+            <td>知识库自动进化</td>
+            <td>KBAgent + PlanAgent</td>
+            <td>系统越用越懂我，知识越来越新</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">Phase 1 · Planning Agent · Detailed Design · 2026</div>
+
+</div>
+</body>
+</html>
