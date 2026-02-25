@@ -38,8 +38,8 @@
 [CookingAgent.generate_cooking_plan(weekly_plan, profile)]
     │
     ├─ KB 过滤：食谱兼容性
-    ├─ _compute_batches(): 决定分批策略 (1 批 vs 3 批)
-    ├─ 循环 Batch(es) → LLM → 确定性修正 (缩放/强化) → 验证 → 重试
+    ├─ 增量逐日生成（7 次 LLM 调用，每次生成 1 天，历史 JSON 注入）
+    ├─ 确定性后处理流水线（宏量覆写→蛋白强化→热量缩放→上限夹紧→取整→二次覆写）
     └─ → WeeklyCookingPlan（JSON）
    │
    └──► 保存 JSON + Markdown → Rich 终端渲染
@@ -170,27 +170,50 @@ WeeklyPlan + UserProfile
     ├─► KB.get_banned_food_ids(dietary_restrictions)
     │       → banned_food_ids: set[str]
     │
-    ├─► _compute_batches()
-    │       → 决定是 1 批 (7天) 还是 3 批 (2, 2, 3天)
-    │
-    └─► 循环各 Batch (A/B/C)
-            messages = [Message(role="user", content=batch_prompt)]
-            LLM → JSON string
-            _parse_batch_response() → list[DayMealPlan]
+    └─► 增量逐日生成（7 轮 LLM 调用）
+        all_days = []
+        for day_label in [周一 … 周日]:
+            already_json = json.dumps(all_days)   ← 已生成的天注入为历史上下文
+            │
+            _generate_day(day_label, already_json):
+                messages = [
+                  Message(role="user", content=build_cooking_user_message(
+                      ..., already_generated_json=already_json
+                  )),
+                ]
+                LLM call (max_tokens=4096)
+                _parse_day_response() → DayMealPlan
+                _overwrite_macros_deterministic()  ← 当天宏量立即覆写
+                │
+                [重试型校验 - 仅针对当天]
+                ├─ _validate_food_ids()           # >2 个幻觉 ID → 触发重试
+                └─ _validate_dietary_compliance() # 忌口违规 → 触发重试
+                │
+                若需重试: messages += [assistant 回复, correction] → 再次 LLM call
+                └─ 返回 DayMealPlan
+            all_days.append(day)
 
-            [确定性修正步骤 - 保证 100% 准确性]
-            ├─ _overwrite_macros_deterministic()  # 覆写宏量素（查知识库）
-            ├─ _scale_day_to_calorie_target()    # 自动等比例缩放食材量
-            └─ _boost_protein_for_day()          # 针对性强化蛋白质食材
+确定性后处理流水线（全 7 天一次性）：
+    a. _overwrite_macros_deterministic()   ← 用 KB 全量覆写 LLM 宏量报告
+    b. _boost_protein_for_day()            ← 按比例强化高蛋白食材（+5g 缓冲）
+    c. _scale_day_to_calorie_target()      ← 等比缩放，精确达到训练日/休息日目标
+    d. _clamp_meal_calories()              ← snack/pre_workout 超上限则向下强制缩放
+    e. _round_ingredient_amounts()         ← 克数取整（≥10g→整10g；<10g→整5g）
+    f. _overwrite_macros_deterministic()   ← 二次覆写（反映取整后精确值）
 
-            [校验与重试环节]
-            ├─ _validate_food_ids()              # 校验食材 ID 幻觉
-            ├─ _validate_dietary_compliance()    # 校验过敏/忌口
-            └─ _validate_post_workout_protein()  # 深度检查练后餐蛋白质
+[警告型验证 - 全局，仅记录，不重试]
+    ├─ _validate_calorie_compliance()      → 热量偏差提醒
+    ├─ _validate_protein_compliance()      → 蛋白质不足提醒
+    ├─ _validate_post_workout_protein()    → 训练后餐蛋白提醒
+    ├─ _validate_diversity()               → 跨天食谱多样性
+    ├─ _validate_intraday_diversity()      → 日内蛋白质食材重复
+    ├─ _validate_meal_structure()          → 训练日/休息日餐型结构
+    └─ _validate_meal_calorie_ranges()     → 单餐热量范围
 
-            （若有 ID 缺失或忌口违规，追加 correction message → 重试）
+    所有警告追加至 plan.cooking_tips_zh（不崩溃）
 
-合并各批次 → WeeklyCookingPlan → _aggregate_shopping_list()
+_aggregate_shopping_list() → 跨 7 天去重汇总购物清单
+→ WeeklyCookingPlan
 ```
 
 ---
