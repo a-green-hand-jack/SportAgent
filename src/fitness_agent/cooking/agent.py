@@ -28,7 +28,7 @@ from fitness_agent.cooking.prompt import COOKING_SYSTEM, build_cooking_user_mess
 from fitness_agent.knowledge_base.loader import KnowledgeBase
 from fitness_agent.planner.models import WeeklyPlan
 from fitness_agent.user.models import UserProfile
-from fitness_agent.utils.llm_client import BaseLLMClient, Message
+from fitness_agent.utils.llm_client import BaseLLMClient, Message, _MAX_TOKENS_CAP
 from fitness_agent.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -96,6 +96,30 @@ class CookingAgent:
     # Week days used for batching
     _WEEK_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
+    # Providers with a low output-token cap need small batches.
+    # This threshold is used in _compute_batches.
+    _LOW_OUTPUT_CAP_THRESHOLD = 8192
+
+    def _compute_batches(self) -> list[list[str]]:
+        """Return the list of day-label batches for generation.
+
+        * If ``self.client`` has no token cap or its cap exceeds the threshold,
+          a single batch covering all 7 days is returned.
+        * If the cap is ≤ ``_LOW_OUTPUT_CAP_THRESHOLD`` (e.g. DeepSeek at 8192),
+          three smaller batches [2, 2, 3] are returned so each response fits
+          comfortably within the output-token limit.
+        """
+        cap = _MAX_TOKENS_CAP.get(self.client.provider)
+        if cap and cap <= self._LOW_OUTPUT_CAP_THRESHOLD:
+            # DeepSeek-style: 2 + 2 + 3 days
+            return [
+                self._WEEK_LABELS[0:2],  # 周一, 周二
+                self._WEEK_LABELS[2:4],  # 周三, 周四
+                self._WEEK_LABELS[4:],   # 周五, 周六, 周日
+            ]
+        # High-cap or unlimited providers: single shot
+        return [self._WEEK_LABELS]
+
     def generate_cooking_plan(
         self,
         weekly_plan: WeeklyPlan,
@@ -144,26 +168,22 @@ class CookingAgent:
                 f"for restrictions {profile.dietary_restrictions}"
             )
 
-        # --- Step 2: generate in three batches (2+2+3 days) to stay within
-        #     DeepSeek's 8192 output-token cap.
-        batch_a = self._WEEK_LABELS[0:2]  # 周一, 周二
-        batch_b = self._WEEK_LABELS[2:4]  # 周三, 周四
-        batch_c = self._WEEK_LABELS[4:]   # 周五, 周六, 周日
-
-        days_a = self._generate_batch(
-            profile, weekly_plan, compatible_recipes, batch_a,
-            banned_food_ids=banned_food_ids,
-        )
-        days_b = self._generate_batch(
-            profile, weekly_plan, compatible_recipes, batch_b,
-            banned_food_ids=banned_food_ids,
-        )
-        days_c = self._generate_batch(
-            profile, weekly_plan, compatible_recipes, batch_c,
-            banned_food_ids=banned_food_ids,
+        # --- Step 2: generate in batches (strategy depends on provider token cap) ---
+        batches = self._compute_batches()
+        n_batches = len(batches)
+        logger.info(
+            f"Generation strategy: {n_batches} batch(es) of "
+            f"{[len(b) for b in batches]} day(s) "
+            f"(provider: {self.client.provider})"
         )
 
-        all_days = days_a + days_b + days_c
+        all_days: list[DayMealPlan] = []
+        for batch in batches:
+            batch_days = self._generate_batch(
+                profile, weekly_plan, compatible_recipes, batch,
+                banned_food_ids=banned_food_ids,
+            )
+            all_days.extend(batch_days)
 
         # --- Step 3: assemble a combined WeeklyCookingPlan ---
         plan = WeeklyCookingPlan(

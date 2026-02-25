@@ -104,20 +104,22 @@ def _make_llm_client(
     profile: UserProfile,
     training_days: int = 3,
     base_cal: float | None = None,
+    provider: str = "mock",
 ) -> MagicMock:
     """Create a mock LLM client that returns batch-appropriate day subsets.
 
-    Uses call-order: first call → batch A (4 days), second call → batch B (3 days).
-    On retries (subsequent calls within the same batch), the same pattern repeats
-    with the same group of days.
+    Reads the day labels requested in ``messages[0]`` (the original batch
+    prompt) and returns only those days.  Set ``provider='deepseek'`` to
+    exercise the 3-batch path (the low-cap threshold), or leave as
+    ``'mock'`` for the single-batch path.
     """
-    _all_labels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    _all_labels = ["\u5468\u4e00", "\u5468\u4e8c", "\u5468\u4e09", "\u5468\u56db", "\u5468\u4e94", "\u5468\u516d", "\u5468\u65e5"]
 
     def _side_effect(messages, **kwargs):
         # Always read from the FIRST message (the original batch prompt).
         # On retries, messages grows to [user, assistant, user(correction)],
         # but messages[0] is still the original prompt which uniquely identifies
-        # the batch (batch A has 周一-周四, batch B has 周五-周日).
+        # the batch.
         first_content = messages[0].content if messages else ""
         requested = [lbl for lbl in _all_labels if lbl in first_content]
         if not requested:
@@ -130,14 +132,14 @@ def _make_llm_client(
         )
         return LLMResponse(
             content=json_str,
-            provider="mock",
+            provider=provider,
             model="mock-model",
             input_tokens=100,
             output_tokens=200,
         )
 
     client = MagicMock()
-    client.provider = "mock"
+    client.provider = provider
     client.model = "mock-model"
     client.chat.side_effect = _side_effect
     return client
@@ -158,14 +160,14 @@ def _make_llm_client_fixed(json_response: str) -> MagicMock:
     return client
 
 
-def _make_multi_response_client(responses: list[str]) -> MagicMock:
+def _make_multi_response_client(responses: list[str], provider: str = "mock") -> MagicMock:
     client = MagicMock()
-    client.provider = "mock"
+    client.provider = provider
     client.model = "mock-model"
     client.chat.side_effect = [
         LLMResponse(
             content=r,
-            provider="mock",
+            provider=provider,
             model="mock-model",
             input_tokens=100,
             output_tokens=200,
@@ -356,13 +358,24 @@ class TestCookingAgent:
     def test_llm_called_three_times_for_batches(
         self, kb, profile, weekly_plan
     ) -> None:
-        """With 3-batch generation, exactly 3 LLM calls are made (2+2+3 days)."""
-        client = _make_llm_client(profile)
+        """DeepSeek provider (low cap) uses 3 batches [2+2+3] = 3 LLM calls."""
+        client = _make_llm_client(profile, provider="deepseek")
         agent = CookingAgent(client=client, kb=kb)
         agent._validate_calorie_compliance = lambda plan, target: []
         agent._validate_dietary_compliance = lambda plan, banned: []
         agent.generate_cooking_plan(weekly_plan, profile)
         assert client.chat.call_count == 3
+
+    def test_llm_called_once_for_high_cap_provider(
+        self, kb, profile, weekly_plan
+    ) -> None:
+        """Providers without a token cap (mock/qwen) use a single 7-day batch."""
+        client = _make_llm_client(profile, provider="mock")
+        agent = CookingAgent(client=client, kb=kb)
+        agent._validate_calorie_compliance = lambda plan, target: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
+        agent.generate_cooking_plan(weekly_plan, profile)
+        assert client.chat.call_count == 1
 
 
 # ---------------------------------------------------------------------------
@@ -437,10 +450,9 @@ class TestCalorieValidation:
 
 class TestRetryLoop:
     def test_retries_on_dietary_violation(self, kb, profile, weekly_plan) -> None:
-        """Batch-level retries: max_retries=1 means 2 calls per batch, 6 total (3 batches)."""
+        """DeepSeek 3-batch: max_retries=1 → 2 calls/batch × 3 batches = 6 total."""
         max_retries = 1
-        # Each batch gets max_retries+1 = 2 calls → 3 batches → 6 total calls
-        client = _make_llm_client(profile)
+        client = _make_llm_client(profile, provider="deepseek")
         agent = CookingAgent(client=client, kb=kb, max_retries=max_retries)
         agent._validate_dietary_compliance = lambda plan, banned: [
             "- 周一/鸡胸饭：食材 'chicken_breast'（鸡胸肉）违反饮食限制"
@@ -449,9 +461,9 @@ class TestRetryLoop:
         assert client.chat.call_count == (max_retries + 1) * 3
 
     def test_max_retries_respected(self, kb, profile, weekly_plan) -> None:
-        """Agent never exceeds (max_retries+1) × 3 LLM calls (three batches)."""
+        """DeepSeek 3-batch: (max_retries+1) × 3 total calls maximum."""
         max_retries = 2
-        client = _make_llm_client(profile)
+        client = _make_llm_client(profile, provider="deepseek")
         agent = CookingAgent(client=client, kb=kb, max_retries=max_retries)
         agent._validate_dietary_compliance = lambda plan, banned: [
             "- 周一：饮食违规"
@@ -460,16 +472,16 @@ class TestRetryLoop:
         assert client.chat.call_count == (max_retries + 1) * 3
 
     def test_no_retry_when_all_valid(self, kb, profile, weekly_plan) -> None:
-        """No warnings → exactly 3 LLM calls (one per batch)."""
-        client = _make_llm_client(profile)
+        """No warnings → 1 call for mock (high-cap), 3 for deepseek (low-cap)."""
+        client = _make_llm_client(profile, provider="deepseek")
         agent = CookingAgent(client=client, kb=kb, max_retries=2)
         agent._validate_dietary_compliance = lambda plan, banned: []
         agent.generate_cooking_plan(weekly_plan, profile)
         assert client.chat.call_count == 3
 
     def test_no_llm_retry_for_calorie(self, kb, profile, weekly_plan) -> None:
-        """Calorie issues do NOT trigger LLM retry — only 3 calls (one per batch)."""
-        client = _make_llm_client(profile)
+        """Calorie issues do NOT trigger LLM retry — 3 calls for deepseek (one per batch)."""
+        client = _make_llm_client(profile, provider="deepseek")
         agent = CookingAgent(client=client, kb=kb, max_retries=2)
         agent._validate_dietary_compliance = lambda plan, banned: []
         # Even if calorie validation would fail, no retry
@@ -1824,7 +1836,10 @@ class TestPipelineIntegration:
         )
 
         # batch A: bad → good (retry); batch B: good; batch C: good
-        client = _make_multi_response_client([bad_json, good_json_a, good_json_b, good_json_c])
+        client = _make_multi_response_client(
+            [bad_json, good_json_a, good_json_b, good_json_c],
+            provider="deepseek",
+        )
         agent = CookingAgent(client=client, kb=kb, max_retries=1)
         agent._validate_dietary_compliance = lambda plan, banned: []
         plan = agent.generate_cooking_plan(weekly_plan, profile)

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CookingPlan v4 评审</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#06060b;--s1:#0e0e16;--s2:#16161f;--bd:#252535;--t:#e4e4ef;--td:#8585a0;--tm:#55556a;--or:#ff6b35;--bl:#4a9eff;--gn:#34d399;--pu:#a78bfa;--yl:#fbbf24;--rd:#ef4444;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--t);font-family:'Noto Sans SC',sans-serif;line-height:1.8;}
+  .ctr{max-width:1080px;margin:0 auto;padding:56px 36px;}
+  code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--s2);padding:2px 6px;border-radius:4px;color:var(--td);}
+  .hdr{margin-bottom:48px;} .hdr-sup{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--yl);text-transform:uppercase;letter-spacing:4px;margin-bottom:12px;}
+  .hdr h1{font-family:'Playfair Display',serif;font-size:32px;font-weight:900;margin-bottom:14px;}
+  .hdr-d{font-size:14px;color:var(--td);max-width:800px;line-height:1.9;}
+
+  .sb{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:44px;}
+  .sc{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:18px;text-align:center;}
+  .sc .l{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;}
+  .sc .v{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;}
+  .sc .su{font-size:10px;color:var(--td);margin-top:3px;}
+
+  .sec{margin-bottom:44px;} .sh{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd);}
+  .sn{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:3px 10px;border-radius:5px;} .st{font-size:18px;font-weight:800;}
+
+  .tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;}
+  .tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--bd);}
+  .tbl th{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:1px;background:var(--s1);}
+
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:20px 24px;margin-bottom:12px;}
+  .ch{display:flex;align-items:center;gap:10px;margin-bottom:10px;} .ci{font-size:16px;} .ct{font-size:14px;font-weight:700;}
+  .cb{font-size:13px;color:var(--td);line-height:1.9;}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;margin-left:auto;}
+  .p0{background:rgba(239,68,68,0.1);color:var(--rd);border:1px solid rgba(239,68,68,0.2);}
+  .p1{background:rgba(255,107,53,0.1);color:var(--or);border:1px solid rgba(255,107,53,0.2);}
+  .p2{background:rgba(251,191,36,0.1);color:var(--yl);border:1px solid rgba(251,191,36,0.2);}
+  .hl{color:var(--t);font-weight:600;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:5px;font-size:12px;}
+  .bar-l{width:40px;text-align:right;color:var(--td);font-weight:600;flex-shrink:0;}
+  .bar-b{flex:1;height:16px;background:var(--s2);border-radius:4px;overflow:hidden;position:relative;}
+  .bar-f{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:7px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff;font-weight:600;}
+  .bar-tgt{position:absolute;height:100%;width:2px;background:var(--t);opacity:0.4;top:0;}
+  .bar-n{width:115px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--td);flex-shrink:0;}
+
+  .verdict{background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:28px;}
+  .verdict h3{font-size:17px;font-weight:700;margin-bottom:12px;} .verdict p{font-size:13px;color:var(--td);line-height:1.9;margin-bottom:10px;}
+  @media(max-width:768px){.sb{grid-template-columns:repeat(2,1fr);}.two{grid-template-columns:1fr;}.ctr{padding:40px 18px;}}
+</style>
+</head>
+<body>
+<div class="ctr">
+
+  <div class="hdr">
+    <div class="hdr-sup">CookingPlan v4 · Evaluation</div>
+    <h1>CookingPlan v4 评审报告</h1>
+    <div class="hdr-d">热量精度取得历史最佳表现（7/7 天实际达标），但暴露了新的系统性问题：全周没有训练日、菜品陷入 AB 模板循环。</div>
+  </div>
+
+  <div class="sb">
+    <div class="sc"><div class="l">综合评级</div><div class="v" style="color:var(--yl);">B+</div><div class="su">热量突破 但多样性回退</div></div>
+    <div class="sc"><div class="l">实际热量达标</div><div class="v" style="color:var(--gn);">7/7</div><div class="su">确定性验算 ±10%</div></div>
+    <div class="sc"><div class="l">蛋白质达标</div><div class="v" style="color:var(--gn);">7/7</div><div class="su">全部 ≥140g</div></div>
+    <div class="sc"><div class="l">菜品多样性</div><div class="v" style="color:var(--rd);">D</div><div class="su">5 道菜出现 3 次</div></div>
+  </div>
+
+  <!-- 热量 -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(52,211,153,0.08);color:var(--gn);border:1px solid rgba(52,211,153,0.2);">01</span>
+      <span class="st">热量验算：历史最佳 — 全周达标</span>
+    </div>
+    <div class="card">
+      <div class="cb" style="margin-bottom:4px;font-size:11px;color:var(--tm);">白线 = 目标 2397 kcal | 柱形 = 确定性计算值</div>
+      <div class="bar-row"><div class="bar-l">周一</div><div class="bar-b"><div class="bar-f" style="width:83%;background:var(--gn);">2191</div><div class="bar-tgt" style="left:91%;"></div></div><div class="bar-n">✅ -8.6%</div></div>
+      <div class="bar-row"><div class="bar-l">周二</div><div class="bar-b"><div class="bar-f" style="width:91%;background:var(--gn);">2406</div><div class="bar-tgt" style="left:91%;"></div></div><div class="bar-n">✅ +0.4%</div></div>
+      <div class="bar-row"><div class="bar-l">周三</div><div class="bar-b"><div class="bar-f" style="width:84%;background:var(--gn);">2213</div><div class="bar-tgt" style="left:91%;"></div></div><div class="bar-n">✅ -7.7%</div></div>
+      <div class="bar-row"><div class="bar-l">周四</div><div class="bar-b"><div class="bar-f" style="width:93%;background:var(--gn);">2439</div><div class="bar-tgt" style="left:91%;"></div></div><div class="bar-n">✅ +1.8%</div></div>
+      <div class="bar-row"><div class="bar-l">周五</div><div class="bar-b"><div class="bar-f" style="width:85%;background:var(--gn);">2235</div><div class="bar-tgt" style="left:91%;"></div></div><div class="bar-n">✅ -6.7%</div></div>
+      <div class="bar-row"><div class="bar-l">周六</div><div class="bar-b"><div class="bar-f" style="width:91%;background:var(--gn);">2410</div><div class="bar-tgt" style="left:91%;"></div></div><div class="bar-n">✅ +0.5%</div></div>
+      <div class="bar-row"><div class="bar-l">周日</div><div class="bar-b"><div class="bar-f" style="width:92%;background:var(--gn);">2428</div><div class="bar-tgt" style="left:91%;"></div></div><div class="bar-n">✅ +1.3%</div></div>
+    </div>
+    <div class="card" style="border-left:3px solid var(--gn);">
+      <div class="ch"><span class="ci">🎉</span><span class="ct">热量和蛋白质首次全周达标</span></div>
+      <div class="cb">
+        这是四个版本以来第一次实现 <span class="hl">7/7 天热量全部在 ±10% 以内</span>（确定性验算口径）。蛋白质也全部 ≥140g。标注精度进一步提升——34/35 道菜标注偏差 ≤15%，只有金枪鱼红薯（+25.6%）一道超标。
+        <br><br>
+        周二、周四、周六、周日的计算值与目标偏差均在 ±2% 以内——接近完美。这说明修正循环 + LLM 的热量估算在"简单食材组合"上已经足够准确。
+      </div>
+    </div>
+  </div>
+
+  <!-- 核心问题 -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(239,68,68,0.08);color:var(--rd);border:1px solid rgba(239,68,68,0.2);">02</span>
+      <span class="st">核心问题</span>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--rd);">
+      <div class="ch"><span class="ci">🔴</span><span class="ct">全周 7 天都是休息日 — 训练日哪去了？</span><span class="tag p0">P0</span></div>
+      <div class="cb">
+        这是最大的问题。用户的训练计划通常有 4-5 个训练日，但 CookingAgent 生成了 7 天休息日的饮食方案。可能原因：CookingAgent 没有正确接收 PlanAgent 的训练日安排，或者接收了但在生成过程中丢失了。
+        <br><br>
+        后果很严重：训练日热量目标是 2672 kcal，休息日是 2397 kcal。如果用户在训练日吃休息日的量，每天会少摄入 ~275 kcal，严重影响增肌效果。更关键的是训练日需要 pre_workout 和 post_workout 两个额外加餐，休息日方案完全没有这些。
+        <br><br>
+        <span class="hl">这是 CookingAgent 与 PlanAgent 之间的数据流问题</span>，不是 CookingAgent 自身的生成质量问题。需要确认训练日信息是否正确传递给了 CookingAgent。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--rd);">
+      <div class="ch"><span class="ci">🔴</span><span class="ct">陷入 AB 模板循环 — 5 道菜各出现 3 次</span><span class="tag p0">P0</span></div>
+      <div class="cb">
+        这是 v3 没有的问题，v4 反而恶化了。一周形成了两套固定模式：
+        <br><br>
+        <span class="hl">A 天</span>（周一三五）：红薯鸡蛋早餐盘 → 鸡胸肉西兰花饭 → 各异的晚餐<br>
+        <span class="hl">B 天</span>（周二四六）：奇亚籽隔夜燕麦 → 家常豆腐炒蔬菜 → 三文鱼/照烧三文鱼<br>
+        <span class="hl">盐水毛豆</span>穿插出现 3 次
+        <br><br>
+        用户连续一周吃这个方案，会发现自己在重复吃同样的早餐和午餐。这严重违反"用户不动脑子就能执行"的目标——因为用户会主动拒绝再吃第三次鸡胸肉西兰花饭。
+        <br><br>
+        根因分析：CookingAgent 为了确保热量达标，倾向于复用已验证过的"安全"食谱组合，因为它知道这些组合的热量是准的。这是<span class="hl">精确性和多样性之间的 trade-off</span>——v4 在精确性上取得突破，但代价是多样性崩塌。解法是约束 <code>每道菜一周最多出现 2 次</code>，同时扩充已验证的食谱库。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--or);">
+      <div class="ch"><span class="ci">🟠</span><span class="ct">希腊酸奶 — 乳糖不耐受边界案例</span><span class="tag p1">P1</span></div>
+      <div class="cb">
+        周一零食是"希腊酸奶 270g（无乳糖型或乳糖酶处理款）"。虽然标注了无乳糖型，但无乳糖希腊酸奶在中国市场很少见，用户很可能买到普通含乳糖版本。更安全的做法是用豆腐/豆浆基底的替代品。这个问题反映了<span class="hl">饮食限制过滤</span>依然是软约束——系统试图通过标注"无乳糖型"来规避限制，而不是从根本上换掉这个食材。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--yl);">
+      <div class="ch"><span class="ci">🟡</span><span class="ct">菜名自相矛盾</span><span class="tag p2">P2</span></div>
+      <div class="cb">
+        周五有一道菜叫"训练后金枪鱼红薯（休息日适配版）"——名字里带"训练后"但当天是休息日。这说明这道菜是从训练日菜谱复制过来加了个后缀，而不是真正为休息日设计的。系统也检测到了它作为 snack 热量 465 kcal 超标。
+      </div>
+    </div>
+  </div>
+
+  <!-- 四版对比 -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(167,139,250,0.08);color:var(--pu);border:1px solid rgba(167,139,250,0.2);">03</span>
+      <span class="st">四版演进全景</span>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>维度</th><th>v1 (C+)</th><th>v2 (B)</th><th>v3 (B+)</th><th>v4 (B+)</th></tr></thead>
+      <tbody>
+        <tr><td>实际热量达标</td><td>~4/7</td><td>4/7</td><td>4/7</td><td style="color:var(--gn);font-weight:700;">7/7 ✨</td></tr>
+        <tr><td>蛋白质全周达标</td><td>—</td><td style="color:var(--rd);">❌(102g)</td><td>⚠️(125g)</td><td style="color:var(--gn);font-weight:700;">7/7 ✨</td></tr>
+        <tr><td>标注精度(≤15%)</td><td>~60%</td><td>85%</td><td>91%</td><td style="color:var(--gn);">97%</td></tr>
+        <tr><td>修正循环</td><td style="color:var(--rd);">无</td><td style="color:var(--rd);">无</td><td style="color:var(--gn);">有</td><td style="color:var(--gn);">有且有效</td></tr>
+        <tr><td>训练日/休息日区分</td><td style="color:var(--gn);">✅</td><td style="color:var(--gn);">✅</td><td style="color:var(--gn);">✅</td><td style="color:var(--rd);font-weight:700;">❌ 全休息日</td></tr>
+        <tr><td>菜品最高重复次数</td><td>3次</td><td style="color:var(--gn);">2次</td><td style="color:var(--gn);">2次</td><td style="color:var(--rd);font-weight:700;">3次 × 5道</td></tr>
+        <tr><td>乳糖限制合规</td><td style="color:var(--rd);">违规</td><td style="color:var(--gn);">合规</td><td style="color:var(--gn);">合规</td><td style="color:var(--or);">边界(希腊酸奶)</td></tr>
+        <tr><td>食谱创新</td><td>基础</td><td>改善</td><td style="color:var(--gn);">大幅创新</td><td>+照烧三文鱼/豆腐咖喱</td></tr>
+        <tr><td>食材用量精度</td><td>整数</td><td>整数</td><td style="color:var(--rd);">过精确(253g)</td><td style="color:var(--gn);">合理(10g级)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 根因分析 -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(74,158,255,0.08);color:var(--bl);border:1px solid rgba(74,158,255,0.2);">04</span>
+      <span class="st">根因分析：为什么热量达标了但多样性崩了？</span>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ci">🔍</span><span class="ct">精确性 vs 多样性的 trade-off</span></div>
+      <div class="cb">
+        v4 暴露了一个深层矛盾：当 CookingAgent 被强化要"确保热量达标"时，它倾向于<span class="hl">复用已成功验证的食谱组合</span>。因为它知道"红薯鸡蛋早餐盘 ≈ 480 kcal"是靠谱的，所以每隔一天就用一次。这和人类行为很像——你如果要求一个厨师"每道菜热量必须精确"，他也会倾向于重复使用已掌握的菜式。
+        <br><br>
+        解法不是简单地加"每道菜最多 2 次"约束（虽然这也要加），而是<span class="hl">扩充"已验证食谱库"</span>。目前系统大约只有 15-20 道可靠菜品，需要增加到 40-50 道，让 agent 有更多"安全"选项可以轮换。
+      </div>
+    </div>
+  </div>
+
+  <!-- 下一步 -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(255,107,53,0.08);color:var(--or);border:1px solid rgba(255,107,53,0.2);">05</span>
+      <span class="st">v5 改进方向</span>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--rd);">
+      <div class="ch"><span class="ci">1.</span><span class="ct">修复训练日数据流</span><span class="tag p0">P0</span></div>
+      <div class="cb">
+        检查 CookingAgent 的输入：PlanAgent 的训练日安排是否被正确传递？如果传递了，CookingAgent 是否正确解析并区分了训练日/休息日？这是一个 agent 间通信问题，不是生成质量问题。训练日必须有 pre_workout + post_workout 加餐，且热量目标应为 2672 kcal。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--rd);">
+      <div class="ch"><span class="ci">2.</span><span class="ct">强制多样性约束 + 扩充食谱库</span><span class="tag p0">P0</span></div>
+      <div class="cb">
+        硬约束：<code>任何菜品一周最多出现 2 次</code>（当前 5 道菜各出现 3 次）。同时需要扩充 agent 可用的食谱范围——目标是至少 40 道经过验证的菜品，覆盖不同蛋白质来源 × 不同碳水 × 不同烹饪方式的组合矩阵。没有足够的食谱库，agent 就会在精确性压力下退回到复用模式。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--or);">
+      <div class="ch"><span class="ci">3.</span><span class="ct">饮食限制过滤从软约束升级为硬约束</span><span class="tag p1">P1</span></div>
+      <div class="cb">
+        "希腊酸奶（无乳糖型）"说明系统在试图"绕过"限制而非"遵守"限制。乳糖不耐受的禁用清单应该在食材选择前做确定性过滤，禁止任何乳制品出现（包括"无乳糖版"的乳制品，因为用户不一定买得到）。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--yl);">
+      <div class="ch"><span class="ci">4.</span><span class="ct">引入食物营养数据库（持续优先）</span><span class="tag p1">P1</span></div>
+      <div class="cb">
+        虽然 v4 标注精度已经很高（97% ≤15%），但金枪鱼红薯仍然偏差 25.6%。确定性计算仍然是长期可靠性的保障——尤其当食谱库扩充后，新菜品的热量估算不一定像老菜品那么准。
+      </div>
+    </div>
+  </div>
+
+  <!-- Verdict -->
+  <div class="verdict">
+    <h3 style="color:var(--yl);">B+：数值能力达到 A 级，但被多样性和训练日缺失拖回 B+</h3>
+    <p>
+      v4 在<span class="hl">数值精确性</span>上取得了决定性突破：热量 7/7 达标、蛋白质 7/7 达标、标注精度 97%。如果只看这些指标，这是一份 A- 水平的计划。修正循环 + LLM 估算的组合在休息日场景下已经足够可靠。
+    </p>
+    <p>
+      但<span class="hl">两个系统性问题</span>把评级拉了回来：全周没有训练日（数据流 bug），以及 5 道菜各出现 3 次（多样性崩塌）。前者是 agent 间通信问题，后者是精确性压力下的策略退化。
+    </p>
+    <p>
+      从"用户不动脑子执行"的角度：如果用户真的连续吃一周，周三到周五他就会抱怨"又是红薯鸡蛋早餐盘 + 鸡胸肉西兰花饭"。<span class="hl">用户不会因为热量精确而忍受无聊——但一定会因为无聊而放弃整个计划。</span>多样性不是锦上添花，是用户留存的底线。
+    </p>
+    <p style="margin-top:16px;font-size:13px;color:var(--t);">
+      下一步最关键的两件事：<span class="hl">① 修复训练日数据流</span>（确保 CookingAgent 能区分训练日/休息日）、<span class="hl">② 扩充食谱库 + 强制多样性约束</span>（最多 2 次 + 40 道可验证菜品）。数值能力已经证明了，现在需要让这份计划"好吃且不无聊"。
+    </p>
+  </div>
+
+  <div style="text-align:center;padding:32px 0;border-top:1px solid var(--bd);color:var(--tm);font-size:11px;font-family:'JetBrains Mono',monospace;margin-top:32px;">
+    C+ → B → B+ → B+ · 下一站: A-
+  </div>
+</div>
+</body>
+</html>

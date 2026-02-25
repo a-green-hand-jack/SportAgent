@@ -80,6 +80,7 @@ _DEFAULT_MODELS: dict[str, str] = {
 # Per-provider hard limits on max_tokens (avoids 400 errors from stricter APIs)
 _MAX_TOKENS_CAP: dict[str, int] = {
     "deepseek": 8192,
+    "qwen": 8192,  # qwen-plus also caps output at 8192 tokens
 }
 
 
