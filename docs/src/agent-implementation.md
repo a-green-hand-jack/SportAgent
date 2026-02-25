@@ -99,40 +99,43 @@ Step 1 ── 食谱兼容性过滤
           ├─ get_compatible_recipes(dietary_restrictions)
           └─ get_banned_food_ids(dietary_restrictions)
 
-Step 2 ── 分批 LLM 生成（避免超出 token 上限）
-          Batch A: 第 1-4 天
-          Batch B: 第 5-7 天
-
+Step 2 ── 分批 LLM 生成（动态适配 Token 上限）
+          ├─ _compute_batches(): 根据 LLM 客户端的输出上限决定分批策略
+          │  ├─ 若上限 > 16384 (如 Gemini, DeepSeek R1) → 1 批 (7天)
+          │  └─ 若上限 ≤ 8192 (如 DeepSeek V3, Qwen Plus) → 3 批 (2, 2, 3天)
+          │
           每批 (_generate_batch):
             for attempt in range(max_retries + 1):
               response = client.chat(batch_prompt, max_tokens=8192)
               days = _parse_batch_response(response)
-              _overwrite_macros_deterministic(days)  # 用 KB 数据覆盖 LLM 报告的宏量
-              dietary_warnings = _validate_dietary_compliance(days, banned_food_ids)
-              calorie_warnings = _validate_calorie_compliance(days, calorie_target)
-              if warnings: 追加纠错 message → 重试
+
+              [确定性修正步骤]
+              ├─ _overwrite_macros_deterministic(days)  # 用 KB 数据覆盖 LLM 报告的宏量
+              ├─ _scale_day_to_calorie_target(days)    # 自动缩放食材量以严格契合热量目标
+              └─ _boost_protein_for_day(days)          # 针对性补足蛋白质缺口
+
+              [校验项 - 触发对话式重试]
+              ├─ 食材 ID 校验 (_validate_food_ids)
+              └─ 饮食忌口校验 (_validate_dietary_compliance)
+
+              if retry_warnings: 追加纠错 message → 重试
               else: break
 
 Step 3 ── 汇总
-          合并 14 天 → 7 天计划
+          合并各批次 → 7 天完整计划
           _aggregate_shopping_list()   # 去重聚合购物清单
           返回 WeeklyCookingPlan
 ```
 
-### 宏量素覆写（`_overwrite_macros_deterministic`）
+### 确定性修正与校验
 
-LLM 报告的营养数值**不可信**，Agent 在每次生成后自动覆写：
+为了解决 LLM 在数值计算和细节合规上的不可控性，Agent 引入了以下机制：
 
-1. 遍历每道菜的 `ingredient food_ids × amount_g`
-2. 从 `nutrition.json` 查出精确数值
-3. 覆写 `per_serving_macros`
-4. 重算 `day_total_macros`
-
-### 食谱多样性校验（`_validate_diversity`）
-
-- 同一 `recipe_id` 出现 > 50% 的餐次 → 警告
-- 蛋白质来源 < 3 种食材 ID → 警告
-- 这些警告**不触发重试**，仅记录日志
+1. **宏量素覆写 (`_overwrite_macros_deterministic`)**：完全忽略 LLM 报告的营养数值。遍历每道菜的 `ingredient food_ids × amount_g`，从 `nutrition.json` 查出精确数值进行重算。
+2. **热量自动缩放 (`_scale_day_to_calorie_target`)**：在保持食材配比不变的前提下，等比例缩放所有食材克数，使单日总热量精确达到用户目标。
+3. **蛋白质强化 (`_boost_protein_for_day`)**：若单日蛋白质不足，自动识别并增加高蛋白食材（如鸡胸肉、鸡蛋）的量。
+4. **练后餐校验 (`_validate_post_workout_protein`)**：确保训练日的练后餐含有足够的蛋白质（目标值的 25%-40%）。
+5. **食材 ID 校验 (`_validate_food_ids`)**：确保 LLM 返回的所有 `food_id` 都在知识库中。若出现幻觉（如 `kale_superfood`），会触发重试并要求 LLM 使用推荐的已知 ID。
 
 ---
 
@@ -154,15 +157,17 @@ class BaseLLMClient(ABC):
     ) -> LLMResponse: ...
 ```
 
-### 支持的提供商
+### 支持的提供商与 Token 管控
 
-| Provider    | 实现类               | 默认模型           | 备注                       |
-| ----------- | -------------------- | ------------------ | -------------------------- |
-| `anthropic` | `AnthropicClient`    | `claude-haiku-4-6` | system prompt 作为独立字段 |
-| `openai`    | `OpenAICompatClient` | `gpt-4o-mini`      |                            |
-| `deepseek`  | `OpenAICompatClient` | `deepseek-chat`    | max_tokens 上限 8192       |
-| `qwen`      | `OpenAICompatClient` | `qwen-plus`        |                            |
-| `gemini`    | `GeminiClient`       | `gemini-2.0-flash` |                            |
+Agent 通过 `_MAX_TOKENS_CAP` 注册表感知不同 Provider 的输出上限，从而自动切换单步/分步生成策略。
+
+| Provider    | 实现类               | 默认模型            | 备注                                   |
+| ----------- | -------------------- | ------------------- | -------------------------------------- |
+| `anthropic` | `AnthropicClient`    | `claude-haiku-4-6`  |                                        |
+| `openai`    | `OpenAICompatClient` | `gpt-4o-mini`       |                                        |
+| `deepseek`  | `OpenAICompatClient` | `deepseek-reasoner` | 默认使用 R1 模型，输出上限高，单批处理 |
+| `qwen`      | `OpenAICompatClient` | `qwen-turbo`        |                                        |
+| `gemini`    | `GeminiClient`       | `gemini-2.0-flash`  |                                        |
 
 Provider 和模型通过 `.env` 的 `LLM_PROVIDER` / `LLM_MODEL` 配置；也可通过 CLI `--provider` / `--model` 参数临时覆盖。
 

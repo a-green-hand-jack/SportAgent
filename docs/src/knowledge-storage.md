@@ -80,6 +80,9 @@ kb.get_compatible_recipes(dietary_restrictions: list[str]) -> list[RecipeTemplat
 
 # 被屏蔽的 food_id 集合（用于校验）
 kb.get_banned_food_ids(dietary_restrictions: list[str]) -> set[str]
+
+# 获取所有合法的 food_id 集合
+kb.all_food_ids -> set[str]
 ```
 
 逻辑：在 `nutrition_principles.json` 中查找 `DietarySubstitution` 条目，从其 `banned_food_tags` 字段中找到对应的食材 ID。

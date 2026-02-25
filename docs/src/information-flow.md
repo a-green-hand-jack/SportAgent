@@ -36,12 +36,11 @@
            yes ↓
    ▼
 [CookingAgent.generate_cooking_plan(weekly_plan, profile)]
-   │
-   ├─ KB 过滤：食谱兼容性
-   ├─ Batch A prompt (Day 1-4) → LLM → 验证 → 重试
-   ├─ Batch B prompt (Day 5-7) → LLM → 验证 → 重试
-   ├─ 宏量素覆写（确定性计算）
-   └─ → WeeklyCookingPlan（JSON）
+    │
+    ├─ KB 过滤：食谱兼容性
+    ├─ _compute_batches(): 决定分批策略 (1 批 vs 3 批)
+    ├─ 循环 Batch(es) → LLM → 确定性修正 (缩放/强化) → 验证 → 重试
+    └─ → WeeklyCookingPlan（JSON）
    │
    └──► 保存 JSON + Markdown → Rich 终端渲染
 ```
@@ -171,23 +170,27 @@ WeeklyPlan + UserProfile
     ├─► KB.get_banned_food_ids(dietary_restrictions)
     │       → banned_food_ids: set[str]
     │
-    └─► Batch A (Day 1-4)
-    │       messages = [Message(role="user", content=batch_prompt)]
-    │       batch_prompt 包含：
-    │         - 用户热量/蛋白质目标
-    │         - 训练日 vs 休息日安排
-    │         - 饮食限制
-    │         - 食谱候选池（cuisine + ingredients）
-    │         - 输出 JSON schema
-    │       LLM → JSON string
-    │       _parse_batch_response() → list[DayMealPlan]
-    │       _overwrite_macros_deterministic()   ← 覆写宏量素
-    │       validate dietary + calorie
-    │       （若失败追加 correction → 重试一次）
+    ├─► _compute_batches()
+    │       → 决定是 1 批 (7天) 还是 3 批 (2, 2, 3天)
     │
-    └─► Batch B (Day 5-7)  同上
+    └─► 循环各 Batch (A/B/C)
+            messages = [Message(role="user", content=batch_prompt)]
+            LLM → JSON string
+            _parse_batch_response() → list[DayMealPlan]
 
-合并 → WeeklyCookingPlan → _aggregate_shopping_list()
+            [确定性修正步骤 - 保证 100% 准确性]
+            ├─ _overwrite_macros_deterministic()  # 覆写宏量素（查知识库）
+            ├─ _scale_day_to_calorie_target()    # 自动等比例缩放食材量
+            └─ _boost_protein_for_day()          # 针对性强化蛋白质食材
+
+            [校验与重试环节]
+            ├─ _validate_food_ids()              # 校验食材 ID 幻觉
+            ├─ _validate_dietary_compliance()    # 校验过敏/忌口
+            └─ _validate_post_workout_protein()  # 深度检查练后餐蛋白质
+
+            （若有 ID 缺失或忌口违规，追加 correction message → 重试）
+
+合并各批次 → WeeklyCookingPlan → _aggregate_shopping_list()
 ```
 
 ---
