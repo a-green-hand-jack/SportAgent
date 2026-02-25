@@ -62,12 +62,14 @@ _OPENAI_COMPAT_PROVIDERS: dict[str, tuple[str, str, str]] = {
     "deepseek": (
         "https://api.deepseek.com/v1",
         "DEEPSEEK_API_KEY",
-        "deepseek-chat",
+        "deepseek-reasoner",  # deepseek-R1: 32k–64k output — single-batch for 7-day plan
+                              # deepseek-chat (V3): only 8k output ← needs 3-batch
     ),
     "qwen": (
         "https://dashscope.aliyuncs.com/compatible-mode/v1",
         "QWEN_API_KEY",
-        "qwen-plus",
+        "qwen-turbo",  # 16,384 output tokens — sufficient for 7-day plan in one shot
+                       # upgrade to qwen-max (32,768 out) for maximum reliability
     ),
 }
 
@@ -77,10 +79,27 @@ _DEFAULT_MODELS: dict[str, str] = {
     **{name: cfg[2] for name, cfg in _OPENAI_COMPAT_PROVIDERS.items()},
 }
 
-# Per-provider hard limits on max_tokens (avoids 400 errors from stricter APIs)
+# Per-provider hard limits on max_tokens (avoids 400 errors or truncation).
+# Only OpenAI-compatible providers (those in _OPENAI_COMPAT_PROVIDERS) use this dict.
+# Anthropic and Gemini handle their own limits inside their respective SDK clients.
+#
+# Known output token ceilings (as of early 2025):
+#   openai         – gpt-4o / gpt-4o-mini:      16,384 out  → single-batch
+#   deepseek       – deepseek-reasoner (R1):  32k–64k out  → single-batch (default)
+#                  – deepseek-chat (V3):         8,000 out  ← needs 3-batch if used
+#   qwen           – qwen-turbo:              16,384 out  → single-batch (default)
+#                  – qwen-max:                32,768 out  → single-batch
+#                  – qwen-plus / qwen-long:    8,192 out  ← needs 3-batch if used
+#   anthropic      – claude-3.5-sonnet/haiku:  8,192 out; haiku-4.5: 64k  (native SDK)
+#   gemini         – gemini-2.0-flash:          8,192 out; 1.5/2.5+: 65k+ (native SDK)
 _MAX_TOKENS_CAP: dict[str, int] = {
-    "deepseek": 8192,
-    "qwen": 8192,  # qwen-plus also caps output at 8192 tokens
+    # Real provider overrides: add here only if the default model has a low output cap.
+    # e.g.: "deepseek": 8192  ← uncomment if switching back to deepseek-chat
+    # e.g.: "qwen": 8192      ← uncomment if switching back to qwen-plus
+    #
+    # Test-only sentinel: lets unit tests exercise the 3-batch path without
+    # depending on a real provider's cap (which can change with default model updates).
+    "test-low-cap": 8192,
 }
 
 

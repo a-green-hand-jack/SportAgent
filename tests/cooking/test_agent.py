@@ -359,7 +359,7 @@ class TestCookingAgent:
         self, kb, profile, weekly_plan
     ) -> None:
         """DeepSeek provider (low cap) uses 3 batches [2+2+3] = 3 LLM calls."""
-        client = _make_llm_client(profile, provider="deepseek")
+        client = _make_llm_client(profile, provider="test-low-cap")
         agent = CookingAgent(client=client, kb=kb)
         agent._validate_calorie_compliance = lambda plan, target: []
         agent._validate_dietary_compliance = lambda plan, banned: []
@@ -452,7 +452,7 @@ class TestRetryLoop:
     def test_retries_on_dietary_violation(self, kb, profile, weekly_plan) -> None:
         """DeepSeek 3-batch: max_retries=1 → 2 calls/batch × 3 batches = 6 total."""
         max_retries = 1
-        client = _make_llm_client(profile, provider="deepseek")
+        client = _make_llm_client(profile, provider="test-low-cap")
         agent = CookingAgent(client=client, kb=kb, max_retries=max_retries)
         agent._validate_dietary_compliance = lambda plan, banned: [
             "- 周一/鸡胸饭：食材 'chicken_breast'（鸡胸肉）违反饮食限制"
@@ -463,7 +463,7 @@ class TestRetryLoop:
     def test_max_retries_respected(self, kb, profile, weekly_plan) -> None:
         """DeepSeek 3-batch: (max_retries+1) × 3 total calls maximum."""
         max_retries = 2
-        client = _make_llm_client(profile, provider="deepseek")
+        client = _make_llm_client(profile, provider="test-low-cap")
         agent = CookingAgent(client=client, kb=kb, max_retries=max_retries)
         agent._validate_dietary_compliance = lambda plan, banned: [
             "- 周一：饮食违规"
@@ -473,7 +473,7 @@ class TestRetryLoop:
 
     def test_no_retry_when_all_valid(self, kb, profile, weekly_plan) -> None:
         """No warnings → 1 call for mock (high-cap), 3 for deepseek (low-cap)."""
-        client = _make_llm_client(profile, provider="deepseek")
+        client = _make_llm_client(profile, provider="test-low-cap")
         agent = CookingAgent(client=client, kb=kb, max_retries=2)
         agent._validate_dietary_compliance = lambda plan, banned: []
         agent.generate_cooking_plan(weekly_plan, profile)
@@ -481,7 +481,7 @@ class TestRetryLoop:
 
     def test_no_llm_retry_for_calorie(self, kb, profile, weekly_plan) -> None:
         """Calorie issues do NOT trigger LLM retry — 3 calls for deepseek (one per batch)."""
-        client = _make_llm_client(profile, provider="deepseek")
+        client = _make_llm_client(profile, provider="test-low-cap")
         agent = CookingAgent(client=client, kb=kb, max_retries=2)
         agent._validate_dietary_compliance = lambda plan, banned: []
         # Even if calorie validation would fail, no retry
@@ -1838,7 +1838,7 @@ class TestPipelineIntegration:
         # batch A: bad → good (retry); batch B: good; batch C: good
         client = _make_multi_response_client(
             [bad_json, good_json_a, good_json_b, good_json_c],
-            provider="deepseek",
+            provider="test-low-cap",
         )
         agent = CookingAgent(client=client, kb=kb, max_retries=1)
         agent._validate_dietary_compliance = lambda plan, banned: []
