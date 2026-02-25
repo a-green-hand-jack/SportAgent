@@ -502,3 +502,141 @@ class TestInjuryProfiles:
         )
         text = kb.format_injury_guidance_for_prompt([ContraindicationTag.knee_injury])
         assert text == ""
+
+
+# ---------------------------------------------------------------------------
+# Recipe queries
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def kb_with_recipes() -> KnowledgeBase:
+    """KnowledgeBase with recipe templates from test fixtures."""
+    return KnowledgeBase(
+        exercises_path=TEST_DATA / "exercises.json",
+        nutrition_path=TEST_DATA / "nutrition.json",
+        rules_path=TEST_DATA / "rules.json",
+        anatomy_path=TEST_DATA / "anatomy.json",
+        nutrition_principles_path=TEST_DATA / "nutrition_principles.json",
+        recipes_path=TEST_DATA / "recipes.json",
+    )
+
+
+class TestRecipeLoading:
+    def test_load_recipes(self, kb_with_recipes: KnowledgeBase) -> None:
+        """Should load all 8 recipes from the test fixture."""
+        assert len(kb_with_recipes.recipes) == 8
+
+    def test_recipe_ids_unique(self, kb_with_recipes: KnowledgeBase) -> None:
+        ids = [r.id for r in kb_with_recipes.recipes]
+        assert len(ids) == len(set(ids))
+
+    def test_recipes_empty_when_path_none(self, tmp_path: Path) -> None:
+        kb = KnowledgeBase(
+            exercises_path=tmp_path / "no_exercises.json",
+            nutrition_path=tmp_path / "no_nutrition.json",
+            rules_path=tmp_path / "no_rules.json",
+            recipes_path=None,
+        )
+        assert kb.recipes == []
+
+
+class TestGetFoodById:
+    def test_found(self, kb_with_recipes: KnowledgeBase) -> None:
+        food = kb_with_recipes.get_food_by_id("chicken_breast")
+        assert food is not None
+        assert food.name_zh == "鸡胸肉"
+
+    def test_not_found(self, kb_with_recipes: KnowledgeBase) -> None:
+        assert kb_with_recipes.get_food_by_id("nonexistent_food") is None
+
+
+class TestRecipeQueries:
+    def test_get_recipes_by_meal_type(self, kb_with_recipes: KnowledgeBase) -> None:
+        breakfasts = kb_with_recipes.get_recipes_by_meal_type("breakfast")
+        assert len(breakfasts) == 2
+        assert all(r.meal_type == "breakfast" for r in breakfasts)
+
+    def test_get_recipes_by_meal_type_lunch(self, kb_with_recipes: KnowledgeBase) -> None:
+        lunches = kb_with_recipes.get_recipes_by_meal_type("lunch")
+        assert len(lunches) == 2
+
+    def test_get_compatible_recipes_no_restriction(
+        self, kb_with_recipes: KnowledgeBase
+    ) -> None:
+        """No restrictions → all recipes returned."""
+        result = kb_with_recipes.get_compatible_recipes([])
+        assert len(result) == 8
+
+    def test_get_compatible_recipes_vegetarian(
+        self, kb_with_recipes: KnowledgeBase
+    ) -> None:
+        """vegetarian → only recipes with dietary_flags or substitution_groups."""
+        result = kb_with_recipes.get_compatible_recipes(["vegetarian"])
+        # Recipes that natively satisfy OR have substitution for vegetarian
+        assert len(result) > 0
+        for r in result:
+            assert (
+                "vegetarian" in r.dietary_flags
+                or "vegetarian" in r.substitution_groups
+            ), f"Recipe {r.id} should be vegetarian-compatible"
+
+    def test_get_compatible_recipes_vegan(
+        self, kb_with_recipes: KnowledgeBase
+    ) -> None:
+        result = kb_with_recipes.get_compatible_recipes(["vegan"])
+        assert len(result) > 0
+        for r in result:
+            assert "vegan" in r.dietary_flags or "vegan" in r.substitution_groups
+
+    def test_compute_recipe_macros(self, kb_with_recipes: KnowledgeBase) -> None:
+        """Deterministic macro computation from ingredients."""
+        recipe = kb_with_recipes.get_recipes_by_meal_type("lunch")[0]
+        # Should be chicken_rice_broccoli
+        macros = kb_with_recipes.compute_recipe_macros(recipe)
+        assert macros["calories"] > 0
+        assert macros["protein_g"] > 0
+        # Chicken 150g: 165*1.5=247.5 cal, Rice 200g: 130*2=260 cal, Broccoli 100g: 34 cal
+        # Total ≈ 541.5 cal
+        assert abs(macros["calories"] - 541.5) < 1.0
+
+    def test_compute_recipe_macros_unknown_food_skipped(
+        self, kb_with_recipes: KnowledgeBase
+    ) -> None:
+        """Unknown food_ids are silently skipped."""
+        from fitness_agent.knowledge_base.models import RecipeIngredientTemplate, RecipeTemplate
+        recipe = RecipeTemplate(
+            id="test_unknown",
+            name="Test",
+            name_zh="测试",
+            meal_type="lunch",
+            ingredients=[
+                RecipeIngredientTemplate(food_id="nonexistent", amount_g=100),
+            ],
+            steps_zh=["步骤1"],
+        )
+        macros = kb_with_recipes.compute_recipe_macros(recipe)
+        assert macros["calories"] == 0.0
+
+    def test_format_recipes_for_prompt(self, kb_with_recipes: KnowledgeBase) -> None:
+        text = kb_with_recipes.format_recipes_for_prompt()
+        assert "食谱参考库" in text
+        # At least one recipe name should appear
+        assert "燕麦鸡蛋香蕉碗" in text or "鸡胸肉西兰花饭" in text
+
+    def test_format_recipes_for_prompt_with_subset(
+        self, kb_with_recipes: KnowledgeBase
+    ) -> None:
+        breakfasts = kb_with_recipes.get_recipes_by_meal_type("breakfast")
+        text = kb_with_recipes.format_recipes_for_prompt(breakfasts)
+        assert "breakfast" in text
+        # Lunch recipes should NOT appear
+        assert "chicken_rice_broccoli" not in text
+
+    def test_format_recipes_for_prompt_empty(self, tmp_path: Path) -> None:
+        kb = KnowledgeBase(
+            exercises_path=tmp_path / "no_exercises.json",
+            nutrition_path=tmp_path / "no_nutrition.json",
+            rules_path=tmp_path / "no_rules.json",
+            recipes_path=None,
+        )
+        assert kb.format_recipes_for_prompt() == ""

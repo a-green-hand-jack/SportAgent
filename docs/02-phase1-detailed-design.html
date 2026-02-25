@@ -23,6 +23,7 @@
     --yellow: #fbbf24;
     --cyan: #22d3ee;
     --pink: #f472b6;
+    --pink: #f472b6;
     --red: #ef4444;
   }
 
@@ -475,17 +476,188 @@
     </div>
   </div>
 
+  <!-- ============ v0.4.x 监控反馈 ============ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num" style="background:rgba(244,114,182,0.08);color:var(--pink);border:1px solid rgba(244,114,182,0.2);">04</span>
+      <span class="section-title">v0.4.x · 监控与反馈闭环</span>
+    </div>
+
+    <div class="version-block vb-monitor">
+      <div class="version-header">
+        <span class="version-badge" style="background:rgba(244,114,182,0.1);color:var(--pink);border:1px solid rgba(244,114,182,0.2);">v0.4.x</span>
+        <span class="version-name" style="color:var(--pink);">MonitorAgent — 预期 vs 真实 + 持续纠偏</span>
+      </div>
+
+      <div class="version-desc">
+        前面的 v0.1.x ~ v0.3.x 解决的是"怎么规划"的问题，但规划再好，如果不知道用户实际做了什么、效果如何，系统就是"开环"的。MonitorAgent 负责把系统变成"闭环"——持续追踪用户的真实执行情况和身体指标变化，与预期目标对比，在偏差出现时及时触发调整。
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">📊</span>
+          <span class="card-title">核心双目标</span>
+          <span class="card-tag" style="background:rgba(244,114,182,0.1);color:var(--pink);border:1px solid rgba(244,114,182,0.15);">MONITOR</span>
+        </div>
+        <div class="card-body">
+          <strong style="color:var(--text);">目标一：真实情况尽可能贴合预期</strong> — 用户这周计划练 5 天，实际练了几天？计划每天摄入 2500 kcal，实际吃了多少？计划每组深蹲做 10 次，实际完成了几次？偏差越小说明计划的可执行性越好，偏差越大说明计划需要调整。<br><br>
+          <strong style="color:var(--text);">目标二：指标持续向好的方向发展</strong> — 体重是否在按预期变化？力量是否在渐进提升？体脂率的趋势是否正确？即使用户严格执行了计划，如果指标没有向好的方向发展，说明计划本身需要修正。
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <div class="flow-box">
+        <div class="flow-title">📈 预期 vs 真实 仪表盘（Dashboard Tool）</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:18px;">
+            <div style="font-size:12px;font-weight:600;color:var(--pink);margin-bottom:12px;">📋 执行追踪维度</div>
+            <div style="font-size:12px;color:var(--text-dim);line-height:2;">
+              训练完成率（计划 vs 实际训练天数）<br>
+              单次训练完成度（计划动作 vs 实际完成）<br>
+              重量进展（计划渐进 vs 实际使用重量）<br>
+              饮食遵从度（计划热量 vs 实际摄入）<br>
+              蛋白质达标率（每日是否达到目标）
+            </div>
+          </div>
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:18px;">
+            <div style="font-size:12px;font-weight:600;color:var(--cyan);margin-bottom:12px;">📏 身体指标维度</div>
+            <div style="font-size:12px;color:var(--text-dim);line-height:2;">
+              体重变化曲线（预期趋势 vs 实际趋势）<br>
+              体脂率变化（如有数据）<br>
+              主要动作力量曲线（深蹲/卧推/硬拉）<br>
+              围度变化（胸围/臂围/腰围，如有数据）<br>
+              主观感受追踪（疲劳度/睡眠质量/精力）
+            </div>
+          </div>
+        </div>
+        <div class="flow-note">
+          仪表盘是一个持续更新的可视化工具。用户可以随时查看自己的进展，MonitorAgent 也基于这些数据做出判断。
+        </div>
+      </div>
+
+      <!-- Feedback triggers -->
+      <div class="cascade-box">
+        <div class="cascade-title">⚡ 偏差触发的自动调整</div>
+
+        <div class="cascade-row">
+          <div class="cascade-trigger">📉 连续 2 周训练完成率 < 70%</div>
+          <div class="cascade-arrow">→</div>
+          <div class="cascade-effects">
+            <span class="cascade-effect">判断原因（太难？没时间？）</span>
+            <span class="cascade-effect">PlanAgent 降低训练频率或容量</span>
+            <span class="cascade-effect">主动询问用户障碍</span>
+          </div>
+        </div>
+
+        <div class="cascade-row">
+          <div class="cascade-trigger">📉 体重 2 周无变化（增肌目标）</div>
+          <div class="cascade-arrow">→</div>
+          <div class="cascade-effects">
+            <span class="cascade-effect">检查饮食遵从度</span>
+            <span class="cascade-effect">CookingAgent 上调热量 150-200kcal</span>
+            <span class="cascade-effect">标记需要下周复查</span>
+          </div>
+        </div>
+
+        <div class="cascade-row">
+          <div class="cascade-trigger">📈 某动作力量连续 3 周停滞</div>
+          <div class="cascade-arrow">→</div>
+          <div class="cascade-effects">
+            <span class="cascade-effect">GYMAgent 调整该动作的渐进策略</span>
+            <span class="cascade-effect">引入变体动作或改变组次数方案</span>
+            <span class="cascade-effect">检查是否需要减量周</span>
+          </div>
+        </div>
+
+        <div class="cascade-row">
+          <div class="cascade-trigger">⚠️ 用户饮食长期偏离计划</div>
+          <div class="cascade-arrow">→</div>
+          <div class="cascade-effects">
+            <span class="cascade-effect">分析偏离模式（哪些餐？哪类食物？）</span>
+            <span class="cascade-effect">CookingAgent 调整方案贴近用户实际饮食习惯</span>
+            <span class="cascade-effect">更新用户偏好记录</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data collection -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">📱</span>
+          <span class="card-title">数据采集方式</span>
+          <span class="card-tag tag-ux">交互</span>
+        </div>
+        <div class="card-body">
+          MonitorAgent 需要数据才能工作，但数据采集不能给用户增加太多负担。数据来源分为三类：<br><br>
+          <strong style="color:var(--text);">主动记录（低频、高价值）</strong> — 每周 1-2 次称体重（提醒式）、每月 1 次体脂/围度测量、训练后标记完成状态（一键操作）。<br><br>
+          <strong style="color:var(--text);">对话式采集（自然、无负担）</strong> — 用户在日常对话中透露的信息（"今天中午吃了火锅"、"昨晚没睡好"）由 Agent 自动提取并记录，无需用户专门汇报。<br><br>
+          <strong style="color:var(--text);">自动推断（零成本）</strong> — 用户没有标记训练完成 → 推断为未完成。连续 3 天没有饮食记录 → 标记为饮食遵从度未知。日历显示出差 → 推断训练条件受限。
+        </div>
+      </div>
+
+      <!-- Closed loop -->
+      <div class="flow-box">
+        <div class="flow-title">🔄 完整的闭环反馈系统</div>
+        <div class="flow-row">
+          <div class="flow-step">
+            <div class="flow-step-box" style="border-color:rgba(255,107,53,0.3);">
+              <div class="flow-step-icon">📋</div>
+              <div class="flow-step-name">Plan + Guidance</div>
+            </div>
+            <div class="flow-step-detail">PlanAgent<br>CookingAgent<br>GYMAgent</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-box">
+              <div class="flow-step-icon">🏃</div>
+              <div class="flow-step-name">用户执行</div>
+            </div>
+            <div class="flow-step-detail">训练 / 饮食<br>日常生活</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-box" style="border-color:rgba(244,114,182,0.3);">
+              <div class="flow-step-icon">📊</div>
+              <div class="flow-step-name">MonitorAgent</div>
+            </div>
+            <div class="flow-step-detail">采集数据<br>对比预期</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-box" style="border-color:rgba(244,114,182,0.3);">
+              <div class="flow-step-icon">📈</div>
+              <div class="flow-step-name">Dashboard</div>
+            </div>
+            <div class="flow-step-detail">预期 vs 真实<br>趋势分析</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-box" style="border-color:rgba(255,107,53,0.3);">
+              <div class="flow-step-icon">🔄</div>
+              <div class="flow-step-name">自动纠偏</div>
+            </div>
+            <div class="flow-step-detail">触发 PlanAgent<br>调整计划</div>
+          </div>
+        </div>
+        <div class="flow-note">
+          这是整个 Phase 1 的完整闭环：规划 → 执行 → 监控 → 反馈 → 再规划。MonitorAgent 是把"开环系统"变成"闭环系统"的关键。
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- ============ SUMMARY ============ -->
   <div class="section">
     <div class="section-head">
-      <span class="section-num" style="background:rgba(255,107,53,0.08);color:var(--orange);border:1px solid rgba(255,107,53,0.2);">04</span>
+      <span class="section-num" style="background:rgba(255,107,53,0.08);color:var(--orange);border:1px solid rgba(255,107,53,0.2);">05</span>
       <span class="section-title">Phase 1 全景一览</span>
     </div>
 
     <div class="summary">
-      <h3>从静态到动态到自进化</h3>
+      <h3>从静态到动态到自进化到闭环</h3>
       <p>
-        Phase 1 的核心逻辑是一条清晰的进化路径：v0.1.x 解决"能不能生成一个好计划"的问题（已基本完成），v0.1.x 的后半段通过子 Agent 解决"计划的每个细节是否足够具体和可执行"的问题，v0.2.x 解决"计划能不能适应用户的真实生活"的问题，v0.3.x 解决"系统的知识能不能持续进步"的问题。
+        Phase 1 的核心逻辑是一条清晰的进化路径：v0.1.x 解决"能不能生成一个好计划"的问题（已基本完成），v0.1.x 的后半段通过子 Agent 解决"计划的每个细节是否足够具体和可执行"的问题，v0.2.x 解决"计划能不能适应用户的真实生活"的问题，v0.3.x 解决"系统的知识能不能持续进步"的问题，v0.4.x 解决"系统知不知道计划的效果如何"的问题——补上反馈闭环这最关键的一环。
       </p>
 
       <table class="summary-table">
@@ -527,6 +699,12 @@
             <td>知识库自动进化</td>
             <td>KBAgent + PlanAgent</td>
             <td>系统越用越懂我，知识越来越新</td>
+          </tr>
+          <tr>
+            <td style="color:var(--pink);">v0.4.x</td>
+            <td>监控反馈闭环 + 仪表盘</td>
+            <td>MonitorAgent + PlanAgent + CookingAgent + GYMAgent</td>
+            <td>系统知道我做了什么、效果如何，自动纠偏</td>
           </tr>
         </tbody>
       </table>

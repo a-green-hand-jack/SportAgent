@@ -308,3 +308,49 @@ class InjuryProfile(BaseModel):
     )
     warmup_focus_zh: str = Field(description="热身阶段的重点说明")
     general_guidance_zh: str = Field(description="整体训练注意事项（1-2 句）")
+
+
+# ---------------------------------------------------------------------------
+# RecipeTemplate  (食谱模板库)
+# ---------------------------------------------------------------------------
+
+class RecipeIngredientTemplate(BaseModel):
+    """A single ingredient entry in a recipe template."""
+    food_id: str = Field(description="引用 nutrition.json 中的 FoodItem.id")
+    amount_g: float = Field(ge=0, description="食材用量（克）")
+    note: str = Field(default="", description="备注，如'切丁'、'2个全蛋'")
+
+
+class SubstitutionEntry(BaseModel):
+    """How to replace a specific ingredient for a dietary restriction."""
+    replacement_id: str = Field(description="替换食材的 food_id")
+    amount_g: float = Field(ge=0, description="替换食材用量（克）")
+    note: str = Field(default="", description="替换说明")
+
+
+class RecipeTemplate(BaseModel):
+    """A recipe template in the knowledge base."""
+    id: str = Field(description="唯一 ID，snake_case")
+    name: str = Field(description="英文名称")
+    name_zh: str = Field(description="中文名称")
+    meal_type: str = Field(description="餐食类型: breakfast|lunch|dinner|snack|pre_workout|post_workout")
+    tags: list[str] = Field(default_factory=list, description="筛选标签，如 high_protein, quick, batch_friendly")
+    dietary_flags: list[str] = Field(
+        default_factory=list,
+        description="该食谱原生满足的饮食限制，如 vegetarian, vegan, gluten_free"
+    )
+    prep_time_minutes: int = Field(default=0, ge=0, description="准备时间（分钟）")
+    cook_time_minutes: int = Field(default=0, ge=0, description="烹饪时间（分钟）")
+    servings: int = Field(default=1, ge=1, description="份数")
+    batch_friendly: bool = Field(default=False, description="是否适合批量备餐")
+    ingredients: list[RecipeIngredientTemplate] = Field(min_length=1, description="食材列表")
+    steps_zh: list[str] = Field(min_length=1, description="中文烹饪步骤")
+    per_serving_macros: dict[str, float] = Field(
+        default_factory=dict,
+        description="每份预计算营养数据: calories, protein_g, carbs_g, fat_g"
+    )
+    substitution_groups: dict[str, dict[str, SubstitutionEntry | None]] = Field(
+        default_factory=dict,
+        description="按饮食限制的食材替换方案，键为限制ID，值为{food_id: SubstitutionEntry}"
+    )
+    scaling_notes: str = Field(default="", description="份量调整说明")

@@ -90,7 +90,7 @@
   /* ===== PHASE 1 DETAIL (roadmap) ===== */
   .roadmap { margin-top:40px; }
   .roadmap-track { position:relative; padding-left:36px; }
-  .roadmap-track::before { content:''; position:absolute; left:14px; top:0; bottom:0; width:2px; background:linear-gradient(to bottom, var(--orange), var(--yellow), var(--green)); border-radius:1px; }
+  .roadmap-track::before { content:''; position:absolute; left:14px; top:0; bottom:0; width:2px; background:linear-gradient(to bottom, var(--orange), var(--yellow), var(--cyan), var(--blue), var(--green), var(--pink)); border-radius:1px; }
 
   .roadmap-item { position:relative; margin-bottom:24px; }
   .roadmap-item::before { content:''; position:absolute; left:-28px; top:8px; width:10px; height:10px; border-radius:50%; border:2px solid; }
@@ -99,6 +99,7 @@
   .roadmap-item:nth-child(3)::before { border-color:var(--cyan); background:rgba(34,211,238,0.3); }
   .roadmap-item:nth-child(4)::before { border-color:var(--blue); background:rgba(74,158,255,0.3); }
   .roadmap-item:nth-child(5)::before { border-color:var(--green); background:rgba(52,211,153,0.3); }
+  .roadmap-item:nth-child(6)::before { border-color:var(--pink); background:rgba(244,114,182,0.3); }
 
   .roadmap-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 26px; }
   .roadmap-ver { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; margin-bottom:6px; }
@@ -107,6 +108,7 @@
   .roadmap-item:nth-child(3) .roadmap-ver { color:var(--cyan); }
   .roadmap-item:nth-child(4) .roadmap-ver { color:var(--blue); }
   .roadmap-item:nth-child(5) .roadmap-ver { color:var(--green); }
+  .roadmap-item:nth-child(6) .roadmap-ver { color:var(--pink); }
   .roadmap-name { font-size:15px; font-weight:700; margin-bottom:6px; }
   .roadmap-desc { font-size:12px; color:var(--text-dim); line-height:1.8; }
   .roadmap-agents { display:flex; gap:6px; margin-top:10px; }
@@ -195,15 +197,17 @@
         <div class="phase-status status-active"><span class="status-dot"></span>当前阶段</div>
         <div class="phase-title">规划 Agent</div>
         <div class="phase-desc">
-          独立完成规划 Agent 的全部能力。从静态计划生成（v0.1.x）到用户交互调整（v0.2.x）再到知识库自进化（v0.3.x）。目标：仅靠文本交互就能为用户提供完整的、可执行的、动态调整的健身方案。
+          独立完成规划 Agent 的全部能力。从静态计划生成（v0.1.x）到用户交互调整（v0.2.x）到知识库自进化（v0.3.x）再到监控反馈闭环（v0.4.x）。目标：仅靠文本交互就能为用户提供完整的、可执行的、动态调整的、闭环追踪的健身方案。
         </div>
         <div class="phase-tags">
           <span class="phase-tag">PlanAgent</span>
           <span class="phase-tag">CookingAgent</span>
           <span class="phase-tag">GYMAgent</span>
           <span class="phase-tag">KBAgent</span>
+          <span class="phase-tag">MonitorAgent</span>
           <span class="phase-tag">用户交互</span>
           <span class="phase-tag">日程感知</span>
+          <span class="phase-tag">仪表盘</span>
         </div>
       </div>
 
@@ -323,6 +327,23 @@
             <div class="roadmap-agents">
               <span class="roadmap-agent-tag tag-kb">KBAgent</span>
               <span class="roadmap-agent-tag tag-plan">PlanAgent</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- v0.4.x -->
+        <div class="roadmap-item">
+          <div class="roadmap-card">
+            <div class="roadmap-ver">v0.4.x · 监控反馈 — 闭环追踪与纠偏</div>
+            <div class="roadmap-name">MonitorAgent：预期 vs 真实 + 持续纠偏</div>
+            <div class="roadmap-desc">
+              MonitorAgent 负责追踪用户的真实执行情况（训练完成度、实际饮食、体重/体脂变化），维护一张"预期指标 vs 真实指标"的仪表盘。核心双目标：（1）真实情况尽可能贴合预期计划；（2）各项指标持续向好的方向发展。偏差超过阈值时自动触发 PlanAgent 调整计划，形成完整的闭环反馈系统。
+            </div>
+            <div class="roadmap-agents">
+              <span class="roadmap-agent-tag" style="background:rgba(244,114,182,0.1);color:#f472b6;border:1px solid rgba(244,114,182,0.15);">MonitorAgent</span>
+              <span class="roadmap-agent-tag tag-plan">PlanAgent</span>
+              <span class="roadmap-agent-tag tag-cook">CookingAgent</span>
+              <span class="roadmap-agent-tag tag-gym">GYMAgent</span>
             </div>
           </div>
         </div>

@@ -106,6 +106,91 @@ def _display_plan(plan) -> None:  # type: ignore[no-untyped-def]
 
 
 # ---------------------------------------------------------------------------
+# Helpers: Rich display — Cooking Plan
+# ---------------------------------------------------------------------------
+
+def _display_cooking_plan(plan) -> None:  # type: ignore[no-untyped-def]
+    """Render a WeeklyCookingPlan with Rich formatting."""
+    from fitness_agent.cooking.models import WeeklyCookingPlan
+    assert isinstance(plan, WeeklyCookingPlan)
+
+    console.print()
+    compliant = sum(1 for d in plan.daily_plans if abs(d.calorie_deviation_pct) <= 10.0)
+    console.print(Panel.fit(
+        f"[bold green]🍳 {plan.user_name} 的周饮食计划[/bold green]\n"
+        f"热量达标: [cyan]{compliant}/7 天[/cyan]  |  "
+        f"采购项: [cyan]{len(plan.shopping_list)}[/cyan]",
+        border_style="green",
+    ))
+
+    # --- Daily meal plans ---
+    for day in plan.daily_plans:
+        day_type = "[bold red]训练日[/bold red]" if day.is_training_day else "[bold blue]休息日[/bold blue]"
+        dev = day.calorie_deviation_pct
+        dev_color = "green" if abs(dev) <= 10 else "red"
+        dev_str = f"[{dev_color}]{dev:+.1f}%[/{dev_color}]"
+
+        meal_table = Table(
+            "餐食", "菜品", "热量", "蛋白质", "时间",
+            box=box.SIMPLE_HEAD, show_header=True,
+            header_style="bold cyan",
+        )
+        for recipe in day.meals:
+            meal_table.add_row(
+                recipe.meal_type,
+                f"[bold]{recipe.name_zh}[/bold]",
+                f"{recipe.per_serving_macros.calories:.0f} kcal",
+                f"{recipe.per_serving_macros.protein_g:.0f} g",
+                f"{recipe.prep_time_minutes}+{recipe.cook_time_minutes}min",
+            )
+
+        day_header = (
+            f"[bold yellow]{day.day_label}[/bold yellow] {day_type}  "
+            f"总热量: {day.day_total_macros.calories:.0f} kcal (偏差 {dev_str})"
+        )
+        console.print(Panel(meal_table, title=day_header, border_style="yellow"))
+
+    # --- Shopping list ---
+    if plan.shopping_list:
+        shop_table = Table(
+            "食材", "用量(g)", "分类",
+            box=box.SIMPLE_HEAD, show_header=True,
+            header_style="bold cyan",
+        )
+        for item in plan.shopping_list:
+            shop_table.add_row(
+                item.food_name_zh,
+                f"{item.total_amount_g:.0f}",
+                item.category,
+            )
+        console.print(Panel(shop_table, title="[bold]🛒 周采购清单[/bold]", border_style="blue"))
+
+    # --- Meal prep suggestions ---
+    if plan.meal_prep_suggestions:
+        prep_lines = []
+        for s in plan.meal_prep_suggestions:
+            prep_lines.append(
+                f"• **{s.recipe_name_zh}**：{s.prep_day}准备 → {', '.join(s.covers_days)}\n"
+                f"  储存: {s.storage_zh} | 加热: {s.reheat_zh}"
+            )
+        console.print(Panel(
+            "\n".join(prep_lines),
+            title="[bold]📦 备餐建议[/bold]",
+            border_style="cyan",
+        ))
+
+    # --- Cooking tips ---
+    if plan.cooking_tips_zh:
+        console.print(Panel(
+            plan.cooking_tips_zh,
+            title="[bold]💡 烹饪提示[/bold]",
+            border_style="magenta",
+        ))
+
+    console.print()
+
+
+# ---------------------------------------------------------------------------
 # Helpers: Markdown export
 # ---------------------------------------------------------------------------
 
@@ -182,6 +267,78 @@ def _plan_to_markdown(plan) -> str:  # type: ignore[no-untyped-def]
     return "\n".join(lines)
 
 
+def _cooking_plan_to_markdown(plan) -> str:  # type: ignore[no-untyped-def]
+    """Convert a WeeklyCookingPlan to a human-readable Markdown string."""
+    lines: list[str] = []
+
+    lines.append(f"# 🍳 {plan.user_name} 的周饮食计划\n")
+    compliant = sum(1 for d in plan.daily_plans if abs(d.calorie_deviation_pct) <= 10.0)
+    lines.append(f"**热量达标**: {compliant}/7 天  |  **采购项**: {len(plan.shopping_list)}\n")
+
+    # --- Daily plans ---
+    for day in plan.daily_plans:
+        day_type = "训练日" if day.is_training_day else "休息日"
+        dev = day.calorie_deviation_pct
+        lines.append(f"---\n")
+        lines.append(
+            f"## {day.day_label}（{day_type}）— "
+            f"{day.day_total_macros.calories:.0f} kcal（偏差 {dev:+.1f}%）\n"
+        )
+        lines.append("| 餐食 | 菜品 | 热量 | 蛋白质 | 准备时间 |")
+        lines.append("|------|------|------|--------|---------|")
+        for recipe in day.meals:
+            lines.append(
+                f"| {recipe.meal_type} | {recipe.name_zh} | "
+                f"{recipe.per_serving_macros.calories:.0f} kcal | "
+                f"{recipe.per_serving_macros.protein_g:.0f} g | "
+                f"{recipe.prep_time_minutes}+{recipe.cook_time_minutes}min |"
+            )
+        lines.append("")
+
+        # Detailed recipes
+        for recipe in day.meals:
+            lines.append(f"### {recipe.name_zh}\n")
+            lines.append("**食材:**\n")
+            for ing in recipe.ingredients:
+                note = f" ({ing.note})" if ing.note else ""
+                lines.append(f"- {ing.food_name_zh} {ing.amount_g:.0f}g{note}")
+            lines.append("")
+            lines.append("**步骤:**\n")
+            for i, step in enumerate(recipe.steps_zh, 1):
+                lines.append(f"{i}. {step}")
+            lines.append("")
+
+    # --- Shopping list ---
+    if plan.shopping_list:
+        lines.append("---\n")
+        lines.append("## 🛒 周采购清单\n")
+        lines.append("| 食材 | 用量(g) | 分类 |")
+        lines.append("|------|---------|------|")
+        for item in plan.shopping_list:
+            lines.append(f"| {item.food_name_zh} | {item.total_amount_g:.0f} | {item.category} |")
+        lines.append("")
+
+    # --- Meal prep ---
+    if plan.meal_prep_suggestions:
+        lines.append("---\n")
+        lines.append("## 📦 备餐建议\n")
+        for s in plan.meal_prep_suggestions:
+            lines.append(
+                f"- **{s.recipe_name_zh}**：{s.prep_day}准备 → "
+                f"{', '.join(s.covers_days)}（储存: {s.storage_zh}，加热: {s.reheat_zh}）"
+            )
+        lines.append("")
+
+    # --- Tips ---
+    if plan.cooking_tips_zh:
+        lines.append("---\n")
+        lines.append("## 💡 烹饪提示\n")
+        lines.append(plan.cooking_tips_zh)
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
@@ -209,6 +366,11 @@ def plan(
         None,
         "--output", "-o",
         help="Save the generated plan JSON to this path (default: data/processed/plan.json).",
+    ),
+    cook_flag: bool = typer.Option(
+        False,
+        "--cook",
+        help="Also generate a detailed weekly cooking plan after the training plan.",
     ),
 ) -> None:
     """
@@ -272,6 +434,113 @@ def plan(
     md_path = save_path.with_suffix(".md")
     md_path.write_text(_plan_to_markdown(fitness_plan), encoding="utf-8")
     console.print(f"[dim]Plan saved to {save_path} and {md_path}[/dim]")
+
+    # --- Optional: generate cooking plan ---
+    if cook_flag:
+        _run_cooking_plan(client, fitness_plan, user_profile, save_path)
+
+
+def _run_cooking_plan(
+    client: object,
+    fitness_plan: object,
+    user_profile: object,
+    save_path: Path,
+) -> None:
+    """Shared cooking plan generation logic used by both `plan --cook` and `cook`."""
+    from fitness_agent.cooking.agent import CookingAgent
+    from fitness_agent.knowledge_base.loader import KnowledgeBase
+
+    console.print("\n[bold]正在生成详细饮食计划，请稍候…[/bold]")
+    try:
+        kb = KnowledgeBase()
+        cooking_agent = CookingAgent(client=client, kb=kb)  # type: ignore[arg-type]
+        cooking_plan = cooking_agent.generate_cooking_plan(
+            fitness_plan, user_profile  # type: ignore[arg-type]
+        )
+    except Exception as exc:
+        console.print(f"[red]Cooking plan generation failed:[/red] {exc}")
+        return
+
+    _display_cooking_plan(cooking_plan)
+
+    cook_path = save_path.with_name("cooking_plan.json")
+    cook_path.parent.mkdir(parents=True, exist_ok=True)
+    cook_path.write_text(
+        cooking_plan.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    cook_md_path = cook_path.with_suffix(".md")
+    cook_md_path.write_text(
+        _cooking_plan_to_markdown(cooking_plan),
+        encoding="utf-8",
+    )
+    console.print(f"[dim]Cooking plan saved to {cook_path} and {cook_md_path}[/dim]")
+
+
+@app.command()
+def cook(
+    plan_path: Path = typer.Option(
+        ...,
+        "--plan",
+        help="Path to an existing training plan JSON.",
+        exists=True,
+    ),
+    profile_path: Path = typer.Option(
+        ...,
+        "--profile",
+        help="Path to an existing user profile JSON.",
+        exists=True,
+    ),
+    provider: Optional[str] = typer.Option(
+        None,
+        "--provider", "-p",
+        help="LLM provider (anthropic/openai/deepseek/qwen/gemini).",
+    ),
+    model: Optional[str] = typer.Option(
+        None,
+        "--model", "-m",
+        help="Model name override.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output", "-o",
+        help="Save the cooking plan JSON to this path.",
+    ),
+) -> None:
+    """
+    Generate a detailed weekly cooking plan from an existing training plan
+    and user profile.
+    """
+    import json as _json
+
+    from fitness_agent.planner.models import WeeklyPlan
+    from fitness_agent.user.onboarding import load_profile
+    from fitness_agent.utils.config import DATA_DIR
+    from fitness_agent.utils.llm_client import build_client, build_client_from_config
+
+    # --- Build LLM client ---
+    console.print("\n[dim]Initialising LLM client…[/dim]")
+    try:
+        if provider:
+            client = build_client(provider=provider, model=model)
+        else:
+            client = build_client_from_config()
+        console.print(f"[dim]Using {client}[/dim]")
+    except ValueError as exc:
+        console.print(f"[red]LLM configuration error:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    # --- Load profile and plan ---
+    user_profile = load_profile(profile_path)
+    console.print(f"  已加载用户档案: [bold]{user_profile.name}[/bold]")
+
+    raw_plan = _json.loads(plan_path.read_text(encoding="utf-8"))
+    fitness_plan = WeeklyPlan.model_validate(raw_plan)
+    console.print(f"  已加载训练计划: {len(fitness_plan.training_days)} 训练日")
+
+    # --- Generate cooking plan ---
+    save_path = output if output else DATA_DIR / "processed" / "cooking_plan.json"
+    _run_cooking_plan(client, fitness_plan, user_profile, save_path)
 
 
 @app.command()

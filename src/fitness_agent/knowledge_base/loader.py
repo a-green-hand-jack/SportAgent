@@ -15,6 +15,7 @@ from fitness_agent.knowledge_base.models import (
     MuscleGroupInfo,
     MovementPattern,
     NutritionPrinciples,
+    RecipeTemplate,
     TrainingRule,
     WarmupTemplate,
 )
@@ -32,6 +33,7 @@ ANATOMY_PATH = _KB_DIR / "anatomy.json"
 NUTRITION_PRINCIPLES_PATH = _KB_DIR / "nutrition_principles.json"
 WARMUP_TEMPLATES_PATH = _KB_DIR / "warmup_templates.json"
 INJURY_PROFILES_PATH = _KB_DIR / "injury_profiles.json"
+RECIPES_PATH = _KB_DIR / "recipes.json"
 
 
 class KnowledgeBase:
@@ -51,6 +53,7 @@ class KnowledgeBase:
         nutrition_principles_path: Path = NUTRITION_PRINCIPLES_PATH,
         warmup_templates_path: Path | None = WARMUP_TEMPLATES_PATH,
         injury_profiles_path: Path | None = INJURY_PROFILES_PATH,
+        recipes_path: Path | None = RECIPES_PATH,
     ) -> None:
         self._exercises_path = exercises_path
         self._nutrition_path = nutrition_path
@@ -59,6 +62,7 @@ class KnowledgeBase:
         self._nutrition_principles_path = nutrition_principles_path
         self._warmup_templates_path = warmup_templates_path
         self._injury_profiles_path = injury_profiles_path
+        self._recipes_path = recipes_path
 
     # ------------------------------------------------------------------
     # Raw data (loaded lazily and cached)
@@ -95,6 +99,12 @@ class KnowledgeBase:
         if self._injury_profiles_path is None:
             return []
         return self._load_list(self._injury_profiles_path, InjuryProfile)
+
+    @cached_property
+    def recipes(self) -> list[RecipeTemplate]:
+        if self._recipes_path is None:
+            return []
+        return self._load_list(self._recipes_path, RecipeTemplate)
 
     # ------------------------------------------------------------------
     # Exercise queries
@@ -181,6 +191,116 @@ class KnowledgeBase:
             f for f in self.foods
             if q in f.name.lower() or q in f.name_zh.lower()
         ]
+
+    def get_food_by_id(self, food_id: str) -> FoodItem | None:
+        """Lookup a food item by its ID (exact match)."""
+        for food in self.foods:
+            if food.id == food_id:
+                return food
+        return None
+
+    # ------------------------------------------------------------------
+    # Recipe queries
+    # ------------------------------------------------------------------
+
+    def get_recipes_by_meal_type(self, meal_type: str) -> list[RecipeTemplate]:
+        """Filter recipes by meal_type."""
+        return [r for r in self.recipes if r.meal_type == meal_type]
+
+    def get_compatible_recipes(self, dietary_restrictions: list[str]) -> list[RecipeTemplate]:
+        """Return recipes compatible with ALL given dietary restrictions.
+
+        A recipe is compatible if for each restriction it either:
+        (a) natively satisfies it (restriction in dietary_flags), or
+        (b) has substitution entries for it (restriction in substitution_groups).
+        """
+        if not dietary_restrictions:
+            return list(self.recipes)
+        return [
+            r for r in self.recipes
+            if all(
+                rest in r.dietary_flags or rest in r.substitution_groups
+                for rest in dietary_restrictions
+            )
+        ]
+
+    def compute_recipe_macros(self, recipe: RecipeTemplate) -> dict[str, float]:
+        """Deterministically compute macros from ingredient food_ids × amounts.
+
+        Uses nutrition.json data. Unknown food_ids are skipped with a warning.
+        """
+        totals = {"calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
+        for ing in recipe.ingredients:
+            food = self.get_food_by_id(ing.food_id)
+            if food is None:
+                logger.warning(f"Unknown food_id in recipe {recipe.id}: {ing.food_id}")
+                continue
+            scale = ing.amount_g / food.serving_size_g
+            totals["calories"] += food.calories * scale
+            totals["protein_g"] += food.protein_g * scale
+            totals["carbs_g"] += food.carbs_g * scale
+            totals["fat_g"] += food.fat_g * scale
+        return {k: round(v, 1) for k, v in totals.items()}
+
+    def format_recipes_for_prompt(
+        self,
+        recipes: list[RecipeTemplate] | None = None,
+    ) -> str:
+        """Format recipe templates as a compact reference for the LLM prompt.
+
+        Returns an empty string if no recipes are available.
+        """
+        pool = recipes if recipes is not None else self.recipes
+        if not pool:
+            return ""
+
+        lines = ["## 食谱参考库", ""]
+        lines.append(
+            "以下食谱可直接引用或作为组合参考。food_id 对应食材数据库中的 ID，"
+            "你可以调整用量来匹配热量目标。"
+        )
+        lines.append("")
+
+        for r in pool:
+            macros = r.per_serving_macros
+            cal = macros.get("calories", 0)
+            pro = macros.get("protein_g", 0)
+            batch_label = " | 可批量备餐" if r.batch_friendly else ""
+            lines.append(
+                f"**{r.name_zh}** ({r.id}) | {r.meal_type} | "
+                f"{cal:.0f}kcal / {pro:.0f}g蛋白 | "
+                f"准备{r.prep_time_minutes}+烹饪{r.cook_time_minutes}分钟{batch_label}"
+            )
+            ings = ", ".join(f"{i.food_id}({i.amount_g}g)" for i in r.ingredients)
+            lines.append(f"  食材: {ings}")
+            steps = " → ".join(r.steps_zh)
+            lines.append(f"  步骤: {steps}")
+            if r.dietary_flags:
+                lines.append(f"  原生适用: {', '.join(r.dietary_flags)}")
+            if r.scaling_notes:
+                lines.append(f"  调整: {r.scaling_notes}")
+            lines.append("")
+
+        return "\n".join(lines).rstrip()
+
+    def format_foods_compact_for_prompt(self) -> str:
+        """Format all food items as a compact reference table for the LLM.
+
+        Lists id, name_zh, category, and per-100g calories/protein for quick lookup.
+        """
+        if not self.foods:
+            return ""
+
+        lines = ["## 食材数据库（每100g营养数据）", ""]
+        lines.append("| ID | 名称 | 分类 | 热量(kcal) | 蛋白质(g) | 碳水(g) | 脂肪(g) |")
+        lines.append("|----|----|----|----|----|----|")
+
+        for f in self.foods:
+            lines.append(
+                f"| {f.id} | {f.name_zh} | {f.category.value} | "
+                f"{f.calories:.0f} | {f.protein_g:.1f} | {f.carbs_g:.1f} | {f.fat_g:.1f} |"
+            )
+        return "\n".join(lines)
 
     # ------------------------------------------------------------------
     # Rules queries
