@@ -28,7 +28,7 @@ from fitness_agent.cooking.prompt import COOKING_SYSTEM, build_cooking_user_mess
 from fitness_agent.knowledge_base.loader import KnowledgeBase
 from fitness_agent.planner.models import WeeklyPlan
 from fitness_agent.user.models import UserProfile
-from fitness_agent.utils.llm_client import BaseLLMClient, Message, _MAX_TOKENS_CAP
+from fitness_agent.utils.llm_client import BaseLLMClient, Message
 from fitness_agent.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -89,36 +89,12 @@ class CookingAgent:
         "post_workout": (200, 600),
     }
 
-    # ------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
 
-    # Week days used for batching
+    # Week day labels in generation order
     _WEEK_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
-
-    # Providers with a low output-token cap need small batches.
-    # This threshold is used in _compute_batches.
-    _LOW_OUTPUT_CAP_THRESHOLD = 8192
-
-    def _compute_batches(self) -> list[list[str]]:
-        """Return the list of day-label batches for generation.
-
-        * If ``self.client`` has no token cap or its cap exceeds the threshold,
-          a single batch covering all 7 days is returned.
-        * If the cap is ≤ ``_LOW_OUTPUT_CAP_THRESHOLD`` (e.g. DeepSeek at 8192),
-          three smaller batches [2, 2, 3] are returned so each response fits
-          comfortably within the output-token limit.
-        """
-        cap = _MAX_TOKENS_CAP.get(self.client.provider)
-        if cap and cap <= self._LOW_OUTPUT_CAP_THRESHOLD:
-            # DeepSeek-style: 2 + 2 + 3 days
-            return [
-                self._WEEK_LABELS[0:2],  # 周一, 周二
-                self._WEEK_LABELS[2:4],  # 周三, 周四
-                self._WEEK_LABELS[4:],   # 周五, 周六, 周日
-            ]
-        # High-cap or unlimited providers: single shot
-        return [self._WEEK_LABELS]
 
     def generate_cooking_plan(
         self,
@@ -168,22 +144,30 @@ class CookingAgent:
                 f"for restrictions {profile.dietary_restrictions}"
             )
 
-        # --- Step 2: generate in batches (strategy depends on provider token cap) ---
-        batches = self._compute_batches()
-        n_batches = len(batches)
+        # --- Step 2: generate each day incrementally ---
+        # Each call produces exactly 1 DayMealPlan.  All previously generated
+        # days are serialised to JSON and injected into the next call's prompt,
+        # so the model can see what was already built and avoid repeating dishes.
         logger.info(
-            f"Generation strategy: {n_batches} batch(es) of "
-            f"{[len(b) for b in batches]} day(s) "
-            f"(provider: {self.client.provider})"
+            f"Generation strategy: incremental day-by-day "
+            f"(7 calls, provider: {self.client.provider})"
         )
 
         all_days: list[DayMealPlan] = []
-        for batch in batches:
-            batch_days = self._generate_batch(
-                profile, weekly_plan, compatible_recipes, batch,
+        for day_label in self._WEEK_LABELS:
+            already_json: str | None = None
+            if all_days:
+                already_json = json.dumps(
+                    [d.model_dump() for d in all_days],
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            day = self._generate_day(
+                profile, weekly_plan, compatible_recipes, day_label,
+                already_generated_json=already_json,
                 banned_food_ids=banned_food_ids,
             )
-            all_days.extend(batch_days)
+            all_days.append(day)
 
         # --- Step 3: assemble a combined WeeklyCookingPlan ---
         plan = WeeklyCookingPlan(
@@ -301,53 +285,47 @@ class CookingAgent:
         return plan
 
     # ------------------------------------------------------------------
-    # Batch generation helper
+    # Single-day generation helper (incremental strategy)
     # ------------------------------------------------------------------
 
-    def _generate_batch(
+    def _generate_day(
         self,
         profile: UserProfile,
         weekly_plan: WeeklyPlan,
         compatible_recipes: list,  # list[RecipeTemplate]
-        days_subset: list[str],
+        day_label: str,
+        already_generated_json: str | None = None,
         banned_food_ids: set[str] | None = None,
-    ) -> list:  # list[DayMealPlan]
-        """Run the LLM generate→validate→retry loop for a subset of days.
+    ) -> DayMealPlan:
+        """Call the LLM to generate a single day's meal plan.
 
-        Pipeline per attempt:
-        1. Call LLM and parse response.
-        2. Overwrite all macro values deterministically from KB.
-        3. Validate food_ids against KB (retry if too many unknowns).
-        4. Validate dietary compliance (banned food_ids).
-        5. If violations exist and retries remain, send correction and loop.
+        The ``already_generated_json`` parameter is injected into the prompt so
+        the model can see previously generated days and avoid dish repetition.
+        A retry loop handles dietary/food-id violations (same logic as the old
+        batch loop, but scoped to one day at a time).
 
-        **Calorie / protein corrections are NOT retried here** — they are handled
-        deterministically in ``generate_cooking_plan()`` via ingredient scaling.
-
-        Returns the list of ``DayMealPlan`` objects for the requested days.
+        Returns a single ``DayMealPlan`` for ``day_label``.
         """
         user_message = build_cooking_user_message(
             profile, weekly_plan, self.kb, compatible_recipes,
-            days_subset=days_subset,
-        )
-        logger.debug(
-            f"Batch {days_subset}: prompt ~{len(user_message)} chars"
+            day_label=day_label,
+            already_generated_json=already_generated_json,
         )
 
         banned = banned_food_ids or set()
         messages: list[Message] = [Message(role="user", content=user_message)]
-        batch_days: list = []
+        result: DayMealPlan | None = None
 
         for attempt in range(self.max_retries + 1):
             logger.info(
                 f"Calling {self.client.provider}/{self.client.model} "
-                f"for days {days_subset} "
+                f"for day {day_label} "
                 f"(attempt {attempt + 1}/{self.max_retries + 1})…"
             )
             response = self.client.chat(
                 messages=messages,
                 system=COOKING_SYSTEM,
-                max_tokens=8192,
+                max_tokens=4096,   # 1 day ≈ 1500-2000 tokens; 4096 is generous
                 temperature=0.7,
             )
             logger.info(
@@ -355,20 +333,18 @@ class CookingAgent:
                 f"(in={response.input_tokens}, out={response.output_tokens})"
             )
 
-            # Step 1: Parse
-            partial = self._parse_batch_response(response.content, profile)
-            batch_days = partial
+            # Parse single DayMealPlan
+            result = self._parse_day_response(response.content, day_label)
 
-            # Step 2: Deterministic macro overwrite (replaces LLM self-reported values)
-            self._overwrite_macros_deterministic(batch_days)
+            # Deterministic macro overwrite (replaces LLM self-reported values)
+            self._overwrite_macros_deterministic([result])
 
-            # Step 3: Validate food_ids (retry trigger if many unknowns)
-            food_id_warnings = self._validate_food_ids(batch_days)
+            # Validate food_ids
+            food_id_warnings = self._validate_food_ids([result])
 
-            # Step 4: Validate dietary compliance (retry trigger)
-            dietary_warnings = self._validate_dietary_compliance(batch_days, banned)
+            # Validate dietary compliance
+            dietary_warnings = self._validate_dietary_compliance([result], banned)
 
-            # Determine if retry is needed
             needs_retry = (
                 bool(dietary_warnings)
                 or len(food_id_warnings) > self.MAX_UNKNOWN_FOOD_IDS_PER_BATCH
@@ -377,22 +353,20 @@ class CookingAgent:
             if not needs_retry:
                 if food_id_warnings:
                     logger.warning(
-                        f"Batch {days_subset}: {len(food_id_warnings)} unknown food_id(s) "
+                        f"Day {day_label}: {len(food_id_warnings)} unknown food_id(s) "
                         f"(within tolerance of {self.MAX_UNKNOWN_FOOD_IDS_PER_BATCH})"
                     )
-                logger.info(f"Batch {days_subset}: validation passed.")
+                logger.info(f"Day {day_label}: validation passed.")
                 break
 
             logger.info(
-                f"Batch {days_subset}: {len(dietary_warnings)} dietary + "
+                f"Day {day_label}: {len(dietary_warnings)} dietary + "
                 f"{len(food_id_warnings)} food_id warning(s) "
                 f"(attempt {attempt + 1}/{self.max_retries + 1})."
             )
 
             if attempt < self.max_retries:
                 messages.append(Message(role="assistant", content=response.content))
-
-                # Build combined correction message
                 correction_parts: list[str] = []
                 if dietary_warnings:
                     correction_parts.append(
@@ -408,7 +382,53 @@ class CookingAgent:
                 correction = "\n\n".join(correction_parts)
                 messages.append(Message(role="user", content=correction))
 
-        return batch_days
+        assert result is not None
+        return result
+
+    @staticmethod
+    def _parse_day_response(raw: str, expected_day_label: str) -> DayMealPlan:
+        """Parse a single DayMealPlan from the LLM's raw text response.
+
+        Accepts both a bare ``DayMealPlan`` object and the legacy
+        ``{"daily_plans": [...]}`` wrapper (takes the first element).
+        """
+        # Strip markdown code fences if present
+        text = raw.strip()
+        if text.startswith("```"):
+            lines = text.splitlines()
+            text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"LLM day response is not valid JSON: {exc}\n\nRaw response:\n{raw[:500]}"
+            ) from exc
+
+        # Support legacy {"daily_plans": [...]} wrapper
+        if isinstance(data, dict) and "daily_plans" in data:
+            plans = data["daily_plans"]
+            if plans:
+                data = plans[0]
+            else:
+                raise RuntimeError(
+                    f"LLM returned empty daily_plans for day {expected_day_label}"
+                )
+        elif isinstance(data, list):
+            if data:
+                data = data[0]
+            else:
+                raise RuntimeError(
+                    f"LLM returned empty list for day {expected_day_label}"
+                )
+
+        try:
+            return DayMealPlan.model_validate(data)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Could not parse DayMealPlan for {expected_day_label}: {exc}\n\n"
+                f"Keys present: {list(data.keys()) if isinstance(data, dict) else type(data)}"
+            ) from exc
 
     # ------------------------------------------------------------------
     # Validation helpers

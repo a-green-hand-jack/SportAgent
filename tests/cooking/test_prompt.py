@@ -93,14 +93,14 @@ class TestSystemPrompt:
     def test_system_prompt_non_empty(self) -> None:
         assert len(COOKING_SYSTEM) > 100
 
-    def test_system_prompt_mentions_7_days(self) -> None:
-        assert "7" in COOKING_SYSTEM
-
     def test_system_prompt_mentions_json(self) -> None:
         assert "JSON" in COOKING_SYSTEM
 
     def test_system_prompt_mentions_daily_plans(self) -> None:
-        assert "daily_plans" in COOKING_SYSTEM
+        assert "DayMealPlan" in COOKING_SYSTEM
+
+    def test_system_prompt_mentions_diversity(self) -> None:
+        assert "2 次" in COOKING_SYSTEM
 
 
 # ---------------------------------------------------------------------------
@@ -110,17 +110,17 @@ class TestSystemPrompt:
 class TestBuildCookingUserMessage:
     def test_includes_user_name(self, profile, weekly_plan, kb) -> None:
         compatible = kb.get_compatible_recipes(profile.dietary_restrictions)
-        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible)
+        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible, day_label="周一")
         assert "CookTest" in msg
 
     def test_includes_dietary_restrictions(self, profile, weekly_plan, kb) -> None:
         compatible = kb.get_compatible_recipes(profile.dietary_restrictions)
-        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible)
+        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible, day_label="周一")
         assert "vegetarian" in msg
 
     def test_includes_recipe_pool(self, profile, weekly_plan, kb) -> None:
         compatible = kb.get_compatible_recipes(profile.dietary_restrictions)
-        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible)
+        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible, day_label="周一")
         # At least one compatible recipe name should appear
         assert any(
             r.name_zh in msg for r in compatible
@@ -128,28 +128,56 @@ class TestBuildCookingUserMessage:
 
     def test_includes_training_schedule(self, profile, weekly_plan, kb) -> None:
         compatible = kb.get_compatible_recipes(profile.dietary_restrictions)
-        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible)
+        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible, day_label="周一")
         assert "Day 1" in msg
         assert "训练日" in msg
 
     def test_includes_calorie_targets(self, profile, weekly_plan, kb) -> None:
         compatible = kb.get_compatible_recipes(profile.dietary_restrictions)
-        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible)
+        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible, day_label="周一")
         cal = profile.daily_calorie_target or 2000
         # Calorie target or computed training/rest targets should appear
         assert str(int(cal)) in msg or "kcal" in msg
 
     def test_includes_food_database(self, profile, weekly_plan, kb) -> None:
         compatible = kb.get_compatible_recipes(profile.dietary_restrictions)
-        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible)
+        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible, day_label="周一")
         # Food items from nutrition.json should appear
         assert "chicken_breast" in msg or "鸡胸肉" in msg
 
     def test_includes_meal_suggestions_reference(self, profile, weekly_plan, kb) -> None:
         compatible = kb.get_compatible_recipes(profile.dietary_restrictions)
-        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible)
+        msg = build_cooking_user_message(profile, weekly_plan, kb, compatible, day_label="周一")
         assert "PlanAgent" in msg
         assert "燕麦" in msg
+
+    def test_includes_already_generated_context(self, profile, weekly_plan, kb) -> None:
+        """When already_generated_json is provided, it should appear in the prompt."""
+        compatible = kb.get_compatible_recipes(profile.dietary_restrictions)
+        history = '[{"day_label": "周一", "meals": []}]'
+        msg = build_cooking_user_message(
+            profile, weekly_plan, kb, compatible,
+            day_label="周二",
+            already_generated_json=history,
+        )
+        assert "已生成天历史" in msg
+        assert "周一" in msg
+
+    def test_no_history_on_first_day(self, profile, weekly_plan, kb) -> None:
+        """When already_generated_json is None, no history section appears."""
+        compatible = kb.get_compatible_recipes(profile.dietary_restrictions)
+        msg = build_cooking_user_message(
+            profile, weekly_plan, kb, compatible, day_label="周一"
+        )
+        assert "已生成天历史" not in msg
+
+    def test_day_label_in_task_instruction(self, profile, weekly_plan, kb) -> None:
+        """The task section should name the specific day being generated."""
+        compatible = kb.get_compatible_recipes(profile.dietary_restrictions)
+        msg = build_cooking_user_message(
+            profile, weekly_plan, kb, compatible, day_label="周四"
+        )
+        assert "周四" in msg
 
     def test_no_restriction_uses_all_recipes(self, weekly_plan, kb) -> None:
         """Profile with no dietary restrictions → all recipes in pool."""
@@ -168,6 +196,6 @@ class TestBuildCookingUserMessage:
         )
         p = enrich_profile(p)
         compatible = kb.get_compatible_recipes([])
-        msg = build_cooking_user_message(p, weekly_plan, kb, compatible)
+        msg = build_cooking_user_message(p, weekly_plan, kb, compatible, day_label="周一")
         # Should include recipes that are NOT vegetarian
         assert "鸡胸肉西兰花饭" in msg or "chicken_rice_broccoli" in msg

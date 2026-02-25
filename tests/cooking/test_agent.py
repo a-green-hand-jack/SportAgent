@@ -106,29 +106,36 @@ def _make_llm_client(
     base_cal: float | None = None,
     provider: str = "mock",
 ) -> MagicMock:
-    """Create a mock LLM client that returns batch-appropriate day subsets.
+    """Create a mock LLM client that returns a single DayMealPlan per call.
 
-    Reads the day labels requested in ``messages[0]`` (the original batch
-    prompt) and returns only those days.  Set ``provider='deepseek'`` to
-    exercise the 3-batch path (the low-cap threshold), or leave as
-    ``'mock'`` for the single-batch path.
+    Reads the specific day label from the final task instruction in the prompt
+    (looks for the Chinese week-day label in the last line mentioning it) and
+    returns exactly one DayMealPlan JSON object for that day.
     """
-    _all_labels = ["\u5468\u4e00", "\u5468\u4e8c", "\u5468\u4e09", "\u5468\u56db", "\u5468\u4e94", "\u5468\u516d", "\u5468\u65e5"]
+    _all_labels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
     def _side_effect(messages, **kwargs):
-        # Always read from the FIRST message (the original batch prompt).
-        # On retries, messages grows to [user, assistant, user(correction)],
-        # but messages[0] is still the original prompt which uniquely identifies
-        # the batch.
+        # Detect which day is requested from the ORIGINAL user prompt (messages[0]).
+        # The task instruction contains: 请为 ... 生成 **周X** (训练日|休息日) 的烹饪计划
         first_content = messages[0].content if messages else ""
-        requested = [lbl for lbl in _all_labels if lbl in first_content]
-        if not requested:
-            requested = _all_labels
-        json_str = _minimal_cooking_plan_json(
+        day_label = None
+        for lbl in _all_labels:
+            if f"生成 **{lbl}**" in first_content:
+                day_label = lbl
+                break
+        if day_label is None:
+            # Fallback: pick first label found anywhere
+            for lbl in _all_labels:
+                if lbl in first_content:
+                    day_label = lbl
+                    break
+        if day_label is None:
+            day_label = _all_labels[0]
+        json_str = _minimal_day_json(
             profile,
+            day_label=day_label,
             base_cal=base_cal,
             training_days=training_days,
-            day_labels=requested,
         )
         return LLMResponse(
             content=json_str,
@@ -215,88 +222,61 @@ def _make_recipe_json(
     }
 
 
-def _minimal_cooking_plan_json(
+def _minimal_day_json(
     profile: UserProfile,
+    day_label: str,
     base_cal: float | None = None,
     training_days: int = 3,
-    day_labels: list[str] | None = None,
 ) -> str:
-    """Build a minimal valid cooking plan JSON that the mock LLM returns.
-
-    When ``day_labels`` is given, only those days are included in the response,
-    matching the batched call structure (batch A: 4 days, batch B: 3 days).
-    """
+    """Build a minimal valid single DayMealPlan JSON for the given day."""
+    all_labels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
     cal_target = base_cal or profile.daily_calorie_target or 2500
     training_cal = cal_target * 1.07
     rest_cal = cal_target * 0.96
 
-    # Scale ingredient amounts so KB-computed macros match calorie targets.
-    # chicken_breast: 165 kcal/100g, white_rice_cooked: 130 kcal/100g
-    # With ratio 3:4 (chicken:rice), cal_per_meal = 10.15 * k where k = chicken_g / 3
-    # So k = cal_per_meal / 10.15, chicken_g = 3k, rice_g = 4k
     def _scale_amounts(day_cal: float) -> tuple[float, float]:
         meal_cal = day_cal / 3
-        k = meal_cal / 10.15  # 1.65*3 + 1.30*4 = 10.15 per unit k
+        k = meal_cal / 10.15
         return round(3 * k, 1), round(4 * k, 1)
 
-    all_labels = ["\u5468\u4e00", "\u5468\u4e8c", "\u5468\u4e09", "\u5468\u56db", "\u5468\u4e94", "\u5468\u516d", "\u5468\u65e5"]
-    labels_to_use = day_labels if day_labels is not None else all_labels
+    idx = all_labels.index(day_label) if day_label in all_labels else 0
+    is_training = idx < training_days
+    day_cal = training_cal if is_training else rest_cal
+    meal_cal = day_cal / 3
+    chicken_g, rice_g = _scale_amounts(day_cal)
 
-    # Rotate protein sources to ensure intra-day diversity (max 2× same protein/day)
     _PROTEIN_ROTATION = [
         ("chicken_breast", "鸡胸肉"),
         ("egg_whole", "鸡蛋"),
         ("chicken_breast", "鸡胸肉"),
     ]
-
-    days = []
-    for label in labels_to_use:
-        idx = all_labels.index(label) if label in all_labels else 0
-        is_training = idx < training_days
-        day_cal = training_cal if is_training else rest_cal
-        meal_cal = day_cal / 3
-        chicken_g, rice_g = _scale_amounts(day_cal)
-
-        meals = [
-            _make_recipe_json(f"breakfast_{idx}", "breakfast", meal_cal, 40,
-                              chicken_g=chicken_g, rice_g=rice_g,
-                              protein_food_id=_PROTEIN_ROTATION[0][0],
-                              protein_food_name=_PROTEIN_ROTATION[0][1]),
-            _make_recipe_json(f"lunch_{idx}", "lunch", meal_cal, 50,
-                              chicken_g=chicken_g, rice_g=rice_g,
-                              protein_food_id=_PROTEIN_ROTATION[1][0],
-                              protein_food_name=_PROTEIN_ROTATION[1][1]),
-            _make_recipe_json(f"dinner_{idx}", "dinner", meal_cal, 45,
-                              chicken_g=chicken_g, rice_g=rice_g,
-                              protein_food_id=_PROTEIN_ROTATION[2][0],
-                              protein_food_name=_PROTEIN_ROTATION[2][1]),
-        ]
-        days.append({
-            "day_label": label,
-            "is_training_day": is_training,
-            "meals": meals,
-            "day_total_macros": {
-                "calories": day_cal,
-                "protein_g": 135,
-                "carbs_g": 240,
-                "fat_g": 45,
-            },
-        })
-
-    plan = {
-        "daily_plans": days,
-        "meal_prep_suggestions": [
-            {
-                "recipe_name_zh": "\u6279\u91cf\u716e\u9e21\u80f8",
-                "prep_day": "\u5468\u65e5",
-                "covers_days": ["\u5468\u4e00", "\u5468\u4e8c"],
-                "storage_zh": "\u51b7\u85cf3\u5929",
-                "reheat_zh": "\u5fae\u6ce22\u5206\u949f",
-            }
-        ],
-        "cooking_tips_zh": "\u4fdd\u6301\u98df\u6750\u65b0\u9c9c\uff0c\u6ce8\u610f\u86cb\u767d\u6444\u5165\u3002",
+    meals = [
+        _make_recipe_json(f"breakfast_{idx}", "breakfast", meal_cal, 40,
+                          chicken_g=chicken_g, rice_g=rice_g,
+                          protein_food_id=_PROTEIN_ROTATION[0][0],
+                          protein_food_name=_PROTEIN_ROTATION[0][1]),
+        _make_recipe_json(f"lunch_{idx}", "lunch", meal_cal, 50,
+                          chicken_g=chicken_g, rice_g=rice_g,
+                          protein_food_id=_PROTEIN_ROTATION[1][0],
+                          protein_food_name=_PROTEIN_ROTATION[1][1]),
+        _make_recipe_json(f"dinner_{idx}", "dinner", meal_cal, 45,
+                          chicken_g=chicken_g, rice_g=rice_g,
+                          protein_food_id=_PROTEIN_ROTATION[2][0],
+                          protein_food_name=_PROTEIN_ROTATION[2][1]),
+    ]
+    day = {
+        "day_label": day_label,
+        "is_training_day": is_training,
+        "meals": meals,
+        "day_total_macros": {
+            "calories": day_cal,
+            "protein_g": 135,
+            "carbs_g": 240,
+            "fat_g": 45,
+        },
     }
-    return json.dumps(plan, ensure_ascii=False)
+    return json.dumps(day, ensure_ascii=False)
+
 
 
 # ---------------------------------------------------------------------------
@@ -355,27 +335,27 @@ class TestCookingAgent:
         plan = agent.generate_cooking_plan(weekly_plan, profile)
         assert isinstance(plan, WeeklyCookingPlan)
 
-    def test_llm_called_three_times_for_batches(
+    def test_llm_called_seven_times(
         self, kb, profile, weekly_plan
     ) -> None:
-        """DeepSeek provider (low cap) uses 3 batches [2+2+3] = 3 LLM calls."""
-        client = _make_llm_client(profile, provider="test-low-cap")
-        agent = CookingAgent(client=client, kb=kb)
-        agent._validate_calorie_compliance = lambda plan, target: []
-        agent._validate_dietary_compliance = lambda plan, banned: []
-        agent.generate_cooking_plan(weekly_plan, profile)
-        assert client.chat.call_count == 3
-
-    def test_llm_called_once_for_high_cap_provider(
-        self, kb, profile, weekly_plan
-    ) -> None:
-        """Providers without a token cap (mock/qwen) use a single 7-day batch."""
+        """Incremental strategy: always 7 LLM calls (one per day), any provider."""
         client = _make_llm_client(profile, provider="mock")
         agent = CookingAgent(client=client, kb=kb)
         agent._validate_calorie_compliance = lambda plan, target: []
         agent._validate_dietary_compliance = lambda plan, banned: []
         agent.generate_cooking_plan(weekly_plan, profile)
-        assert client.chat.call_count == 1
+        assert client.chat.call_count == 7
+
+    def test_llm_called_seven_times_any_provider(
+        self, kb, profile, weekly_plan
+    ) -> None:
+        """Any provider (including formerly low-cap) now uses the same 7-call strategy."""
+        client = _make_llm_client(profile, provider="deepseek")
+        agent = CookingAgent(client=client, kb=kb)
+        agent._validate_calorie_compliance = lambda plan, target: []
+        agent._validate_dietary_compliance = lambda plan, banned: []
+        agent.generate_cooking_plan(weekly_plan, profile)
+        assert client.chat.call_count == 7
 
 
 # ---------------------------------------------------------------------------
@@ -450,47 +430,46 @@ class TestCalorieValidation:
 
 class TestRetryLoop:
     def test_retries_on_dietary_violation(self, kb, profile, weekly_plan) -> None:
-        """DeepSeek 3-batch: max_retries=1 → 2 calls/batch × 3 batches = 6 total."""
+        """With max_retries=1, each of the 7 days can retry once = 14 calls max."""
         max_retries = 1
-        client = _make_llm_client(profile, provider="test-low-cap")
+        client = _make_llm_client(profile, provider="mock")
         agent = CookingAgent(client=client, kb=kb, max_retries=max_retries)
         agent._validate_dietary_compliance = lambda plan, banned: [
             "- 周一/鸡胸饭：食材 'chicken_breast'（鸡胸肉）违反饮食限制"
         ]
         agent.generate_cooking_plan(weekly_plan, profile)
-        assert client.chat.call_count == (max_retries + 1) * 3
+        # Each day tries (max_retries + 1) times; 7 days total
+        assert client.chat.call_count == (max_retries + 1) * 7
 
     def test_max_retries_respected(self, kb, profile, weekly_plan) -> None:
-        """DeepSeek 3-batch: (max_retries+1) × 3 total calls maximum."""
+        """With max_retries=2, max total calls = 3 per day × 7 days = 21."""
         max_retries = 2
-        client = _make_llm_client(profile, provider="test-low-cap")
+        client = _make_llm_client(profile, provider="mock")
         agent = CookingAgent(client=client, kb=kb, max_retries=max_retries)
         agent._validate_dietary_compliance = lambda plan, banned: [
             "- 周一：饮食违规"
         ]
         agent.generate_cooking_plan(weekly_plan, profile)
-        assert client.chat.call_count == (max_retries + 1) * 3
+        assert client.chat.call_count == (max_retries + 1) * 7
 
     def test_no_retry_when_all_valid(self, kb, profile, weekly_plan) -> None:
-        """No warnings → 1 call for mock (high-cap), 3 for deepseek (low-cap)."""
-        client = _make_llm_client(profile, provider="test-low-cap")
+        """No warnings → exactly 7 calls (one per day)."""
+        client = _make_llm_client(profile, provider="mock")
         agent = CookingAgent(client=client, kb=kb, max_retries=2)
         agent._validate_dietary_compliance = lambda plan, banned: []
         agent.generate_cooking_plan(weekly_plan, profile)
-        assert client.chat.call_count == 3
+        assert client.chat.call_count == 7
 
     def test_no_llm_retry_for_calorie(self, kb, profile, weekly_plan) -> None:
-        """Calorie issues do NOT trigger LLM retry — 3 calls for deepseek (one per batch)."""
-        client = _make_llm_client(profile, provider="test-low-cap")
+        """Calorie issues do NOT trigger LLM retry — exactly 7 calls."""
+        client = _make_llm_client(profile, provider="mock")
         agent = CookingAgent(client=client, kb=kb, max_retries=2)
         agent._validate_dietary_compliance = lambda plan, banned: []
-        # Even if calorie validation would fail, no retry
-        original_validate = agent._validate_calorie_compliance
         agent._validate_calorie_compliance = lambda plan, target: [
             "- 周一（训练日）：3000 kcal，目标 2500 kcal，偏差 +20.0%"
         ]
         agent.generate_cooking_plan(weekly_plan, profile)
-        assert client.chat.call_count == 3
+        assert client.chat.call_count == 7
 
     def test_warnings_appended_to_tips(self, kb, profile, weekly_plan) -> None:
         """Unresolved calorie/protein warnings are written into cooking_tips_zh."""
@@ -1814,38 +1793,33 @@ class TestPipelineIntegration:
     def test_food_id_retry_triggers_extra_llm_call(
         self, kb, profile, weekly_plan
     ) -> None:
-        """Batch with many unknown food_ids → retry → extra LLM call."""
-        # Build batch A (周一, 周二) response with many unknown food_ids
-        bad_plan_json = _minimal_cooking_plan_json(
-            profile, training_days=3, day_labels=["周一", "周二"],
-        )
-        bad_data = json.loads(bad_plan_json)
-        for day_data in bad_data["daily_plans"]:
-            for meal in day_data["meals"]:
-                meal["ingredients"][0]["food_id"] = "unknown_meat_xyz"
+        """Day with many unknown food_ids → retry → extra LLM call."""
+        # 周一 (day 0) first call has many unknown food_ids → triggers retry
+        bad_day_json = _minimal_day_json(profile, day_label="周一", training_days=3)
+        bad_data = json.loads(bad_day_json)
+        for meal in bad_data["meals"]:
+            meal["ingredients"][0]["food_id"] = "unknown_meat_xyz"
         bad_json = json.dumps(bad_data, ensure_ascii=False)
 
-        good_json_a = _minimal_cooking_plan_json(
-            profile, training_days=3, day_labels=["周一", "周二"],
-        )
-        good_json_b = _minimal_cooking_plan_json(
-            profile, training_days=3, day_labels=["周三", "周四"],
-        )
-        good_json_c = _minimal_cooking_plan_json(
-            profile, training_days=3, day_labels=["周五", "周六", "周日"],
-        )
+        # Good responses: 周一 retry, then 周二-周日 (6 calls), total 8
+        good_monday  = _minimal_day_json(profile, day_label="周一",  training_days=3)
+        good_tuesday = _minimal_day_json(profile, day_label="周二",  training_days=3)
+        good_wed     = _minimal_day_json(profile, day_label="周三",  training_days=3)
+        good_thu     = _minimal_day_json(profile, day_label="周四",  training_days=3)
+        good_fri     = _minimal_day_json(profile, day_label="周五",  training_days=3)
+        good_sat     = _minimal_day_json(profile, day_label="周六",  training_days=3)
+        good_sun     = _minimal_day_json(profile, day_label="周日",  training_days=3)
 
-        # batch A: bad → good (retry); batch B: good; batch C: good
         client = _make_multi_response_client(
-            [bad_json, good_json_a, good_json_b, good_json_c],
-            provider="test-low-cap",
+            [bad_json, good_monday, good_tuesday, good_wed, good_thu, good_fri, good_sat, good_sun],
         )
         agent = CookingAgent(client=client, kb=kb, max_retries=1)
         agent._validate_dietary_compliance = lambda plan, banned: []
         plan = agent.generate_cooking_plan(weekly_plan, profile)
-        # batch A used 2 calls (initial + retry), batch B used 1, batch C used 1 → total 4
-        assert client.chat.call_count == 4
+        # 周一: 2 calls (initial bad + retry good); 周二-周日: 1 call each = 6 → total 8
+        assert client.chat.call_count == 8
         assert len(plan.daily_plans) == 7
+
 
     def test_structure_warnings_in_tips(
         self, kb, profile, weekly_plan
