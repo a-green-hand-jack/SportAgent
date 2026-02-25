@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CookingPlan v7 评审</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#06060b;--s1:#0e0e16;--s2:#16161f;--bd:#252535;--t:#e4e4ef;--td:#8585a0;--tm:#55556a;--or:#ff6b35;--bl:#4a9eff;--gn:#34d399;--pu:#a78bfa;--yl:#fbbf24;--rd:#ef4444;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--t);font-family:'Noto Sans SC',sans-serif;line-height:1.8;}
+  .ctr{max-width:1100px;margin:0 auto;padding:56px 36px;}
+  code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--s2);padding:2px 6px;border-radius:4px;color:var(--td);}
+  .hdr{margin-bottom:48px;} .hdr-sup{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--bl);text-transform:uppercase;letter-spacing:4px;margin-bottom:12px;}
+  .hdr h1{font-family:'Playfair Display',serif;font-size:30px;font-weight:900;margin-bottom:14px;} .hdr-d{font-size:14px;color:var(--td);max-width:800px;line-height:1.9;}
+  .sb{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:44px;}
+  .sc{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:18px;text-align:center;}
+  .sc .l{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;}
+  .sc .v{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;} .sc .su{font-size:10px;color:var(--td);margin-top:3px;}
+  .sec{margin-bottom:44px;} .sh{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd);}
+  .sn{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:3px 10px;border-radius:5px;} .st{font-size:18px;font-weight:800;}
+  .tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;}
+  .tbl th,.tbl td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--bd);}
+  .tbl th{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:1px;background:var(--s1);}
+  .tbl td.num{font-family:'JetBrains Mono',monospace;text-align:right;}
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:20px 24px;margin-bottom:12px;}
+  .ch{display:flex;align-items:center;gap:10px;margin-bottom:10px;} .ci{font-size:16px;} .ct{font-size:14px;font-weight:700;}
+  .cb{font-size:13px;color:var(--td);line-height:1.9;}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;margin-left:auto;}
+  .p0{background:rgba(239,68,68,0.1);color:var(--rd);border:1px solid rgba(239,68,68,0.2);}
+  .p1{background:rgba(255,107,53,0.1);color:var(--or);border:1px solid rgba(255,107,53,0.2);}
+  .p2{background:rgba(251,191,36,0.1);color:var(--yl);border:1px solid rgba(251,191,36,0.2);}
+  .hl{color:var(--t);font-weight:600;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .bug{background:rgba(239,68,68,0.04);border:1px solid rgba(239,68,68,0.15);border-radius:14px;padding:24px;margin-bottom:24px;}
+  .bug h3{color:var(--rd);font-size:16px;margin-bottom:10px;}
+  .bug p{font-size:13px;color:var(--td);line-height:1.9;}
+  .verdict{background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:28px;}
+  .verdict h3{font-size:17px;font-weight:700;margin-bottom:12px;} .verdict p{font-size:13px;color:var(--td);line-height:1.9;margin-bottom:10px;}
+  @media(max-width:768px){.sb{grid-template-columns:repeat(2,1fr);}.two{grid-template-columns:1fr;}.ctr{padding:40px 18px;}}
+</style>
+</head>
+<body>
+<div class="ctr">
+
+  <div class="hdr">
+    <div class="hdr-sup">CookingAgent v7 · Review</div>
+    <h1>v7 评审：新特性上线，暴露"生熟重量"核心 Bug</h1>
+    <div class="hdr-d">
+      v7 引入了蛋白粉、豆腐甜品碗等新特性，31 道唯一菜品创新高。但面条类菜品暴露了一个系统性 bug：配方标注"干面重量"，LLM 却按"熟面重量"估算热量，导致面条菜品实际热量远高于标注。这个 bug 使周三热量超标 +22.7%。
+    </div>
+  </div>
+
+  <div class="sb">
+    <div class="sc"><div class="l">综合评级</div><div class="v" style="color:var(--yl);">A-</div><div class="su">v6 的 A 降回 A-</div></div>
+    <div class="sc"><div class="l">热量 ±10%</div><div class="v" style="color:var(--yl);">6/7</div><div class="su">周三 +22.7%</div></div>
+    <div class="sc"><div class="l">唯一菜品</div><div class="v" style="color:var(--gn);">31</div><div class="su">历史新高</div></div>
+    <div class="sc"><div class="l">训练日结构</div><div class="v" style="color:var(--gn);">5/5</div><div class="su">pre+post ✅</div></div>
+  </div>
+
+  <!-- Critical bug -->
+  <div class="bug">
+    <h3>🐛 核心 Bug：面条"干面重量" vs "熟面重量"混淆</h3>
+    <p>
+      v7 的面条菜品配方标注为<span class="hl">"干面重量"</span>（如"面条 280g (干面重量)"），但 LLM 的热量估算按<span class="hl">"熟面重量"</span>来计算。干面和熟面的热量密度差 2.5 倍（干面 348 kcal/100g vs 熟面 138 kcal/100g）。
+    </p>
+    <p>
+      <span class="hl">影响范围：</span><br>
+      • 周三 西兰花牛肉面：280g 干面 = 974 kcal（标注 826，LLM 按熟面估算约 386 kcal）→ 实际全菜 1503 kcal vs 标注 826（<span style="color:var(--rd);">-45% 偏差</span>）<br>
+      • 周二 训练后虾仁汤面：130g 干面 = 452 kcal → 额外多出 273 kcal<br>
+      • 周五 训练后虾仁汤面：200g 干面 = 696 kcal → 额外多出 420 kcal<br><br>
+      <span class="hl">根因：</span>LLM 对"大米"一贯标注"煮熟后重量"，但对"面条"改为了"干面重量"——同一份计划内重量基准不统一。大米用熟重（因为用户量的是煮好的饭），面条却标了干重（因为面条包装标的是干重）。这种不一致让 LLM 的热量估算和实际计算产生了严重偏差。<br><br>
+      <span class="hl">解法：</span>统一所有主食为同一种重量基准。推荐统一用<b>熟重</b>——这是用户实际称量时最方便的方式。如果配方要写干面，则必须同时标注生熟比（面条 1:2.5，大米 1:2.3），并用熟重计算热量。
+    </p>
+  </div>
+
+  <!-- 每日验算 -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(74,158,255,0.08);color:var(--bl);border:1px solid rgba(74,158,255,0.2);">01</span>
+      <span class="st">每日验算（按熟重修正后）</span>
+    </div>
+    <p class="cb" style="margin-bottom:12px;">下表展示两种口径：原始验算（面条按干重算）和修正后验算（面条按熟重算，即 LLM 的实际意图）。</p>
+    <table class="tbl">
+      <thead><tr><th>日</th><th>类型</th><th>原始计算</th><th>修正计算</th><th>vs 目标</th><th>蛋白质</th><th>判定</th></tr></thead>
+      <tbody>
+        <tr><td>周一</td><td>🏋️</td><td class="num">2605</td><td class="num">2605</td><td class="num" style="color:var(--gn);">-2.5%</td><td class="num">179g ✅</td><td>✅ 无面条</td></tr>
+        <tr><td>周二</td><td>🏋️</td><td class="num">2607</td><td class="num">~2334</td><td class="num" style="color:var(--or);">-12.7%</td><td class="num">~133g ❌</td><td>⚠️ 面条130g干</td></tr>
+        <tr style="background:rgba(239,68,68,0.03);"><td>周三</td><td>🏋️</td><td class="num" style="color:var(--rd);">3278</td><td class="num">~2690</td><td class="num" style="color:var(--gn);">+0.7%</td><td class="num">~145g ✅</td><td>⚠️ 面条280g干</td></tr>
+        <tr><td>周四</td><td>🏋️</td><td class="num">2571</td><td class="num">2571</td><td class="num" style="color:var(--gn);">-3.8%</td><td class="num">178g ✅</td><td>✅ 无面条</td></tr>
+        <tr><td>周五</td><td>🏋️</td><td class="num">2905</td><td class="num">~2485</td><td class="num" style="color:var(--gn);">-7.0%</td><td class="num">~140g ✅</td><td>⚠️ 面条200g干</td></tr>
+        <tr><td>周六</td><td>😴</td><td class="num">2323</td><td class="num">2323</td><td class="num" style="color:var(--gn);">-3.1%</td><td class="num">168g ✅</td><td>✅ 无面条</td></tr>
+        <tr><td>周日</td><td>😴</td><td class="num">2369</td><td class="num">2369</td><td class="num" style="color:var(--gn);">-1.2%</td><td class="num">148g ✅</td><td>✅ 无面条</td></tr>
+      </tbody>
+    </table>
+    <div class="cb" style="padding:0 8px;">
+      如果将面条"干面重量"理解为 LLM 的意图是"熟面重量"（即配方标注有误），则修正后 7/7 天基本达标。<span class="hl">但如果用户按字面理解煮了 280g 干面条，实际摄入将远超目标。</span>这就是为什么"统一生熟重量基准"是必须立即修复的 bug。
+    </div>
+  </div>
+
+  <!-- 新特性 -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(52,211,153,0.08);color:var(--gn);border:1px solid rgba(52,211,153,0.2);">02</span>
+      <span class="st">v7 新特性（改进项）</span>
+    </div>
+    <div class="two">
+      <div class="card">
+        <div class="ch"><span class="ci">✅</span><span class="ct">蛋白粉首次出现</span></div>
+        <div class="cb">周四"训练前燕麦香蕉蛋白奶昔"使用了<code>乳清蛋白粉 20g (无乳糖版本)</code>，且出现在采购清单中。这解决了连续两版（v5、v6）的"需要 7 个蛋的蛋白"问题。PlanAgent 的补剂建议被 CookingAgent 正确读取和使用。</div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ci">✅</span><span class="ct">豆腐甜品碗替代"莓果鸡蛋坚果碗"</span></div>
+        <div class="cb">"豆腐莓果碗（无乳糖版）"和"豆腐蓝莓核桃碗（无乳糖版）"——嫩豆腐压成酸奶质地 + 莓果 + 坚果 + 蜂蜜。解决了 v5 的"水煮蛋+莓果+蜂蜜口味冲突"问题，且明确标注"无乳糖版"。</div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ci">✅</span><span class="ct">31 道唯一菜品（历史最高）</span></div>
+        <div class="cb">v5 的 27 道 → v6 的 26 道 → v7 的 31 道。新增了烤鸡腿配红薯芦笋、豆腐菠菜燕麦早餐碗、虾仁蔬菜炒饭、苹果配杏仁、盐水毛豆配杏仁等。0 道菜出现 ≥3 次。</div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ci">✅</span><span class="ct">周二早餐 = 三明治+燕麦粥+香蕉</span></div>
+        <div class="cb">"蔬菜鸡蛋全麦三明治"实际是一个组合早餐（燕麦粥+三明治+香蕉），654 kcal 提供充足能量。虽然菜名没完全反映配方，但作为一餐完整的训练日早餐很合理。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 问题 -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(255,107,53,0.08);color:var(--or);border:1px solid rgba(255,107,53,0.2);">03</span>
+      <span class="st">需要修复的问题</span>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--rd);">
+      <div class="ch"><span class="ci">1.</span><span class="ct">统一所有主食为熟重标注</span><span class="tag p0">P0</span></div>
+      <div class="cb">
+        当前大米标注"煮熟后重量"，面条标注"干面重量"——同一份计划内基准不一致。<span class="hl">必须统一为熟重</span>，这是用户实际称量最方便的方式。面条改为"面条 XXg（煮熟后重量）"即可。这个 bug 影响了 3 天的热量准确性。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--or);">
+      <div class="ch"><span class="ci">2.</span><span class="ct">周二蛋白质 138g — 差 2g 未达标</span><span class="tag p1">P1</span></div>
+      <div class="cb">
+        周二的蛋白质主要来源偏少：虾仁 120g（22g pro）+ 鳕鱼 200g（36g pro）+ 鸡蛋共 120g（16g pro）。嫩豆腐的蛋白质密度较低（5g/100g vs 老豆腐 8g）。建议将豆腐莓果碗的嫩豆腐改为老豆腐，或增加虾仁到 150g。
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--yl);">
+      <div class="ch"><span class="ci">3.</span><span class="ct">"年糕"菜名仍未修正</span><span class="tag p2">P2</span></div>
+      <div class="cb">连续两版出现——配方是米饭捏饭团，菜名叫"年糕"。这不影响功能，但影响用户理解。</div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--yl);">
+      <div class="ch"><span class="ci">4.</span><span class="ct">高蛋白松饼仍用 6 个蛋白（180g）</span><span class="tag p2">P2</span></div>
+      <div class="cb">周四的奶昔已经用了蛋白粉，但周三的松饼仍然使用 180g 蛋白（~6 个蛋清）。建议松饼也改用蛋白粉——燕麦粉+鸡蛋+香蕉+蛋白粉的松饼同样可行。</div>
+    </div>
+  </div>
+
+  <!-- 建议：CookingAgent vs 其他方向 -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(167,139,250,0.08);color:var(--pu);border:1px solid rgba(167,139,250,0.2);">04</span>
+      <span class="st">是否应该继续改进 CookingAgent？</span>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--gn);">
+      <div class="ch"><span class="ci">📊</span><span class="ct">CookingAgent 成熟度评估</span></div>
+      <div class="cb">
+        <table class="tbl" style="margin-top:8px;">
+          <thead><tr><th>能力维度</th><th>状态</th><th>成熟度</th></tr></thead>
+          <tbody>
+            <tr><td>训练日/休息日区分</td><td>5训+2休 ✅</td><td style="color:var(--gn);">完成</td></tr>
+            <tr><td>pre/post workout 餐食</td><td>5/5 天 ✅</td><td style="color:var(--gn);">完成</td></tr>
+            <tr><td>post_workout 蛋白质 ≥35g</td><td>48-69g ✅</td><td style="color:var(--gn);">完成</td></tr>
+            <tr><td>修正循环</td><td>有效运作 ✅</td><td style="color:var(--gn);">完成</td></tr>
+            <tr><td>乳糖限制</td><td>无违规 ✅</td><td style="color:var(--gn);">完成</td></tr>
+            <tr><td>菜品多样性</td><td>31 道/0 个≥3次 ✅</td><td style="color:var(--gn);">完成</td></tr>
+            <tr><td>蛋白质来源多样性</td><td>10+ 类 ✅</td><td style="color:var(--gn);">完成</td></tr>
+            <tr><td>补剂集成（蛋白粉）</td><td>首次使用 ✅</td><td style="color:var(--gn);">完成</td></tr>
+            <tr><td>系统自检</td><td>运作正常 ✅</td><td style="color:var(--gn);">完成</td></tr>
+            <tr><td>热量精度（LLM 估算）</td><td>大部分 ≤10%</td><td style="color:var(--yl);">90%</td></tr>
+            <tr><td>生熟重量统一</td><td>面条干重/米饭熟重不一致</td><td style="color:var(--rd);">待修</td></tr>
+            <tr><td>食物营养数据库</td><td>未接入</td><td style="color:var(--tm);">未来</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--pu);">
+      <div class="ch"><span class="ci">💡</span><span class="ct">建议：修一个 bug 后转向其他方向</span></div>
+      <div class="cb">
+        CookingAgent 的核心功能已经 <span class="hl">90% 完成</span>。剩下的提升空间主要是：<br><br>
+        <span class="hl">必须修（1 个快速修复）：</span>统一面条/大米的生熟重量标注为"熟重"。这是一个 prompt/规则层面的修复，改动量小但影响大——修完之后 v7 的面条日就不会再有热量偏差。<br><br>
+        <span class="hl">建议暂缓（长期优化）：</span>食物营养数据库接入、等营养素替换矩阵、备餐建议、采购清单优化。这些会让 CookingAgent 从 A- 到 A+，但边际收益递减——每个改进对用户体验的提升越来越小。<br><br>
+        <span class="hl">更有价值的方向：</span>系统中其他 Agent 可能还在更早期的阶段。把时间投入到其他尚未打磨的 Agent（如 ProgressTracker、AdaptationAgent）上，ROI 会更高。CookingAgent 已经可以生成用户能直接跟着执行的周饮食计划了——这是它的核心使命。
+      </div>
+    </div>
+  </div>
+
+  <!-- Verdict -->
+  <div class="verdict">
+    <h3 style="color:var(--yl);">A-：新特性出色，但面条生熟重量 bug 拉低了分数</h3>
+    <p>
+      v7 在新特性上做得很好：蛋白粉首次出现、豆腐甜品碗替代了口味冲突的鸡蛋莓果碗、31 道唯一菜品创新高。这些都是对之前 review 反馈的精准响应。但面条类菜品的"干面重量 vs 熟面重量"混淆是一个<span class="hl">新引入的系统性 bug</span>——它让 3 天中有面条的菜品热量计算全部偏离。
+    </p>
+    <p>
+      <span class="hl">好消息是修复很简单</span>：在 prompt 或验证规则中加一条"所有主食（大米、面条、藜麦）统一标注煮熟后重量"即可。这个修复完成后，v7 的实际水平应该回到 v6 的 A 级甚至更高（因为有蛋白粉、豆腐碗等新特性加持）。
+    </p>
+    <p>
+      <span class="hl">关于是否继续改进 CookingAgent：</span>建议做完"统一生熟重量"这一个快速修复后，CookingAgent 就可以暂时告一段落了。它的核心功能（训练日/休息日区分、pre/post workout、热量达标、多样性、乳糖限制）已经全部就位。剩余的优化（数据库、替换矩阵、备餐建议）是锦上添花——把时间投入到系统中其他 Agent 上会有更高的 ROI。
+    </p>
+  </div>
+
+  <div style="text-align:center;padding:32px 0;border-top:1px solid var(--bd);color:var(--tm);font-size:11px;font-family:'JetBrains Mono',monospace;margin-top:32px;">
+    CookingAgent v7 · A- · 2026-02-25
+  </div>
+</div>
+</body>
+</html>
