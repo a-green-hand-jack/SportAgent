@@ -106,6 +106,83 @@ def _display_plan(plan) -> None:  # type: ignore[no-untyped-def]
 
 
 # ---------------------------------------------------------------------------
+# Helpers: Markdown export
+# ---------------------------------------------------------------------------
+
+def _plan_to_markdown(plan) -> str:  # type: ignore[no-untyped-def]
+    """Convert a WeeklyPlan to a human-readable Markdown string."""
+    lines: list[str] = []
+
+    # --- Title ---
+    lines.append(f"# 🏋️ {plan.user_name} 的周训练计划\n")
+    lines.append(f"**目标**: {plan.goal.value}  |  **经验等级**: {plan.experience_level}\n")
+
+    # --- Nutrition ---
+    nut = plan.daily_nutrition
+    lines.append("---\n")
+    lines.append("## 📊 每日营养目标\n")
+    lines.append(f"| 指标 | 目标 |")
+    lines.append(f"|------|------|")
+    lines.append(f"| 热量 | {nut.calorie_target:.0f} kcal |")
+    lines.append(f"| 蛋白质 | {nut.protein_g:.0f} g |")
+    lines.append(f"| 碳水化合物 | {nut.carbs_g:.0f} g |")
+    lines.append(f"| 脂肪 | {nut.fat_g:.0f} g |")
+    lines.append("")
+    if nut.meal_suggestions:
+        lines.append("**推荐餐食:**\n")
+        for meal in nut.meal_suggestions:
+            lines.append(f"- {meal}")
+        lines.append("")
+    if nut.supplements:
+        lines.append("**补剂建议:**\n")
+        for sup in nut.supplements:
+            lines.append(f"- {sup}")
+        lines.append("")
+
+    # --- Training days ---
+    lines.append("---\n")
+    lines.append("## 🗓 训练安排\n")
+    for day in plan.training_days:
+        lines.append(f"### {day.day_label}：{day.focus}（约 {day.estimated_duration_minutes} 分钟）\n")
+        if day.warmup_notes:
+            lines.append(f"**热身:** {day.warmup_notes}\n")
+        if day.pre_workout_meal:
+            lines.append(f"**训练前饮食:** {day.pre_workout_meal}\n")
+        lines.append("| 动作 | 起始重量 | 组数 | 次数 | 休息 |")
+        lines.append("|------|---------|------|------|------|")
+        for ex in day.exercises:
+            name = f"{ex.exercise_name_zh}（{ex.exercise_name}）"
+            weight = ex.weight_hint or "—"
+            note = f" *{ex.notes}*" if ex.notes else ""
+            lines.append(f"| {name}{note} | {weight} | {ex.sets} | {ex.reps} | {ex.rest_seconds}s |")
+        lines.append("")
+        if day.cooldown_notes:
+            lines.append(f"**放松:** {day.cooldown_notes}\n")
+        if day.post_workout_meal:
+            lines.append(f"**训练后饮食:** {day.post_workout_meal}\n")
+
+    # --- Rest days ---
+    if plan.rest_days:
+        lines.append(f"**休息日:** {', '.join(plan.rest_days)}\n")
+
+    # --- 4-week overview ---
+    if plan.four_week_overview:
+        lines.append("---\n")
+        lines.append("## 📅 4周训练规划\n")
+        lines.append(plan.four_week_overview)
+        lines.append("")
+
+    # --- Coach notes ---
+    if plan.coach_notes:
+        lines.append("---\n")
+        lines.append("## 💬 教练建议\n")
+        lines.append(plan.coach_notes)
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 
@@ -131,7 +208,7 @@ def plan(
     output: Optional[Path] = typer.Option(
         None,
         "--output", "-o",
-        help="Save the generated plan JSON to this path.",
+        help="Save the generated plan JSON to this path (default: data/processed/plan.json).",
     ),
 ) -> None:
     """
@@ -185,14 +262,16 @@ def plan(
     # --- Display ---
     _display_plan(fitness_plan)
 
-    # --- Optionally save ---
-    if output:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(
-            fitness_plan.model_dump_json(indent=2),
-            encoding="utf-8",
-        )
-        console.print(f"[dim]Plan saved to {output}[/dim]")
+    # --- Save plan (JSON + Markdown) ---
+    save_path = output if output else DATA_DIR / "processed" / "plan.json"
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    save_path.write_text(
+        fitness_plan.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    md_path = save_path.with_suffix(".md")
+    md_path.write_text(_plan_to_markdown(fitness_plan), encoding="utf-8")
+    console.print(f"[dim]Plan saved to {save_path} and {md_path}[/dim]")
 
 
 @app.command()
