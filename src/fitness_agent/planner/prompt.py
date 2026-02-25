@@ -101,6 +101,7 @@ PLANNER_SYSTEM = """\
 - **beginner_light**（初级）：哑铃动作用 5-10 kg，杠铃动作用空杆（20 kg）
 - **beginner_moderate**（中等初级）：哑铃动作用 10-15 kg，杠铃动作用体重 30-40%
 - **intermediate**（中级）：哑铃动作用 15-25 kg，杠铃动作用体重 40-60%
+- **weight_hint 范围约束**：给出单一起始值或窄范围（范围上下限差距不超过 25%），如 `"12 kg"` 或 `"12-15 kg"`，不要给出 `"10-20 kg"` 这样的宽泛范围
 
 ## notes 填写要求（必填）
 
@@ -229,6 +230,25 @@ def build_user_message(
     anatomy_text = kb.format_anatomy_for_prompt(level=profile.experience_level)
     if anatomy_text:
         sections.append(anatomy_text)
+
+    # 3.5. Warmup / cooldown templates (injected when KB has templates loaded)
+    warmup_text = kb.format_warmup_templates_for_prompt()
+    if warmup_text:
+        sections.append(warmup_text)
+
+    # 3.6. Injury-specific training guidance (injected only when user has injuries)
+    if profile.injuries:
+        from fitness_agent.knowledge_base.models import ContraindicationTag
+        valid_tags = {t.value for t in ContraindicationTag}
+        injury_tags = [
+            ContraindicationTag(inj.strip().lower())
+            for inj in profile.injuries
+            if inj.strip().lower() in valid_tags
+        ]
+        if injury_tags:
+            injury_text = kb.format_injury_guidance_for_prompt(injury_tags)
+            if injury_text:
+                sections.append(injury_text)
 
     # 4. Nutrition execution guide
     nutrition_text = kb.format_nutrition_principles_for_prompt(

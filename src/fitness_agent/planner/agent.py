@@ -122,6 +122,8 @@ class PlannerAgent:
         messages: list[Message] = [Message(role="user", content=user_message)]
         plan: WeeklyPlan | None = None
         volume_warnings: list[str] = []
+        duration_warnings: list[str] = []
+        injury_warnings: list[str] = []
 
         for attempt in range(self.max_retries + 1):
             logger.info(
@@ -150,36 +152,60 @@ class PlannerAgent:
                     "This is a known LLM compliance issue — consider retrying."
                 )
 
-            # Validate weekly volume
+            # Validate all three dimensions
             volume_warnings = self._validate_volume(plan, profile.experience_level)
-            if not volume_warnings:
-                logger.info("Volume validation: all muscle groups within target ranges.")
+            duration_warnings = self._validate_duration(plan, profile.session_duration_minutes)
+            injury_warnings = self._validate_injuries(plan, contraindications)
+
+            all_warnings = volume_warnings + duration_warnings + injury_warnings
+            if not all_warnings:
+                logger.info("All validations passed (volume, duration, injury).")
                 break
 
             logger.info(
-                f"Volume validation: {len(volume_warnings)} muscle group(s) below target "
+                f"Validation: {len(volume_warnings)} volume, "
+                f"{len(duration_warnings)} duration, "
+                f"{len(injury_warnings)} injury warning(s) "
                 f"(attempt {attempt + 1}/{self.max_retries + 1})."
             )
 
             if attempt < self.max_retries:
                 messages.append(Message(role="assistant", content=response.content))
-                correction = self._build_correction_message(volume_warnings)
+                correction = self._build_correction_message(
+                    volume_warnings, duration_warnings, injury_warnings
+                )
                 messages.append(Message(role="user", content=correction))
                 logger.debug(f"Retry {attempt + 1}: appended correction message.")
 
         # After all attempts: append remaining warnings to coach_notes
         assert plan is not None
-        if volume_warnings:
-            warning_text = (
-                "📊 **周训练量提醒**（系统自动检测）\n"
-                + "\n".join(volume_warnings)
-                + "\n\n建议在上述不足的肌群对应训练日中额外补充1-2组复合动作。"
-            )
+        all_remaining = volume_warnings + duration_warnings + injury_warnings
+        if all_remaining:
+            parts = []
+            if volume_warnings:
+                parts.append(
+                    "📊 **周训练量提醒**\n"
+                    + "\n".join(volume_warnings)
+                    + "\n建议在不足的肌群对应训练日中额外补充1-2组复合动作。"
+                )
+            if duration_warnings:
+                parts.append(
+                    "⏱ **训练时长超限提醒**\n"
+                    + "\n".join(duration_warnings)
+                    + "\n建议减少孤立动作或适当缩减组数。"
+                )
+            if injury_warnings:
+                parts.append(
+                    "⚠️ **伤病安全提醒**\n"
+                    + "\n".join(injury_warnings)
+                    + "\n请将上述动作替换为对应伤病安全的替代动作。"
+                )
+            warning_text = "（以下为系统自动检测的计划改进建议）\n\n" + "\n\n".join(parts)
             plan.coach_notes = (
                 (plan.coach_notes + "\n\n" + warning_text) if plan.coach_notes else warning_text
             )
             logger.info(
-                f"Volume warnings appended to coach_notes after {self.max_retries + 1} attempt(s)."
+                f"Validation warnings appended to coach_notes after {self.max_retries + 1} attempt(s)."
             )
 
         logger.info(f"Plan generated: {plan.summary()}")
@@ -247,18 +273,75 @@ class PlannerAgent:
         return warnings
 
     @staticmethod
-    def _build_correction_message(warnings: list[str]) -> str:
-        """Build a follow-up user message asking the LLM to fix volume deficiencies."""
-        joined = "\n".join(warnings)
+    def _build_correction_message(
+        volume_warnings: list[str],
+        duration_warnings: list[str],
+        injury_warnings: list[str],
+    ) -> str:
+        """Build a follow-up user message asking the LLM to fix all identified issues."""
+        parts = []
+        if volume_warnings:
+            parts.append("【周训练量不足】\n" + "\n".join(volume_warnings))
+        if duration_warnings:
+            parts.append("【训练时长超限】\n" + "\n".join(duration_warnings))
+        if injury_warnings:
+            parts.append("【伤病安全问题】\n" + "\n".join(injury_warnings))
+        joined = "\n\n".join(parts)
         return (
-            f"以下主要肌群的周训练量不足，请调整计划：\n"
-            f"{joined}\n\n"
+            f"计划存在以下问题，请调整：\n\n{joined}\n\n"
             "调整要求：\n"
             "- 不要改变训练日数量或整体训练结构\n"
-            "- 在对应训练日增加 1-2 组针对该肌群的复合动作\n"
-            "- 保持每日总训练时长在合理范围内\n"
+            "- 训练量不足：在对应训练日增加 1-2 组针对该肌群的复合动作\n"
+            "- 时长超限：减少动作数量或组数，优先删除孤立动作\n"
+            "- 伤病问题：将违禁动作替换为安全替代动作\n"
             "- 返回完整修正后的 JSON 计划（格式与之前相同，不要有任何额外文字）"
         )
+
+    @staticmethod
+    def _validate_duration(plan: WeeklyPlan, session_duration_minutes: int) -> list[str]:
+        """
+        Check each training day's estimated duration against the user's session target.
+
+        Allows up to 15 minutes over the target (tolerance for warmup/cooldown variation).
+        Returns warning strings for days that exceed the limit.
+        """
+        tolerance = 15
+        limit = session_duration_minutes + tolerance
+        warnings = []
+        for day in plan.training_days:
+            if day.estimated_duration_minutes > limit:
+                warnings.append(
+                    f"- {day.day_label}：估计时长 {day.estimated_duration_minutes} 分钟，"
+                    f"超过目标 {session_duration_minutes} 分钟（允许误差 {tolerance} 分钟）"
+                )
+        return warnings
+
+    def _validate_injuries(
+        self, plan: WeeklyPlan, contraindications: list[ContraindicationTag]
+    ) -> list[str]:
+        """
+        Re-validate that no exercise in the plan has contraindications for the user's injuries.
+
+        The exercise pool filtering at Step 1 prevents most cases, but the LLM may
+        reference exercise IDs outside the filtered pool.  This catches such cases.
+        Exercises not found in the KB (hallucinated IDs) are skipped silently.
+        """
+        if not contraindications:
+            return []
+        contra_set = set(contraindications)
+        warnings = []
+        for day in plan.training_days:
+            for ex_set in day.exercises:
+                exercise = self.kb.get_exercise_by_id(ex_set.exercise_id)
+                if exercise is None:
+                    continue  # hallucinated ID not in KB — already skipped elsewhere
+                violations = contra_set & set(exercise.contraindications)
+                if violations:
+                    warnings.append(
+                        f"- {ex_set.exercise_name}（{ex_set.exercise_id}）"
+                        f"对 {', '.join(v.value for v in violations)} 有禁忌，请替换为安全动作"
+                    )
+        return warnings
 
     @staticmethod
     def _parse_contraindications(injuries: list[str]) -> list[ContraindicationTag]:

@@ -175,7 +175,7 @@ def plan(
     # --- Generate plan ---
     console.print("\n[bold]正在生成训练计划，请稍候…[/bold]")
     try:
-        kb = KnowledgeBase()
+        kb = KnowledgeBase()  # warmup_templates and injury_profiles loaded from default paths
         agent = PlannerAgent(client=client, kb=kb)
         fitness_plan = agent.generate_plan(user_profile)
     except Exception as exc:

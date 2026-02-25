@@ -330,3 +330,175 @@ class TestGetVolumeTargets:
         )
         targets = kb_empty.get_volume_targets(ExperienceLevel.beginner)
         assert targets == {}
+
+
+# ---------------------------------------------------------------------------
+# WarmupTemplate queries
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def kb_with_warmup() -> KnowledgeBase:
+    """KnowledgeBase with warmup templates + injury profiles from test fixtures."""
+    return KnowledgeBase(
+        exercises_path=TEST_DATA / "exercises.json",
+        nutrition_path=TEST_DATA / "nutrition.json",
+        rules_path=TEST_DATA / "rules.json",
+        anatomy_path=TEST_DATA / "anatomy.json",
+        nutrition_principles_path=TEST_DATA / "nutrition_principles.json",
+        warmup_templates_path=TEST_DATA / "warmup_templates.json",
+        injury_profiles_path=TEST_DATA / "injury_profiles.json",
+    )
+
+
+class TestWarmupTemplates:
+    def test_loads_warmup_templates(self, kb_with_warmup: KnowledgeBase) -> None:
+        """Should load all 3 templates from the test fixture."""
+        assert len(kb_with_warmup.warmup_templates) == 3
+
+    def test_template_ids_are_correct(self, kb_with_warmup: KnowledgeBase) -> None:
+        ids = {t.id for t in kb_with_warmup.warmup_templates}
+        assert "lower_body" in ids
+        assert "upper_push" in ids
+        assert "full_body" in ids
+
+    def test_get_warmup_template_by_squat_pattern(self, kb_with_warmup: KnowledgeBase) -> None:
+        """squat pattern should match lower_body template (highest overlap score)."""
+        tmpl = kb_with_warmup.get_warmup_template(["squat"])
+        assert tmpl is not None
+        assert tmpl.id == "lower_body"
+
+    def test_get_warmup_template_by_push_pattern(self, kb_with_warmup: KnowledgeBase) -> None:
+        """push pattern should match upper_push template."""
+        tmpl = kb_with_warmup.get_warmup_template(["push"])
+        assert tmpl is not None
+        assert tmpl.id == "upper_push"
+
+    def test_get_warmup_template_returns_best_match(self, kb_with_warmup: KnowledgeBase) -> None:
+        """When multiple patterns given, the template with most overlap wins."""
+        # full_body covers squat+push+pull+hinge+core; lower_body covers squat+hinge
+        # Providing [squat, push, pull, hinge, core] should score full_body highest
+        tmpl = kb_with_warmup.get_warmup_template(["squat", "push", "pull", "hinge", "core"])
+        assert tmpl is not None
+        assert tmpl.id == "full_body"
+
+    def test_get_warmup_template_returns_none_when_no_templates(
+        self, tmp_path: Path
+    ) -> None:
+        """No templates loaded → returns None."""
+        kb_empty = KnowledgeBase(
+            exercises_path=tmp_path / "no_exercises.json",
+            nutrition_path=tmp_path / "no_nutrition.json",
+            rules_path=tmp_path / "no_rules.json",
+            warmup_templates_path=None,
+        )
+        assert kb_empty.get_warmup_template(["squat"]) is None
+
+    def test_warmup_templates_empty_when_path_none(self, tmp_path: Path) -> None:
+        """warmup_templates_path=None → empty list (no crash)."""
+        kb = KnowledgeBase(
+            exercises_path=tmp_path / "no_exercises.json",
+            nutrition_path=tmp_path / "no_nutrition.json",
+            rules_path=tmp_path / "no_rules.json",
+            warmup_templates_path=None,
+        )
+        assert kb.warmup_templates == []
+
+    def test_format_warmup_templates_for_prompt_contains_sequence_marker(
+        self, kb_with_warmup: KnowledgeBase
+    ) -> None:
+        """The formatted text must include the ① step marker."""
+        text = kb_with_warmup.format_warmup_templates_for_prompt()
+        assert "①" in text
+
+    def test_format_warmup_templates_for_prompt_contains_template_names(
+        self, kb_with_warmup: KnowledgeBase
+    ) -> None:
+        """All template names (Chinese) should appear in the formatted block."""
+        text = kb_with_warmup.format_warmup_templates_for_prompt()
+        assert "下肢训练热身" in text
+        assert "上肢推力训练热身" in text
+        assert "全身综合训练热身" in text
+
+    def test_format_warmup_templates_empty_when_no_templates(
+        self, tmp_path: Path
+    ) -> None:
+        """No templates → empty string."""
+        kb = KnowledgeBase(
+            exercises_path=tmp_path / "no_exercises.json",
+            nutrition_path=tmp_path / "no_nutrition.json",
+            rules_path=tmp_path / "no_rules.json",
+            warmup_templates_path=None,
+        )
+        assert kb.format_warmup_templates_for_prompt() == ""
+
+
+# ---------------------------------------------------------------------------
+# InjuryProfile queries
+# ---------------------------------------------------------------------------
+
+class TestInjuryProfiles:
+    def test_loads_injury_profiles(self, kb_with_warmup: KnowledgeBase) -> None:
+        """Should load all 3 profiles from the test fixture."""
+        assert len(kb_with_warmup.injury_profiles) == 3
+
+    def test_get_injury_profile_by_tag(self, kb_with_warmup: KnowledgeBase) -> None:
+        """knee_injury tag should return the knee profile."""
+        profile = kb_with_warmup.get_injury_profile(ContraindicationTag.knee_injury)
+        assert profile is not None
+        assert profile.name_zh == "膝关节损伤"
+
+    def test_get_injury_profile_returns_none_for_unknown_tag(
+        self, kb_with_warmup: KnowledgeBase
+    ) -> None:
+        """A tag not in the fixture returns None."""
+        # elbow_injury is not in the 3-entry test fixture
+        profile = kb_with_warmup.get_injury_profile(ContraindicationTag.elbow_injury)
+        assert profile is None
+
+    def test_format_injury_guidance_empty_when_no_injuries(
+        self, kb_with_warmup: KnowledgeBase
+    ) -> None:
+        """Empty injury list → empty string."""
+        text = kb_with_warmup.format_injury_guidance_for_prompt([])
+        assert text == ""
+
+    def test_format_injury_guidance_contains_knee_injury_name(
+        self, kb_with_warmup: KnowledgeBase
+    ) -> None:
+        """knee_injury tag → formatted text contains Chinese name."""
+        text = kb_with_warmup.format_injury_guidance_for_prompt(
+            [ContraindicationTag.knee_injury]
+        )
+        assert "膝关节损伤" in text
+
+    def test_format_injury_guidance_contains_avoid_patterns(
+        self, kb_with_warmup: KnowledgeBase
+    ) -> None:
+        """knee_injury avoids squat → text must mention squat."""
+        text = kb_with_warmup.format_injury_guidance_for_prompt(
+            [ContraindicationTag.knee_injury]
+        )
+        assert "squat" in text
+
+    def test_format_injury_guidance_multiple_injuries(
+        self, kb_with_warmup: KnowledgeBase
+    ) -> None:
+        """Multiple injuries → all names appear."""
+        text = kb_with_warmup.format_injury_guidance_for_prompt(
+            [ContraindicationTag.knee_injury, ContraindicationTag.wrist_injury]
+        )
+        assert "膝关节损伤" in text
+        assert "手腕损伤" in text
+
+    def test_format_injury_guidance_empty_when_profiles_not_loaded(
+        self, tmp_path: Path
+    ) -> None:
+        """No profiles loaded → empty string even with valid tag."""
+        kb = KnowledgeBase(
+            exercises_path=tmp_path / "no_exercises.json",
+            nutrition_path=tmp_path / "no_nutrition.json",
+            rules_path=tmp_path / "no_rules.json",
+            injury_profiles_path=None,
+        )
+        text = kb.format_injury_guidance_for_prompt([ContraindicationTag.knee_injury])
+        assert text == ""

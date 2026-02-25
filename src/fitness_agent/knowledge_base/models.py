@@ -267,3 +267,44 @@ class TrainingRule(BaseModel):
         default=None,
         description="数值参数，用于确定性计算"
     )
+
+
+# ---------------------------------------------------------------------------
+# WarmupTemplate  (热身/拉伸模板库)
+# ---------------------------------------------------------------------------
+
+class WarmupTemplate(BaseModel):
+    """Warmup and cooldown template for a specific training day type."""
+    id: str = Field(description="模板唯一 ID，如 lower_body / upper_push")
+    name_zh: str = Field(description="模板中文名称")
+    applicable_movement_patterns: list[str] = Field(
+        description="适用的动作模式列表（与 MovementPattern 枚举值对应）"
+    )
+    warmup_sequence: list[str] = Field(
+        description="热身步骤，使用 ①②③ 格式的中文字符串列表"
+    )
+    cooldown_sequence: list[str] = Field(
+        description="放松拉伸步骤，使用 ①②③ 格式的中文字符串列表"
+    )
+    injury_modifications: dict[str, str] = Field(
+        default_factory=dict,
+        description="伤病调整说明，键为 ContraindicationTag 值，值为对应的热身调整说明"
+    )
+
+
+# ---------------------------------------------------------------------------
+# InjuryProfile  (伤病修改指导)
+# ---------------------------------------------------------------------------
+
+class InjuryProfile(BaseModel):
+    """Deterministic training guidance for a specific injury/contraindication."""
+    tag: ContraindicationTag = Field(description="对应的伤病标签")
+    name_zh: str = Field(description="伤病中文名称")
+    avoid_movement_patterns: list[str] = Field(
+        description="应完全避免的动作模式列表"
+    )
+    modify_movement_patterns: dict[str, str] = Field(
+        description="需要修改的动作模式，键为动作模式，值为修改说明"
+    )
+    warmup_focus_zh: str = Field(description="热身阶段的重点说明")
+    general_guidance_zh: str = Field(description="整体训练注意事项（1-2 句）")

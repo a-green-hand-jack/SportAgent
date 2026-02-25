@@ -13,9 +13,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from fitness_agent.knowledge_base.loader import KnowledgeBase
-from fitness_agent.knowledge_base.models import Equipment, ExperienceLevel, GoalType
+from fitness_agent.knowledge_base.models import (
+    ContraindicationTag,
+    Equipment,
+    ExperienceLevel,
+    GoalType,
+)
 from fitness_agent.planner.agent import PlannerAgent
-from fitness_agent.planner.models import WeeklyPlan
+from fitness_agent.planner.models import DailyNutrition, ExerciseSet, TrainingDay, WeeklyPlan
 from fitness_agent.user.calculator import enrich_profile
 from fitness_agent.user.models import UserProfile
 from fitness_agent.utils.llm_client import LLMResponse
@@ -557,3 +562,181 @@ class TestRetryLoop:
         assert msgs[1].role == "assistant"
         assert msgs[2].role == "user"
         assert "训练量不足" in msgs[2].content
+
+
+# ---------------------------------------------------------------------------
+# Helper: build minimal WeeklyPlan for unit testing validation methods
+# ---------------------------------------------------------------------------
+
+def _make_training_day(
+    exercise_id: str = "push_up",
+    exercise_name: str = "Push Up",
+    sets: int = 3,
+    estimated_duration_minutes: int = 60,
+) -> TrainingDay:
+    """Build a minimal TrainingDay for validation unit tests."""
+    return TrainingDay(
+        day_label="Day 1",
+        focus="Full body",
+        exercises=[
+            ExerciseSet(
+                exercise_id=exercise_id,
+                exercise_name=exercise_name,
+                exercise_name_zh="测试动作",
+                sets=sets,
+                reps="10",
+                rest_seconds=60,
+            )
+        ],
+        estimated_duration_minutes=estimated_duration_minutes,
+    )
+
+
+def _make_plan_with_days(days: list[TrainingDay]) -> WeeklyPlan:
+    """Wrap a list of TrainingDay into a minimal WeeklyPlan."""
+    return WeeklyPlan(
+        user_name="Test",
+        goal=GoalType.muscle_gain,
+        experience_level="beginner",
+        training_days=days,
+        daily_nutrition=DailyNutrition(
+            calorie_target=2000,
+            protein_g=150,
+            carbs_g=250,
+            fat_g=65,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# _validate_duration tests
+# ---------------------------------------------------------------------------
+
+class TestDurationValidation:
+    """Unit tests for PlannerAgent._validate_duration (static method)."""
+
+    def test_no_warning_when_within_tolerance(self, kb, base_profile) -> None:
+        """Day at 70 min is within tolerance (limit 60 + 15 = 75). No warning."""
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        day = _make_training_day(estimated_duration_minutes=70)
+        plan = _make_plan_with_days([day])
+        warnings = agent._validate_duration(plan, session_duration_minutes=60)
+        assert warnings == []
+
+    def test_no_warning_at_exact_tolerance_boundary(self, kb, base_profile) -> None:
+        """Day at exactly limit (60 + 15 = 75) should NOT trigger a warning."""
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        day = _make_training_day(estimated_duration_minutes=75)
+        plan = _make_plan_with_days([day])
+        warnings = agent._validate_duration(plan, session_duration_minutes=60)
+        assert warnings == []
+
+    def test_warning_when_over_tolerance(self, kb, base_profile) -> None:
+        """Day at 80 min exceeds limit (60 + 15 = 75). Exactly 1 warning."""
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        day = _make_training_day(estimated_duration_minutes=80)
+        plan = _make_plan_with_days([day])
+        warnings = agent._validate_duration(plan, session_duration_minutes=60)
+        assert len(warnings) == 1
+        assert "80" in warnings[0]
+        assert "60" in warnings[0]
+
+    def test_multiple_days_over_limit(self, kb, base_profile) -> None:
+        """Two days that each exceed tolerance → two separate warnings."""
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        days = [
+            _make_training_day(estimated_duration_minutes=90),
+            _make_training_day(estimated_duration_minutes=76),
+        ]
+        # Override day_label to avoid duplicate labels (not validated here but cleaner)
+        days[1] = days[1].model_copy(update={"day_label": "Day 2"})
+        plan = _make_plan_with_days(days)
+        warnings = agent._validate_duration(plan, session_duration_minutes=60)
+        assert len(warnings) == 2
+
+
+# ---------------------------------------------------------------------------
+# _validate_injuries tests
+# ---------------------------------------------------------------------------
+
+class TestInjuryValidation:
+    """Unit tests for PlannerAgent._validate_injuries (instance method).
+
+    Relies on tests/data/exercises.json which includes push_up with
+    contraindications: ['wrist_injury', 'shoulder_injury'].
+    """
+
+    def test_no_warning_when_no_contraindications(self, kb, base_profile) -> None:
+        """Empty contraindications list → always empty warnings."""
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        day = _make_training_day(exercise_id="push_up")
+        plan = _make_plan_with_days([day])
+        warnings = agent._validate_injuries(plan, contraindications=[])
+        assert warnings == []
+
+    def test_no_warning_when_exercise_is_safe(self, kb, base_profile) -> None:
+        """push_up has wrist/shoulder contraindications; knee_injury user has no conflict."""
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        day = _make_training_day(exercise_id="push_up")
+        plan = _make_plan_with_days([day])
+        warnings = agent._validate_injuries(
+            plan, contraindications=[ContraindicationTag.knee_injury]
+        )
+        assert warnings == []
+
+    def test_warning_when_exercise_violates_injury(self, kb, base_profile) -> None:
+        """push_up (wrist_injury contraindication) + user has wrist_injury → 1 warning."""
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        day = _make_training_day(exercise_id="push_up", exercise_name="Push Up")
+        plan = _make_plan_with_days([day])
+        warnings = agent._validate_injuries(
+            plan, contraindications=[ContraindicationTag.wrist_injury]
+        )
+        assert len(warnings) == 1
+        assert "push_up" in warnings[0]
+        assert "wrist_injury" in warnings[0]
+
+    def test_skips_unknown_exercise_ids(self, kb, base_profile) -> None:
+        """Hallucinated exercise_id not in KB → silently skipped, no error."""
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        day = _make_training_day(exercise_id="nonexistent_exercise_xyz")
+        plan = _make_plan_with_days([day])
+        warnings = agent._validate_injuries(
+            plan, contraindications=[ContraindicationTag.wrist_injury]
+        )
+        assert warnings == []
+
+
+# ---------------------------------------------------------------------------
+# Extended TestRetryLoop tests for duration and combined warnings
+# ---------------------------------------------------------------------------
+
+class TestRetryLoopExtended:
+    """Extra retry-loop tests covering duration and multi-type warnings."""
+
+    def test_duration_warning_triggers_retry(self, kb, base_profile) -> None:
+        """Duration warning alone (volume OK) should trigger a retry."""
+        max_retries = 1
+        responses = [_minimal_plan_json(base_profile)] * (max_retries + 1)
+        client = _make_multi_response_client(responses)
+        agent = PlannerAgent(client=client, kb=kb, max_retries=max_retries)
+        # Volume OK, duration always fails
+        agent._validate_volume = lambda plan, level: []
+        agent._validate_duration = lambda plan, limit: ["- Day 1：估计时长 90 分钟，超过目标 60 分钟（允许误差 15 分钟）"]
+        agent.generate_plan(base_profile)
+        assert client.chat.call_count == max_retries + 1
+
+    def test_correction_message_contains_all_warning_types(self, kb, base_profile) -> None:
+        """When all three warning types fire, correction message contains all three sections."""
+        responses = [_minimal_plan_json(base_profile)] * 2
+        client = _make_multi_response_client(responses)
+        agent = PlannerAgent(client=client, kb=kb, max_retries=1)
+        agent._validate_volume = lambda plan, level: ["- lats：本周 0 组，推荐最低 10 组"]
+        agent._validate_duration = lambda plan, limit: ["- Day 1：估计时长 90 分钟，超过目标 60 分钟（允许误差 15 分钟）"]
+        agent._validate_injuries = lambda plan, contras: ["- push_up（push_up）对 wrist_injury 有禁忌，请替换为安全动作"]
+        agent.generate_plan(base_profile)
+        second_call_kwargs = client.chat.call_args_list[1].kwargs
+        correction_msg = second_call_kwargs["messages"][2].content
+        assert "训练量不足" in correction_msg
+        assert "训练时长超限" in correction_msg
+        assert "伤病安全问题" in correction_msg

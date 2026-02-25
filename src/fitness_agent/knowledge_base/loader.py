@@ -10,11 +10,13 @@ from fitness_agent.knowledge_base.models import (
     ExperienceLevel,
     FoodItem,
     GoalType,
+    InjuryProfile,
     MuscleGroup,
     MuscleGroupInfo,
     MovementPattern,
     NutritionPrinciples,
     TrainingRule,
+    WarmupTemplate,
 )
 from fitness_agent.utils.config import DATA_DIR
 from fitness_agent.utils.logging import get_logger
@@ -28,6 +30,8 @@ NUTRITION_PATH = _KB_DIR / "nutrition.json"
 RULES_PATH = _KB_DIR / "rules.json"
 ANATOMY_PATH = _KB_DIR / "anatomy.json"
 NUTRITION_PRINCIPLES_PATH = _KB_DIR / "nutrition_principles.json"
+WARMUP_TEMPLATES_PATH = _KB_DIR / "warmup_templates.json"
+INJURY_PROFILES_PATH = _KB_DIR / "injury_profiles.json"
 
 
 class KnowledgeBase:
@@ -45,12 +49,16 @@ class KnowledgeBase:
         rules_path: Path = RULES_PATH,
         anatomy_path: Path = ANATOMY_PATH,
         nutrition_principles_path: Path = NUTRITION_PRINCIPLES_PATH,
+        warmup_templates_path: Path | None = WARMUP_TEMPLATES_PATH,
+        injury_profiles_path: Path | None = INJURY_PROFILES_PATH,
     ) -> None:
         self._exercises_path = exercises_path
         self._nutrition_path = nutrition_path
         self._rules_path = rules_path
         self._anatomy_path = anatomy_path
         self._nutrition_principles_path = nutrition_principles_path
+        self._warmup_templates_path = warmup_templates_path
+        self._injury_profiles_path = injury_profiles_path
 
     # ------------------------------------------------------------------
     # Raw data (loaded lazily and cached)
@@ -75,6 +83,18 @@ class KnowledgeBase:
     @cached_property
     def nutrition_principles(self) -> NutritionPrinciples | None:
         return self._load_single(self._nutrition_principles_path, NutritionPrinciples)
+
+    @cached_property
+    def warmup_templates(self) -> list[WarmupTemplate]:
+        if self._warmup_templates_path is None:
+            return []
+        return self._load_list(self._warmup_templates_path, WarmupTemplate)
+
+    @cached_property
+    def injury_profiles(self) -> list[InjuryProfile]:
+        if self._injury_profiles_path is None:
+            return []
+        return self._load_list(self._injury_profiles_path, InjuryProfile)
 
     # ------------------------------------------------------------------
     # Exercise queries
@@ -365,6 +385,113 @@ class KnowledgeBase:
                 )
 
         return "\n".join(sections)
+
+    # ------------------------------------------------------------------
+    # Warmup template queries
+    # ------------------------------------------------------------------
+
+    def get_warmup_template(self, movement_patterns: list[str]) -> WarmupTemplate | None:
+        """
+        Return the best-matching warmup template based on movement pattern overlap.
+
+        Scoring: count how many of the given patterns appear in each template's
+        applicable_movement_patterns.  The template with the highest overlap wins.
+        Ties are broken by list order.  Returns None if no templates are loaded.
+        """
+        if not self.warmup_templates:
+            return None
+        pattern_set = set(movement_patterns)
+        best: WarmupTemplate | None = None
+        best_score = -1
+        for tmpl in self.warmup_templates:
+            score = len(pattern_set & set(tmpl.applicable_movement_patterns))
+            if score > best_score:
+                best_score = score
+                best = tmpl
+        return best
+
+    def format_warmup_templates_for_prompt(self) -> str:
+        """
+        Return a formatted reference block of all warmup templates for LLM consumption.
+
+        Returns an empty string if no templates are loaded.
+        """
+        if not self.warmup_templates:
+            return ""
+
+        lines = ["## 热身/拉伸参考模板", ""]
+        lines.append(
+            "以下模板按训练日类型提供标准化热身和拉伸序列，请根据当天训练重点选择最合适的模板，"
+            "并在 warmup_notes / cooldown_notes 中使用这些序列（可适当调整）。"
+        )
+        lines.append("")
+
+        for tmpl in self.warmup_templates:
+            patterns_str = "、".join(tmpl.applicable_movement_patterns)
+            lines.append(f"**{tmpl.name_zh} ({tmpl.id})**")
+            lines.append(f"适用动作模式：{patterns_str}")
+            lines.append("热身序列：")
+            for step in tmpl.warmup_sequence:
+                lines.append(f"  {step}")
+            lines.append("拉伸序列：")
+            for step in tmpl.cooldown_sequence:
+                lines.append(f"  {step}")
+            if tmpl.injury_modifications:
+                lines.append("伤病调整：")
+                for tag, note in tmpl.injury_modifications.items():
+                    lines.append(f"  - {tag}：{note}")
+            lines.append("")
+
+        return "\n".join(lines).rstrip()
+
+    # ------------------------------------------------------------------
+    # Injury profile queries
+    # ------------------------------------------------------------------
+
+    def get_injury_profile(self, tag: ContraindicationTag) -> InjuryProfile | None:
+        """Return the InjuryProfile for a given contraindication tag, or None."""
+        for profile in self.injury_profiles:
+            if profile.tag == tag:
+                return profile
+        return None
+
+    def format_injury_guidance_for_prompt(
+        self, injuries: list[ContraindicationTag]
+    ) -> str:
+        """
+        Return a formatted guidance block for all of the user's injuries.
+
+        Returns an empty string if injuries list is empty or no profiles are loaded.
+        """
+        if not injuries or not self.injury_profiles:
+            return ""
+
+        lines = ["## 伤病修改指导", ""]
+        lines.append(
+            "⚠️ 该用户存在以下伤病/禁忌，制定计划时必须严格遵守对应调整规则："
+        )
+        lines.append("")
+
+        found_any = False
+        for tag in injuries:
+            profile = self.get_injury_profile(tag)
+            if profile is None:
+                continue
+            found_any = True
+            lines.append(f"**{profile.name_zh} ({tag.value})**")
+            if profile.avoid_movement_patterns:
+                avoid_str = "、".join(profile.avoid_movement_patterns)
+                lines.append(f"- 应完全避免的动作模式：{avoid_str}")
+            for pattern, note in profile.modify_movement_patterns.items():
+                lines.append(f"- {pattern} 模式修改：{note}")
+            lines.append(f"- 热身重点：{profile.warmup_focus_zh}")
+            lines.append(f"- 整体注意：{profile.general_guidance_zh}")
+            lines.append("")
+
+        if not found_any:
+            return ""
+
+        return "\n".join(lines).rstrip()
 
     # ------------------------------------------------------------------
     # Statistics
