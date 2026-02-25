@@ -74,7 +74,20 @@ class CookingAgent:
     # Protein compliance constants
     PROTEIN_COMPLIANCE_PCT = 90.0    # Min protein % of target (per day)
     PROTEIN_RICH_THRESHOLD = 15.0    # g/100g — foods above this are "protein-rich"
-    POST_WORKOUT_MIN_PROTEIN_G = 20.0  # Min protein for post_workout meals
+    POST_WORKOUT_MIN_PROTEIN_G = 35.0  # Min protein for post_workout meals
+
+    # Food-ID validation
+    MAX_UNKNOWN_FOOD_IDS_PER_BATCH = 2  # Tolerate at most 2 unknown food_ids before retry
+
+    # Per-meal calorie ranges (min, max) by meal_type
+    MEAL_CALORIE_RANGES: dict[str, tuple[float, float]] = {
+        "breakfast": (400, 700),
+        "lunch": (500, 1000),
+        "dinner": (500, 1000),
+        "snack": (150, 350),
+        "pre_workout": (150, 400),
+        "post_workout": (200, 600),
+    }
 
     # ------------------------------------------------------------------
     # Public API
@@ -91,7 +104,7 @@ class CookingAgent:
         """
         Generate a 7-day cooking plan for the given training plan + profile.
 
-        The plan is built via two LLM calls (days 1-4 then days 5-7) so that
+        The plan is built via three LLM calls (days 1-2, 3-4, 5-7) so that
         the response fits within providers that cap output tokens at 8192
         (e.g. DeepSeek).  Results are merged into a single WeeklyCookingPlan.
 
@@ -131,9 +144,11 @@ class CookingAgent:
                 f"for restrictions {profile.dietary_restrictions}"
             )
 
-        # --- Step 2: generate in two batches (days 1-4, days 5-7) ---
-        batch_a = self._WEEK_LABELS[:4]  # 周一~周四
-        batch_b = self._WEEK_LABELS[4:]  # 周五~周日
+        # --- Step 2: generate in three batches (2+2+3 days) to stay within
+        #     DeepSeek's 8192 output-token cap.
+        batch_a = self._WEEK_LABELS[0:2]  # 周一, 周二
+        batch_b = self._WEEK_LABELS[2:4]  # 周三, 周四
+        batch_c = self._WEEK_LABELS[4:]   # 周五, 周六, 周日
 
         days_a = self._generate_batch(
             profile, weekly_plan, compatible_recipes, batch_a,
@@ -143,8 +158,12 @@ class CookingAgent:
             profile, weekly_plan, compatible_recipes, batch_b,
             banned_food_ids=banned_food_ids,
         )
+        days_c = self._generate_batch(
+            profile, weekly_plan, compatible_recipes, batch_c,
+            banned_food_ids=banned_food_ids,
+        )
 
-        all_days = days_a + days_b
+        all_days = days_a + days_b + days_c
 
         # --- Step 3: assemble a combined WeeklyCookingPlan ---
         plan = WeeklyCookingPlan(
@@ -173,6 +192,9 @@ class CookingAgent:
             )
             self._scale_day_to_calorie_target(day, day_target)
 
+        # --- Step 6b: round ingredient amounts to practical precision ---
+        self._round_ingredient_amounts(plan.daily_plans)
+
         # --- Step 7: final deterministic overwrite (ensure consistency) ---
         self._overwrite_macros_deterministic(plan.daily_plans)
 
@@ -187,11 +209,15 @@ class CookingAgent:
             plan.daily_plans
         )
         diversity_warnings = self._validate_diversity(plan.daily_plans)
+        meal_range_warnings = self._validate_meal_calorie_ranges(plan.daily_plans)
+        intraday_warnings = self._validate_intraday_diversity(plan.daily_plans)
+        structure_warnings = self._validate_meal_structure(plan.daily_plans)
 
         # Append remaining warnings to cooking_tips_zh
         all_remaining = (
             calorie_warnings + protein_warnings
             + post_workout_warnings + diversity_warnings
+            + meal_range_warnings + intraday_warnings + structure_warnings
         )
         if all_remaining:
             parts = []
@@ -215,6 +241,21 @@ class CookingAgent:
                 parts.append(
                     "🔄 **多样性提醒**\n"
                     + "\n".join(diversity_warnings)
+                )
+            if intraday_warnings:
+                parts.append(
+                    "🍗 **日内蛋白质重复**\n"
+                    + "\n".join(intraday_warnings)
+                )
+            if structure_warnings:
+                parts.append(
+                    "📋 **餐食结构问题**\n"
+                    + "\n".join(structure_warnings)
+                )
+            if meal_range_warnings:
+                parts.append(
+                    "🍽️ **单餐热量异常**\n"
+                    + "\n".join(meal_range_warnings)
                 )
             warning_text = "（以下为系统自动检测的改进建议）\n\n" + "\n\n".join(parts)
             plan.cooking_tips_zh = (
@@ -256,8 +297,9 @@ class CookingAgent:
         Pipeline per attempt:
         1. Call LLM and parse response.
         2. Overwrite all macro values deterministically from KB.
-        3. Validate dietary compliance (banned food_ids).
-        4. If dietary violations exist and retries remain, send correction and loop.
+        3. Validate food_ids against KB (retry if too many unknowns).
+        4. Validate dietary compliance (banned food_ids).
+        5. If violations exist and retries remain, send correction and loop.
 
         **Calorie / protein corrections are NOT retried here** — they are handled
         deterministically in ``generate_cooking_plan()`` via ingredient scaling.
@@ -275,7 +317,6 @@ class CookingAgent:
         banned = banned_food_ids or set()
         messages: list[Message] = [Message(role="user", content=user_message)]
         batch_days: list = []
-        dietary_warnings: list[str] = []
 
         for attempt in range(self.max_retries + 1):
             logger.info(
@@ -301,23 +342,50 @@ class CookingAgent:
             # Step 2: Deterministic macro overwrite (replaces LLM self-reported values)
             self._overwrite_macros_deterministic(batch_days)
 
-            # Step 3: Validate dietary compliance (only retry trigger)
+            # Step 3: Validate food_ids (retry trigger if many unknowns)
+            food_id_warnings = self._validate_food_ids(batch_days)
+
+            # Step 4: Validate dietary compliance (retry trigger)
             dietary_warnings = self._validate_dietary_compliance(batch_days, banned)
 
-            if not dietary_warnings:
-                logger.info(f"Batch {days_subset}: dietary validation passed.")
+            # Determine if retry is needed
+            needs_retry = (
+                bool(dietary_warnings)
+                or len(food_id_warnings) > self.MAX_UNKNOWN_FOOD_IDS_PER_BATCH
+            )
+
+            if not needs_retry:
+                if food_id_warnings:
+                    logger.warning(
+                        f"Batch {days_subset}: {len(food_id_warnings)} unknown food_id(s) "
+                        f"(within tolerance of {self.MAX_UNKNOWN_FOOD_IDS_PER_BATCH})"
+                    )
+                logger.info(f"Batch {days_subset}: validation passed.")
                 break
 
             logger.info(
-                f"Batch {days_subset}: {len(dietary_warnings)} dietary warning(s) "
+                f"Batch {days_subset}: {len(dietary_warnings)} dietary + "
+                f"{len(food_id_warnings)} food_id warning(s) "
                 f"(attempt {attempt + 1}/{self.max_retries + 1})."
             )
 
             if attempt < self.max_retries:
                 messages.append(Message(role="assistant", content=response.content))
-                correction = self._build_dietary_correction_message(
-                    dietary_warnings
-                )
+
+                # Build combined correction message
+                correction_parts: list[str] = []
+                if dietary_warnings:
+                    correction_parts.append(
+                        self._build_dietary_correction_message(dietary_warnings)
+                    )
+                if len(food_id_warnings) > self.MAX_UNKNOWN_FOOD_IDS_PER_BATCH:
+                    correction_parts.append(
+                        self._build_food_id_correction_message(
+                            food_id_warnings,
+                            sorted(self.kb.all_food_ids),
+                        )
+                    )
+                correction = "\n\n".join(correction_parts)
                 messages.append(Message(role="user", content=correction))
 
         return batch_days
@@ -566,6 +634,138 @@ class CookingAgent:
                         f" {protein:.0f}g < {self.POST_WORKOUT_MIN_PROTEIN_G:.0f}g"
                     )
         return warnings
+
+    # ------------------------------------------------------------------
+    # V4: food-id validation, intra-day diversity, meal structure,
+    #     per-meal calorie ranges, ingredient rounding
+    # ------------------------------------------------------------------
+
+    def _validate_food_ids(self, days: list[DayMealPlan]) -> list[str]:
+        """Check all ingredient food_ids against the KB.
+
+        Returns a list of warning strings for unknown food_ids.
+        """
+        valid_ids = self.kb.all_food_ids
+        warnings: list[str] = []
+        for day in days:
+            for recipe in day.meals:
+                for ing in recipe.ingredients:
+                    if ing.food_id not in valid_ids:
+                        warnings.append(
+                            f"- {day.day_label}/{recipe.name_zh}：food_id '{ing.food_id}'"
+                            f"（{ing.food_name_zh}）不在食材数据库中"
+                        )
+        return warnings
+
+    @staticmethod
+    def _build_food_id_correction_message(
+        food_id_warnings: list[str],
+        valid_food_ids: list[str],
+    ) -> str:
+        """Build a follow-up user message asking the LLM to fix unknown food_ids."""
+        valid_ids_text = ", ".join(sorted(valid_food_ids))
+        return (
+            f"烹饪计划中以下食材的 food_id 不在数据库中，请替换：\n\n"
+            f"【无效食材 ID】\n" + "\n".join(food_id_warnings) + "\n\n"
+            f"【有效 food_id 列表】\n{valid_ids_text}\n\n"
+            "调整要求：\n"
+            "- 将无效 food_id 替换为列表中语义最接近的有效 food_id\n"
+            "- 保持 food_name_zh 与新 food_id 一致\n"
+            "- 返回完整修正后的 JSON"
+        )
+
+    def _validate_intraday_diversity(self, days: list[DayMealPlan]) -> list[str]:
+        """Check that no single protein food_id appears more than 2× per day.
+
+        Only counts foods whose category is one of: meat, poultry, seafood,
+        egg_dairy, legume.
+        """
+        protein_categories = {"meat", "poultry", "seafood", "egg_dairy", "legume"}
+        warnings: list[str] = []
+        for day in days:
+            counts: dict[str, int] = {}
+            for recipe in day.meals:
+                for ing in recipe.ingredients:
+                    food = self.kb.get_food_by_id(ing.food_id)
+                    if food and food.category.value in protein_categories:
+                        counts[ing.food_id] = counts.get(ing.food_id, 0) + 1
+            for fid, count in counts.items():
+                if count > 2:
+                    food = self.kb.get_food_by_id(fid)
+                    name = food.name_zh if food else fid
+                    warnings.append(
+                        f"- {day.day_label}：'{name}' 出现 {count} 次"
+                        f"（同一天最多 2 次）"
+                    )
+        return warnings
+
+    def _validate_meal_structure(self, days: list[DayMealPlan]) -> list[str]:
+        """Validate training-day / rest-day meal_type structure.
+
+        Training day: must have pre_workout + post_workout; lunch and
+        post_workout should not co-exist.
+        Rest day: should NOT have pre_workout or post_workout.
+        """
+        warnings: list[str] = []
+        for day in days:
+            types = {r.meal_type for r in day.meals}
+            if day.is_training_day:
+                if "pre_workout" not in types:
+                    warnings.append(f"- {day.day_label}（训练日）：缺少 pre_workout 餐")
+                if "post_workout" not in types:
+                    warnings.append(f"- {day.day_label}（训练日）：缺少 post_workout 餐")
+                if "lunch" in types and "post_workout" in types:
+                    warnings.append(
+                        f"- {day.day_label}（训练日）：lunch 和 post_workout 不应同时存在"
+                    )
+            else:
+                for t in ("pre_workout", "post_workout"):
+                    if t in types:
+                        warnings.append(f"- {day.day_label}（休息日）：不应包含 {t}")
+        return warnings
+
+    def _validate_meal_calorie_ranges(self, days: list[DayMealPlan]) -> list[str]:
+        """Check per-meal calories against MEAL_CALORIE_RANGES bounds."""
+        warnings: list[str] = []
+        for day in days:
+            for recipe in day.meals:
+                cal = recipe.per_serving_macros.calories
+                range_tuple = self.MEAL_CALORIE_RANGES.get(recipe.meal_type)
+                if range_tuple is None:
+                    continue
+                min_cal, max_cal = range_tuple
+                if cal < min_cal:
+                    warnings.append(
+                        f"- {day.day_label}/{recipe.name_zh}（{recipe.meal_type}）："
+                        f"{cal:.0f} kcal < 建议最低 {min_cal:.0f} kcal"
+                    )
+                elif cal > max_cal:
+                    warnings.append(
+                        f"- {day.day_label}/{recipe.name_zh}（{recipe.meal_type}）："
+                        f"{cal:.0f} kcal > 建议最高 {max_cal:.0f} kcal"
+                    )
+        return warnings
+
+    def _round_ingredient_amounts(self, days: list[DayMealPlan]) -> None:
+        """Round all ingredient amounts to practical precision.
+
+        >= 10g: round to nearest 10g
+        < 10g: round to nearest 5g (minimum 5g)
+
+        Called after calorie scaling and protein boost, before the final
+        macro overwrite.
+        """
+        for day in days:
+            for recipe in day.meals:
+                for ing in recipe.ingredients:
+                    if ing.amount_g < 10:
+                        ing.amount_g = max(5.0, round(ing.amount_g / 5) * 5)
+                    else:
+                        ing.amount_g = round(ing.amount_g / 10) * 10
+
+    # ------------------------------------------------------------------
+    # Calorie target helpers
+    # ------------------------------------------------------------------
 
     def _compute_day_calorie_target(
         self, base_target: float, is_training_day: bool

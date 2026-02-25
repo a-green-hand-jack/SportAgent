@@ -192,6 +192,11 @@ class KnowledgeBase:
             if q in f.name.lower() or q in f.name_zh.lower()
         ]
 
+    @property
+    def all_food_ids(self) -> set[str]:
+        """Return the set of all valid food IDs in the nutrition database."""
+        return {f.id for f in self.foods}
+
     def get_food_by_id(self, food_id: str) -> FoodItem | None:
         """Lookup a food item by its ID (exact match)."""
         for food in self.foods:
