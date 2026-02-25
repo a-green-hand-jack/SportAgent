@@ -75,6 +75,28 @@ def _make_llm_client(json_response: str) -> MagicMock:
     return client
 
 
+def _make_multi_response_client(responses: list[str]) -> MagicMock:
+    """Mock LLM client that returns sequential JSON responses via side_effect list.
+
+    If the code calls chat() more times than responses, StopIteration is raised —
+    this acts as a guard against infinite-retry bugs.
+    """
+    client = MagicMock()
+    client.provider = "mock"
+    client.model = "mock-model"
+    client.chat.side_effect = [
+        LLMResponse(
+            content=r,
+            provider="mock",
+            model="mock-model",
+            input_tokens=100,
+            output_tokens=200,
+        )
+        for r in responses
+    ]
+    return client
+
+
 def _minimal_plan_json(profile: UserProfile, n_days: int = 3) -> str:
     """Build a minimal valid WeeklyPlan JSON the mock LLM returns."""
     days = []
@@ -89,7 +111,7 @@ def _minimal_plan_json(profile: UserProfile, n_days: int = 3) -> str:
                     "exercise_name": "Push Up",
                     "exercise_name_zh": "俯卧撑",
                     "weight_hint": "徒手",
-                    "sets": 3,
+                    "sets": 4,
                     "reps": "10-15",
                     "rest_seconds": 60,
                     "notes": "保持身体成一条直线，肘部夹紧身体，感受胸肌收缩",
@@ -352,3 +374,186 @@ class TestVolumeValidation:
         # If any warnings were generated, they should be in coach_notes
         if "📊" in plan.coach_notes:
             assert "周训练量提醒" in plan.coach_notes
+
+    def test_count_weekly_sets_rolls_up_back_to_lats(self, kb, base_profile) -> None:
+        """pull_up has primary=['lats', 'back']; 'back' should roll up to 'lats'."""
+        from fitness_agent.planner.models import WeeklyPlan, TrainingDay, ExerciseSet, DailyNutrition
+        from fitness_agent.knowledge_base.models import GoalType
+
+        day = TrainingDay(
+            day_label="Day 1",
+            focus="Pull",
+            exercises=[ExerciseSet(
+                exercise_id="pull_up",
+                exercise_name="Pull Up",
+                exercise_name_zh="引体向上",
+                sets=3,
+                reps="8-10",
+                rest_seconds=90,
+                notes="背部发力，肩胛骨下沉",
+            )],
+            estimated_duration_minutes=45,
+        )
+        plan = WeeklyPlan(
+            user_name="Test",
+            goal=GoalType.muscle_gain,
+            experience_level="beginner",
+            training_days=[day],
+            daily_nutrition=DailyNutrition(
+                calorie_target=2000, protein_g=150, carbs_g=200, fat_g=60
+            ),
+        )
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        counts = agent._count_weekly_sets(plan)
+        # primary=['lats', 'back']: lats→lats(+3), back→lats(+3) → lats=6
+        assert counts.get("lats", 0) == 6
+        # 'back' should NOT appear as a separate key after rollup
+        assert "back" not in counts
+
+    def test_count_weekly_sets_rolls_up_front_delt_to_shoulders(
+        self, kb, base_profile
+    ) -> None:
+        """push_up has secondary=['triceps','front_delt','core']; front_delt→shoulders at 0.5x."""
+        from fitness_agent.planner.models import WeeklyPlan, TrainingDay, ExerciseSet, DailyNutrition
+        from fitness_agent.knowledge_base.models import GoalType
+
+        day = TrainingDay(
+            day_label="Day 1",
+            focus="Push",
+            exercises=[ExerciseSet(
+                exercise_id="push_up",
+                exercise_name="Push Up",
+                exercise_name_zh="俯卧撑",
+                sets=4,
+                reps="10-15",
+                rest_seconds=60,
+                notes="保持身体成一条直线",
+            )],
+            estimated_duration_minutes=45,
+        )
+        plan = WeeklyPlan(
+            user_name="Test",
+            goal=GoalType.muscle_gain,
+            experience_level="beginner",
+            training_days=[day],
+            daily_nutrition=DailyNutrition(
+                calorie_target=2000, protein_g=150, carbs_g=200, fat_g=60
+            ),
+        )
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        counts = agent._count_weekly_sets(plan)
+        # secondary front_delt→shoulders at 0.5x: 4 * 0.5 = 2.0 → round to 2
+        assert counts.get("shoulders", 0) == 2
+        # 'front_delt' should NOT appear as a separate key after rollup
+        assert "front_delt" not in counts
+
+    def test_count_weekly_sets_includes_secondary_at_half_coefficient(
+        self, kb, base_profile
+    ) -> None:
+        """barbell_squat secondary muscles counted at 0.5x coefficient."""
+        from fitness_agent.planner.models import WeeklyPlan, TrainingDay, ExerciseSet, DailyNutrition
+        from fitness_agent.knowledge_base.models import GoalType
+
+        day = TrainingDay(
+            day_label="Day 1",
+            focus="Legs",
+            exercises=[ExerciseSet(
+                exercise_id="barbell_squat",
+                exercise_name="Barbell Squat",
+                exercise_name_zh="杠铃深蹲",
+                sets=4,
+                reps="5",
+                rest_seconds=180,
+                notes="挺胸收腹，膝盖与脚尖同向",
+            )],
+            estimated_duration_minutes=60,
+        )
+        plan = WeeklyPlan(
+            user_name="Test",
+            goal=GoalType.muscle_gain,
+            experience_level="intermediate",
+            training_days=[day],
+            daily_nutrition=DailyNutrition(
+                calorie_target=2000, protein_g=150, carbs_g=200, fat_g=60
+            ),
+        )
+        agent = PlannerAgent(client=_make_llm_client("{}"), kb=kb)
+        counts = agent._count_weekly_sets(plan)
+        # primary=['quads','glutes'] at 1.0x: 4 each
+        assert counts.get("quads", 0) == 4
+        assert counts.get("glutes", 0) == 4
+        # secondary=['hamstrings','core','lower_back'] at 0.5x: 4*0.5=2 each
+        assert counts.get("hamstrings", 0) == 2
+        assert counts.get("core", 0) == 2
+        assert counts.get("lower_back", 0) == 2
+
+
+# ---------------------------------------------------------------------------
+# Generate-Validate-Fix retry loop tests
+# ---------------------------------------------------------------------------
+
+class TestRetryLoop:
+    def test_no_retry_when_volume_ok(self, kb, base_profile) -> None:
+        """When volume validation passes, only one LLM call is made."""
+        client = _make_llm_client(_minimal_plan_json(base_profile))
+        agent = PlannerAgent(client=client, kb=kb, max_retries=2)
+        # Patch _validate_volume to return no warnings (simulate volume OK)
+        agent._validate_volume = lambda plan, level: []
+        plan = agent.generate_plan(base_profile)
+        assert isinstance(plan, WeeklyPlan)
+        client.chat.assert_called_once()
+
+    def test_retries_when_volume_below_target(self, kb, base_profile) -> None:
+        """When volume always fails validation, agent calls LLM max_retries+1 times."""
+        max_retries = 2
+        responses = [_minimal_plan_json(base_profile)] * (max_retries + 1)
+        client = _make_multi_response_client(responses)
+        agent = PlannerAgent(client=client, kb=kb, max_retries=max_retries)
+        # Always return warnings to force all retries
+        agent._validate_volume = lambda plan, level: ["- lats：本周 0 组，推荐最低 10 组"]
+        agent.generate_plan(base_profile)
+        assert client.chat.call_count == max_retries + 1
+
+    def test_stops_at_max_retries(self, kb, base_profile) -> None:
+        """Agent never calls LLM more than max_retries+1 times.
+
+        side_effect list has exactly max_retries+1 entries — a 4th call would
+        raise StopIteration, catching an infinite-loop bug automatically.
+        """
+        max_retries = 2
+        total_calls = max_retries + 1
+        responses = [_minimal_plan_json(base_profile)] * total_calls
+        client = _make_multi_response_client(responses)
+        agent = PlannerAgent(client=client, kb=kb, max_retries=max_retries)
+        agent._validate_volume = lambda plan, level: ["- lats：本周 0 组，推荐最低 10 组"]
+        agent.generate_plan(base_profile)
+        assert client.chat.call_count == total_calls
+
+    def test_warnings_appended_to_coach_notes_after_retries(
+        self, kb, base_profile
+    ) -> None:
+        """After exhausting retries, unresolved volume warnings go into coach_notes."""
+        max_retries = 1
+        responses = [_minimal_plan_json(base_profile)] * (max_retries + 1)
+        client = _make_multi_response_client(responses)
+        agent = PlannerAgent(client=client, kb=kb, max_retries=max_retries)
+        agent._validate_volume = lambda plan, level: ["- lats：本周 0 组，推荐最低 10 组"]
+        plan = agent.generate_plan(base_profile)
+        assert plan.coach_notes is not None
+        assert "周训练量提醒" in plan.coach_notes
+        assert "lats" in plan.coach_notes
+
+    def test_correction_message_appended_to_messages(self, kb, base_profile) -> None:
+        """On retry, second chat() call receives [user, assistant, user(correction)]."""
+        responses = [_minimal_plan_json(base_profile)] * 2
+        client = _make_multi_response_client(responses)
+        agent = PlannerAgent(client=client, kb=kb, max_retries=1)
+        agent._validate_volume = lambda plan, level: ["- lats：本周 0 组，推荐最低 10 组"]
+        agent.generate_plan(base_profile)
+        # Second call should include prior assistant response + correction user message
+        second_call_kwargs = client.chat.call_args_list[1].kwargs
+        msgs = second_call_kwargs["messages"]
+        assert len(msgs) == 3
+        assert msgs[1].role == "assistant"
+        assert msgs[2].role == "user"
+        assert "训练量不足" in msgs[2].content
