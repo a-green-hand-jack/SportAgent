@@ -2051,3 +2051,178 @@ class TestMealCalorieClamping:
         agent._clamp_meal_calories([day])
         amounts_after = [ing.amount_g for ing in lunch.ingredients]
         assert amounts_before == amounts_after
+
+
+# ---------------------------------------------------------------------------
+# V7: Second-pass calorie scaling
+# ---------------------------------------------------------------------------
+
+class TestSecondPassScaling:
+    """Verify second-pass scaling compensates rounding loss."""
+
+    def test_calorie_within_tolerance_after_full_pipeline(
+        self, kb, profile, weekly_plan
+    ) -> None:
+        """After full pipeline (including rounding + 2nd scaling), all days within 10%."""
+        client = _make_llm_client(profile)
+        agent = CookingAgent(client=client, kb=kb)
+        agent._validate_dietary_compliance = lambda plan, banned: []
+        plan = agent.generate_cooking_plan(weekly_plan, profile)
+        for day in plan.daily_plans:
+            target = agent._compute_day_calorie_target(
+                profile.daily_calorie_target or 2500, day.is_training_day
+            )
+            if target <= 0:
+                continue
+            deviation = abs(day.day_total_macros.calories - target) / target * 100
+            assert deviation <= 10, (
+                f"{day.day_label}: {day.day_total_macros.calories:.0f} kcal "
+                f"vs {target:.0f} target ({deviation:.1f}% deviation)"
+            )
+
+    def test_rounding_loss_compensated(self, kb) -> None:
+        """Scale → round → second scale should be closer to target than scale → round alone."""
+        from fitness_agent.cooking.models import (
+            DayMealPlan, MacroBreakdown, Recipe, RecipeIngredient,
+        )
+
+        def _make_day() -> DayMealPlan:
+            recipes = []
+            for i, (fid, fname, amt) in enumerate([
+                ("chicken_breast", "鸡胸肉", 150),
+                ("white_rice_cooked", "白米饭", 250),
+                ("broccoli", "西兰花", 120),
+            ]):
+                recipes.append(Recipe(
+                    recipe_id=f"r_{i}", name_zh=f"测试餐{i}", meal_type="lunch",
+                    prep_time_minutes=5, cook_time_minutes=10,
+                    ingredients=[
+                        RecipeIngredient(food_id=fid, food_name_zh=fname, amount_g=float(amt)),
+                    ],
+                    steps_zh=["步骤1"],
+                    per_serving_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+                ))
+            return DayMealPlan(
+                day_label="周一", is_training_day=True,
+                meals=recipes,
+                day_total_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+            )
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        agent.calorie_tolerance_pct = 10.0
+
+        target = 800.0
+
+        # Path A: scale → round (no second pass)
+        day_a = _make_day()
+        agent._overwrite_macros_deterministic([day_a])
+        agent._scale_day_to_calorie_target(day_a, target)
+        agent._round_ingredient_amounts([day_a])
+        agent._overwrite_macros_deterministic([day_a])
+        cal_after_round = day_a.day_total_macros.calories
+
+        # Path B: scale → round → second scale
+        day_b = _make_day()
+        agent._overwrite_macros_deterministic([day_b])
+        agent._scale_day_to_calorie_target(day_b, target)
+        agent._round_ingredient_amounts([day_b])
+        agent._overwrite_macros_deterministic([day_b])
+        agent._scale_day_to_calorie_target(day_b, target)
+        agent._overwrite_macros_deterministic([day_b])
+        cal_after_second = day_b.day_total_macros.calories
+
+        dev_a = abs(cal_after_round - target) / target * 100
+        dev_b = abs(cal_after_second - target) / target * 100
+        assert dev_b <= dev_a, (
+            f"Second-pass should be closer to target: "
+            f"after round={cal_after_round:.0f} ({dev_a:.1f}%), "
+            f"after 2nd scale={cal_after_second:.0f} ({dev_b:.1f}%)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# V7: food_id zero tolerance
+# ---------------------------------------------------------------------------
+
+class TestFoodIdZeroTolerance:
+    """Verify zero tolerance for unknown food_ids (MAX_UNKNOWN_FOOD_IDS_PER_BATCH=0)."""
+
+    def test_zero_tolerance_constant(self) -> None:
+        """Confirm constant is set to 0."""
+        assert CookingAgent.MAX_UNKNOWN_FOOD_IDS_PER_BATCH == 0
+
+
+# ---------------------------------------------------------------------------
+# V7: post_workout calorie cap
+# ---------------------------------------------------------------------------
+
+class TestPostWorkoutCalorieCap:
+    """Tests for post_workout 700 kcal hard cap in _clamp_meal_calories()."""
+
+    @staticmethod
+    def _make_day_with_post_workout(
+        kb, chicken_g: float, rice_g: float,
+    ) -> "DayMealPlan":
+        from fitness_agent.cooking.models import (
+            DayMealPlan, MacroBreakdown, Recipe, RecipeIngredient,
+        )
+
+        post_workout = Recipe(
+            recipe_id="pw_1", name_zh="训练后鸡胸饭", meal_type="post_workout",
+            prep_time_minutes=5, cook_time_minutes=10,
+            ingredients=[
+                RecipeIngredient(food_id="chicken_breast", food_name_zh="鸡胸肉",
+                                 amount_g=chicken_g),
+                RecipeIngredient(food_id="white_rice_cooked", food_name_zh="白米饭",
+                                 amount_g=rice_g),
+            ],
+            steps_zh=["步骤1"],
+            per_serving_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+        )
+        filler = Recipe(
+            recipe_id="filler", name_zh="主餐", meal_type="lunch",
+            prep_time_minutes=10, cook_time_minutes=15,
+            ingredients=[
+                RecipeIngredient(food_id="chicken_breast", food_name_zh="鸡胸肉", amount_g=150),
+                RecipeIngredient(food_id="white_rice_cooked", food_name_zh="白米饭", amount_g=200),
+            ],
+            steps_zh=["步骤1"],
+            per_serving_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+        )
+        day = DayMealPlan(
+            day_label="周一", is_training_day=True,
+            meals=[filler, post_workout, filler],
+            day_total_macros=MacroBreakdown(calories=0, protein_g=0, carbs_g=0, fat_g=0),
+        )
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        agent._overwrite_macros_deterministic([day])
+        return day
+
+    def test_post_workout_clamped_when_over_700(self, kb) -> None:
+        """post_workout exceeding 700 kcal should be scaled down."""
+        # 300g chicken (~495 kcal) + 400g rice (~520 kcal) = ~1015 kcal
+        day = self._make_day_with_post_workout(kb, chicken_g=300, rice_g=400)
+        pw = day.meals[1]
+        before_cal = pw.per_serving_macros.calories
+        assert before_cal > 700, f"Setup: post_workout should exceed 700 kcal, got {before_cal}"
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        agent._clamp_meal_calories([day])
+        agent._overwrite_macros_deterministic([day])
+        after_cal = pw.per_serving_macros.calories
+        assert after_cal <= 701, f"After clamp, post_workout should be ≤700 kcal, got {after_cal}"
+
+    def test_post_workout_untouched_when_under_700(self, kb) -> None:
+        """post_workout under 700 kcal should not be modified."""
+        # 150g chicken + 200g rice = ~508 kcal
+        day = self._make_day_with_post_workout(kb, chicken_g=150, rice_g=200)
+        amounts_before = [ing.amount_g for ing in day.meals[1].ingredients]
+
+        agent = CookingAgent.__new__(CookingAgent)
+        agent.kb = kb
+        agent._clamp_meal_calories([day])
+        amounts_after = [ing.amount_g for ing in day.meals[1].ingredients]
+        assert amounts_before == amounts_after

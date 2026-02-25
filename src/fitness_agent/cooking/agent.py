@@ -78,7 +78,7 @@ class CookingAgent:
     PROTEIN_BOOST_BUFFER_G = 5.0       # Aim 5g above target when boosting (absorbs rounding)
 
     # Food-ID validation
-    MAX_UNKNOWN_FOOD_IDS_PER_BATCH = 2  # Tolerate at most 2 unknown food_ids before retry
+    MAX_UNKNOWN_FOOD_IDS_PER_BATCH = 0  # Zero tolerance: any unknown food_id triggers retry
 
     # Per-meal calorie ranges (min, max) by meal_type
     MEAL_CALORIE_RANGES: dict[str, tuple[float, float]] = {
@@ -94,6 +94,7 @@ class CookingAgent:
     MEAL_CALORIE_HARD_CAPS: dict[str, float] = {
         "snack": 400,
         "pre_workout": 400,
+        "post_workout": 700,
     }
 
     # ---------------------------------------------------------------------------
@@ -210,6 +211,17 @@ class CookingAgent:
 
         # --- Step 6b: round ingredient amounts to practical precision ---
         self._round_ingredient_amounts(plan.daily_plans)
+
+        # --- Step 6c: second-pass calorie scaling (compensate rounding loss) ---
+        # Steps 6a (clamp) and 6b (rounding) modify ingredient amounts,
+        # which can erase 2-8% of the calorie gains from Step 6.
+        # This second pass re-scales to the target after those adjustments.
+        self._overwrite_macros_deterministic(plan.daily_plans)
+        for day in plan.daily_plans:
+            day_target = self._compute_day_calorie_target(
+                base_calorie_target, day.is_training_day
+            )
+            self._scale_day_to_calorie_target(day, day_target)
 
         # --- Step 7: final deterministic overwrite (ensure consistency) ---
         self._overwrite_macros_deterministic(plan.daily_plans)
