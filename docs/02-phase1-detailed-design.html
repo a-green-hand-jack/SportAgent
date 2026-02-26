@@ -670,6 +670,61 @@
               周渐进规划框架、教练建议（渐进规则、伤病注意事项、恢复建议）。
             </div>
           </div>
+
+          <!-- PlanAgent Detail -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-icon">🧠</span>
+              <span class="card-title">PlanAgent：大脑核心与多维约束编排</span>
+              <span class="card-tag tag-agent">PlanAgent</span>
+            </div>
+            <div class="card-body">
+              <p>PlanAgent 是系统的中枢，负责将抽象的用户目标转化为具体的周计划。其核心理念是“在确定性约束下的 LLM 创意生成”。</p>
+              <div style="margin-top: 15px;">
+                <strong>核心逻辑：</strong>
+                <ul style="margin-left: 20px; margin-top: 5px;">
+                  <li><b>KB 预过滤 (Deterministic Filtering)</b>：在调用 LLM 之前，系统会根据用户的伤病标签和可用器械，从海量动作库中预先过滤出“非法动作”，确保 LLM 只在安全圈内进行创作。</li>
+                  <li><b>多阶段验证循环 (GVC Loop)</b>：采用“生成 (Generate) - 验证 (Validate) - 修正 (Correct)”架构。通过确定性脚本（如训练量计算、时长估算）对计划进行扫描，若发现容量不足或强度违规，则将错误反馈给 Agent 进行局部重写。</li>
+                  <li><b>结构化输出控制</b>：通过 Pydantic 模型强制 LLM 返回符合规范的 JSON，确保下游的 Guidance 子智能体能够无缝解析和二次处理。</li>
+                </ul>
+              </div>
+              <div style="margin-top: 15px;">
+                <strong>实现说明：</strong>
+                <ul style="margin-left: 20px; margin-top: 5px;">
+                  <li><b>Prompt Engineering</b>：采用 CoT（思维链）引导，让 Agent 先思考用户的能量缺口和训练频率，再进行排课，避免逻辑跳跃。</li>
+                  <li><b>验证字典 (Warning System)</b>：内置训练量基准规则（如：初学者每周每块肌肉 8-10 组）。若校验失败，会将具体的 Warn Message 返回给 LLM，实现自我进化的生成路径。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- EntranceAgent Detail -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-icon">💬</span>
+              <span class="card-title">EntranceAgent：对话式入口与画像构建</span>
+              <span class="card-tag tag-ux">EntranceAgent</span>
+            </div>
+            <div class="card-body">
+              <p>针对“静态表单用户体验差、信息采集不全”的问题，EntranceAgent 将初始化流程从过程式 Q&A 升级为基于 LLM 的对话系统。</p>
+              <div style="margin-top: 15px;">
+                <strong>核心功能：</strong>
+                <ul style="margin-left: 20px; margin-top: 5px;">
+                  <li><b>对话识别与特征提取</b>：利用 LLM 将用户口语化的描述（如“我平时坐班多，腰不太舒服”）精准转化为结构化的 Profile 字段（职业：坐班；潜在风险：Lower Back）。</li>
+                  <li><b>需求驱动补全 (Requirement-Driven)</b>：通过检索 <code>Requirement KB</code>，识别当前所有已部署 Sub-Agents（如 GYM, Cooking）所依赖的必填项。</li>
+                  <li><b>动态追问策略</b>：基于当前 Profile 的空缺项，采用“自然对话 + 针对性追问”的方式填充缺失信息，而非机械的问卷调查。</li>
+                </ul>
+              </div>
+              <div style="margin-top: 15px;">
+                <strong>实现说明：</strong>
+                <ul style="margin-left: 20px; margin-top: 5px;">
+                  <li><b>逻辑内核</b>：采用 LLM + Function Calling 模式。LLM 负责维持教练人设并引导对话，由 Function 实时解析用户意图并尝试更新结构化 <code>UserProfile</code> 模型。</li>
+                  <li><b>字段依赖注册表</b>：建立一个 <code>onboarding_requirements.json</code>，每个 Sub-Agent 在此声明其所需的参数（如 GYM 需要器材列表和伤病标签）。EntranceAgent 会自动合并这些依赖作为对话终点。</li>
+                  <li><b>中间层校验</b>：在 LLM 解析后，引入 Pydantic 校验层，确保采集到的身体数据（身高、体重等）符合科学范围，否则触发即时纠错对话。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- v0.1.x -->
