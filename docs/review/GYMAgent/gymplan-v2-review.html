@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GYMAgent v2 评审</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#06060b;--s1:#0e0e16;--s2:#16161f;--bd:#252535;--t:#e4e4ef;--td:#8585a0;--tm:#55556a;--or:#ff6b35;--bl:#4a9eff;--gn:#34d399;--pu:#a78bfa;--yl:#fbbf24;--rd:#ef4444;--cy:#22d3ee;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--t);font-family:'Noto Sans SC',sans-serif;line-height:1.8;}
+  .ctr{max-width:1100px;margin:0 auto;padding:56px 36px;}
+  code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--s2);padding:2px 6px;border-radius:4px;color:var(--td);}
+  .hdr{margin-bottom:48px;} .hdr-sup{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cy);text-transform:uppercase;letter-spacing:4px;margin-bottom:12px;}
+  .hdr h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;margin-bottom:14px;} .hdr-d{font-size:14px;color:var(--td);max-width:800px;line-height:1.9;}
+  .sb{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:44px;}
+  .sc{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:18px;text-align:center;}
+  .sc .l{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;}
+  .sc .v{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;} .sc .su{font-size:10px;color:var(--td);margin-top:3px;}
+  .sec{margin-bottom:44px;} .sh{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd);}
+  .sn{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:3px 10px;border-radius:5px;} .st{font-size:18px;font-weight:800;}
+  .tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;}
+  .tbl th,.tbl td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--bd);}
+  .tbl th{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:1px;background:var(--s1);}
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:20px 24px;margin-bottom:12px;}
+  .ch{display:flex;align-items:center;gap:10px;margin-bottom:10px;} .ci{font-size:16px;} .ct{font-size:14px;font-weight:700;}
+  .cb{font-size:13px;color:var(--td);line-height:1.9;}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;margin-left:auto;}
+  .hl{color:var(--t);font-weight:600;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .verdict{background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:28px;margin-bottom:24px;}
+  .verdict h3{font-size:17px;font-weight:700;margin-bottom:12px;} .verdict p{font-size:13px;color:var(--td);line-height:1.9;margin-bottom:10px;}
+  .fixed{background:rgba(52,211,153,0.04);border:1px solid rgba(52,211,153,0.15);border-radius:14px;padding:24px;margin-bottom:24px;}
+  .fixed h3{color:var(--gn);font-size:16px;margin-bottom:10px;} .fixed p{font-size:13px;color:var(--td);line-height:1.9;}
+  @media(max-width:768px){.sb{grid-template-columns:repeat(2,1fr);}.two{grid-template-columns:1fr;}.ctr{padding:40px 18px;}}
+</style>
+</head>
+<body>
+<div class="ctr">
+
+  <div class="hdr">
+    <div class="hdr-sup">GYMAgent v2 · Review</div>
+    <h1>v2 评审：一次迭代全部修复，A 级达成</h1>
+    <div class="hdr-d">
+      v1 的所有 P0/P1/P2 问题在 v2 中全部修复。热身和拉伸从"一刀切模板"变成了针对每天训练部位的定制化设计；手腕专项热身模块 5/5 天覆盖；杠铃深蹲回到空杆 20kg；4 周渐进计划增加了手腕伤的具体策略。<b>GYMAgent 用 2 个版本就达到了 CookingAgent 用 6 个版本才达到的水平。</b>
+    </div>
+  </div>
+
+  <div class="sb">
+    <div class="sc"><div class="l">综合评级</div><div class="v" style="color:var(--gn);">A</div><div class="su">v1 B+ → v2 A</div></div>
+    <div class="sc"><div class="l">热身针对性</div><div class="v" style="color:var(--gn);">5/5</div><div class="su">v1: 2/5</div></div>
+    <div class="sc"><div class="l">拉伸针对性</div><div class="v" style="color:var(--gn);">5/5</div><div class="su">v1: 1/5</div></div>
+    <div class="sc"><div class="l">手腕热身</div><div class="v" style="color:var(--gn);">5/5</div><div class="su">v1: 0/5</div></div>
+  </div>
+
+  <!-- What was fixed -->
+  <div class="fixed">
+    <h3>✅ v1 → v2：所有问题修复验证</h3>
+    <p>
+      <span class="hl">P0-1 热身针对性 ✅ 完全修复</span><br>
+      每天热身从"通用模板"变为针对当天训练部位：<br>
+      • 周一（下肢推）→ 髋关节绕环+弓步走+徒手深蹲+踝关节绕环<br>
+      • 周二（上肢推）→ 肩外旋+肩胛骨收放+轻卧推<br>
+      • 周三（上肢拉）→ <b>弹力带直臂下拉+肩胛骨下压+轻划船</b>（v1 错误使用了下肢模板）<br>
+      • 周四（下肢拉）→ <b>俯卧超人+臀桥+猫牛式+徒手 RDL</b>（v1 使用了通用模板）<br>
+      • 周五（全身）→ 综合全身活动<br><br>
+
+      <span class="hl">P0-2 拉伸针对性 ✅ 完全修复</span><br>
+      5 天的拉伸全部不同，精准匹配训练部位：<br>
+      • 周一 → 股四头肌+<b>腘绳肌+髋屈肌+小腿</b>（v1 缺后三项）<br>
+      • 周二 → <b>胸肌门框+三头肌过头+肩前侧+胸椎旋转</b>（v1 用了通用模板）<br>
+      • 周三 → <b>背阔肌+菱形肌+后三角+颈部</b>（v1 用了通用模板）<br>
+      • 周四 → <b>腘绳肌45s+臀肌鸽子式45s+下背儿童式60s+小腿</b>（v1 用了通用模板）<br>
+      • 周五 → 股四+胸肌+背阔肌+儿童式（全身日通用拉伸合理）<br><br>
+
+      <span class="hl">P1 手腕专项热身模块 ✅ 完全实现</span><br>
+      每天热身最前面固定加入 5 个手腕热身动作（~3 分钟）：腕关节绕环、手掌开合、手腕屈伸、祈祷式、反向祈祷式。5/5 天全覆盖。<br><br>
+
+      <span class="hl">P2 杠铃深蹲起始重量 ✅ 已修正</span><br>
+      从 v1 的"25-30kg"改回"空杆 (20kg)"，与 PlanAgent 建议一致，且明确写了"若手腕疼痛明显请改用高脚杯深蹲"。<br><br>
+
+      <span class="hl">4 周渐进计划 ✅ 增强</span><br>
+      • 第 2 周：通过增加次数渐进，而非增加重量（保护手腕）<br>
+      • 第 3 周：下肢可尝试加重，上肢维持重量保手腕<br>
+      • 第 4 周：明确提到"促进手腕愈合"<br>
+      这比 v1 的泛泛描述具体得多。
+    </p>
+  </div>
+
+  <!-- Quality details -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(52,211,153,0.08);color:var(--gn);border:1px solid rgba(52,211,153,0.2);">01</span>
+      <span class="st">v2 质量全景</span>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>维度</th><th>v1</th><th>v2</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>动作一致性 (PlanAgent → GYM)</td><td>25/25</td><td>25/25</td><td style="color:var(--gn);">✅ 保持</td></tr>
+        <tr><td>伤病适配覆盖</td><td>23/23</td><td>25/25</td><td style="color:var(--gn);">✅ 保持</td></tr>
+        <tr><td>教练提示 (每动作 3 条)</td><td>25/25</td><td>25/25</td><td style="color:var(--gn);">✅ 保持</td></tr>
+        <tr><td>呼吸模式</td><td>25/25</td><td>25/25</td><td style="color:var(--gn);">✅ 保持</td></tr>
+        <tr><td>节奏标注</td><td>25/25</td><td>25/25</td><td style="color:var(--gn);">✅ 保持</td></tr>
+        <tr><td>常见错误</td><td>25/25</td><td>25/25</td><td style="color:var(--gn);">✅ 保持</td></tr>
+        <tr><td>热身针对性</td><td style="color:var(--rd);">2/5</td><td style="color:var(--gn);">5/5</td><td style="color:var(--gn);">✅ 修复</td></tr>
+        <tr><td>拉伸针对性</td><td style="color:var(--rd);">1/5</td><td style="color:var(--gn);">5/5</td><td style="color:var(--gn);">✅ 修复</td></tr>
+        <tr><td>手腕专项热身</td><td style="color:var(--rd);">0/5</td><td style="color:var(--gn);">5/5</td><td style="color:var(--gn);">✅ 新增</td></tr>
+        <tr><td>杠铃深蹲起始重量</td><td style="color:var(--or);">25-30kg (偏高)</td><td style="color:var(--gn);">空杆 20kg</td><td style="color:var(--gn);">✅ 修复</td></tr>
+        <tr><td>4 周渐进计划</td><td>泛泛描述</td><td>手腕伤专属策略</td><td style="color:var(--gn);">✅ 增强</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Minor observations -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(85,85,106,0.1);color:var(--td);border:1px solid rgba(85,85,106,0.25);">02</span>
+      <span class="st">细节观察（非阻塞，仅供参考）</span>
+    </div>
+
+    <div class="card">
+      <div class="ch"><span class="ci">💬</span><span class="ct">教练提示的比喻更新鲜了</span></div>
+      <div class="cb">
+        v2 的比喻比 v1 更日常化：<br>
+        • "像提行李箱一样"（俯身划船的对握）<br>
+        • "像提购物袋"（RDL 的对握）<br>
+        • "像戴了石膏一样笔直"（挺举的手腕中立）<br>
+        • "下背部放了一杯水，不能洒"（鸟狗式的核心稳定）<br>
+        这些生活化的比喻对初学者建立正确的体感认知很有帮助。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><span class="ci">📝</span><span class="ct">周四拉伸时间更长（45s vs 30s）</span></div>
+      <div class="cb">
+        周四（下肢拉）的腘绳肌和臀肌拉伸设定为 45 秒（其他日多为 30 秒），下背儿童式 60 秒。这是合理的——腘绳肌和下背在高负荷 RDL 后需要更充分的拉伸恢复。说明 GYMAgent 不是简单套模板，而是根据训练强度调整了拉伸时间。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><span class="ci">⚙️</span><span class="ct">周四 2 个提踵仍然存在（PlanAgent 设计问题）</span></div>
+      <div class="cb">
+        v1 review 提到周四"下肢拉日"安排了 2 个提踵动作（小腿占 2/5 训练量）。v2 保留了这个安排——这是正确的，因为这是 PlanAgent 的设计选择，GYMAgent 应该忠实执行。v2 在备注中已经给出了合理的训练顺序："两个提踵动作放在最后彻底力竭小腿"。如果要修改，应该在 PlanAgent 层面调整。
+      </div>
+    </div>
+  </div>
+
+  <!-- Should we continue? -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(167,139,250,0.08);color:var(--pu);border:1px solid rgba(167,139,250,0.2);">03</span>
+      <span class="st">GYMAgent 是否可以告一段落？</span>
+    </div>
+    <div class="card" style="border-left:3px solid var(--gn);">
+      <div class="ch"><span class="ci">✅</span><span class="ct">结论：GYMAgent 已经完善，可以转向其他方向</span></div>
+      <div class="cb">
+        GYMAgent v2 的核心功能清单 100% 完成：<br><br>
+        ✅ PlanAgent 动作完整传递（25/25）<br>
+        ✅ 伤病适配全覆盖（25/25）<br>
+        ✅ 教练提示+呼吸+节奏+常见错误（25/25）<br>
+        ✅ 热身针对性（5/5 天）<br>
+        ✅ 拉伸针对性（5/5 天）<br>
+        ✅ 手腕专项热身模块（5/5 天）<br>
+        ✅ 起始重量合理降级（有伤不加重）<br>
+        ✅ 4 周渐进计划（伤病友好）<br><br>
+
+        <span class="hl">没有 P0 或 P1 级别的遗留问题。</span>剩余的优化空间都是 P3 级别的锦上添花（如渐进计划绑定具体数值、增加替代动作库等），边际收益递减。<br><br>
+
+        <span class="hl">GYMAgent 用 2 个版本（B+ → A）完成了 CookingAgent 用 6 个版本（C+ → A）才达到的成熟度。</span>这说明：当 Agent 间数据流设计良好、任务边界清晰时，迭代效率会大幅提升。
+      </div>
+    </div>
+  </div>
+
+  <!-- Overall system status -->
+  <div class="sec">
+    <div class="sh">
+      <span class="sn" style="background:rgba(34,211,238,0.08);color:var(--cy);border:1px solid rgba(34,211,238,0.2);">04</span>
+      <span class="st">系统整体状态 & 下一步建议</span>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>Agent</th><th>当前版本</th><th>评级</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>PlanAgent</td><td>—</td><td>—</td><td>驱动层，输出结构已被验证</td></tr>
+        <tr><td>CookingAgent</td><td>v7</td><td style="color:var(--yl);">A-</td><td>修"面条生熟重量"后可达 A</td></tr>
+        <tr><td><b>GYMAgent</b></td><td><b>v2</b></td><td style="color:var(--gn);"><b>A</b></td><td><b>✅ 完善，可暂停</b></td></tr>
+        <tr><td>ProgressTracker</td><td>—</td><td>—</td><td>🔜 待开发</td></tr>
+        <tr><td>AdaptationAgent</td><td>—</td><td>—</td><td>🔜 待开发</td></tr>
+      </tbody>
+    </table>
+
+    <div class="card" style="border-left:3px solid var(--cy);margin-top:16px;">
+      <div class="ch"><span class="ci">🗺️</span><span class="ct">建议下一步</span></div>
+      <div class="cb">
+        CookingAgent（A-）和 GYMAgent（A）都已经可以交付用户使用。接下来可以考虑：<br><br>
+        <span class="hl">1. CookingAgent 快速修复</span>（10分钟）：统一面条/大米为"熟重"标注 → A 级<br>
+        <span class="hl">2. 开发新 Agent</span>：ProgressTracker（训练记录+进度追踪）或 AdaptationAgent（根据反馈调整计划）<br>
+        <span class="hl">3. 系统集成</span>：让 CookingAgent 和 GYMAgent 的输出能联动（如训练日自动匹配训练日饮食）<br><br>
+        建议优先做 <b>选项 1</b>（快速修复 CookingAgent 到 A 级，让两个 Agent 都达到可交付水平），然后决定是开发新 Agent 还是做系统集成。
+      </div>
+    </div>
+  </div>
+
+  <!-- Verdict -->
+  <div class="verdict">
+    <h3 style="color:var(--gn);">A：GYMAgent 已完善，建议转向其他方向</h3>
+    <p>
+      GYMAgent v2 是一个<span class="hl">教科书式的快速迭代案例</span>：v1 底子就很好（25/25 动作一致、23/23 伤病适配），唯一的问题是热身和拉伸的针对性。v2 一次性修复了所有问题，还额外增加了手腕专项热身模块和增强版 4 周渐进计划。
+    </p>
+    <p>
+      用户拿到这份 GYM Plan 后：每天有针对训练部位的热身（含手腕专项）→ 5 个动作各有教练级指导（呼吸、节奏、比喻式提示、常见错误、伤病适配）→ 针对训练部位的拉伸收尾 → 4 周渐进路径。<b>这就是一份可以直接交给教练审核的执行方案。</b>
+    </p>
+  </div>
+
+  <div style="text-align:center;padding:32px 0;border-top:1px solid var(--bd);color:var(--tm);font-size:11px;font-family:'JetBrains Mono',monospace;margin-top:32px;">
+    GYMAgent v2 · A · 2026-02-26
+  </div>
+</div>
+</body>
+</html>
