@@ -605,16 +605,19 @@ def plan(
         from fitness_agent.entrance.agent import EntranceAgent
 
         entrance_agent = EntranceAgent(client=client)
+        conversation_log_path = DATA_DIR / "processed" / "entrance_conversation.json"
         user_profile = entrance_agent.run(
             ask_fn=lambda _: typer.prompt("", prompt_suffix=""),
             print_fn=console.print,
             should_cook=cook_flag,
             should_gym=gym_flag,
+            conversation_log_path=conversation_log_path,
         )
         # Auto-save profile for future reuse
         default_profile_path = DATA_DIR / "processed" / "profile.json"
         save_profile(user_profile, default_profile_path)
         console.print(f"\n[dim]Profile saved to {default_profile_path}[/dim]")
+        console.print(f"[dim]Conversation log saved to {conversation_log_path}[/dim]")
 
     # --- Generate plan via LangGraph ---
     console.print("\n[bold]正在生成训练计划，请稍候…[/bold]")

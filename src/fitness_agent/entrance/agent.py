@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -119,6 +120,24 @@ def _parse_turn(raw: str) -> TurnResult:
         return TurnResult(reply=raw, extracted={})
 
 
+def _save_conversation_log(
+    path: Path,
+    messages: list[Message],
+    required_fields: list[str],
+    partial_profile: dict,  # type: ignore[type-arg]
+) -> None:
+    """Persist the full conversation to a JSON file for debugging."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    log = {
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "required_fields": required_fields,
+        "collected": partial_profile,
+        "messages": [{"role": m.role, "content": m.content} for m in messages],
+    }
+    path.write_text(json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.debug(f"EntranceAgent: conversation log saved to {path}")
+
+
 def _generate_greeting(client: BaseLLMClient, required_fields: list[str]) -> str:
     """
     Ask the LLM to generate an opening greeting message.
@@ -178,16 +197,19 @@ class EntranceAgent:
         print_fn: PrintFn,
         should_cook: bool = False,
         should_gym: bool = False,
+        conversation_log_path: Path | None = None,
     ) -> UserProfile:
         """
         Run the conversational onboarding loop.
 
         Parameters
         ----------
-        ask_fn:      Callable that prompts the user and returns their input string.
-        print_fn:    Callable used to display messages to the user.
-        should_cook: Whether the CookingAgent will be used (adds dietary fields).
-        should_gym:  Whether the GYMAgent will be used (adds injury/strength fields).
+        ask_fn:                Callable that prompts the user and returns their input string.
+        print_fn:              Callable used to display messages to the user.
+        should_cook:           Whether the CookingAgent will be used (adds dietary fields).
+        should_gym:            Whether the GYMAgent will be used (adds injury/strength fields).
+        conversation_log_path: Optional path to save the full conversation as JSON (for debugging).
+                               Parent directories are created automatically if needed.
 
         Returns
         -------
@@ -261,6 +283,15 @@ class EntranceAgent:
                 f"{[f for f in required_fields if f not in partial_profile]}"
             )
 
-        # --- 3. Validate and enrich ---
+        # --- 3. Optionally persist conversation log ---
+        if conversation_log_path is not None:
+            try:
+                _save_conversation_log(
+                    conversation_log_path, messages, required_fields, partial_profile
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(f"EntranceAgent: failed to save conversation log: {exc!r}")
+
+        # --- 4. Validate and enrich ---
         profile = UserProfile.model_validate(partial_profile)
         return enrich_profile(profile)
