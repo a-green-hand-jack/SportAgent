@@ -103,6 +103,24 @@ class Exercise(BaseModel):
     cues: list[str] = Field(default_factory=list, description="动作要领（中文）")
     met_value: float | None = Field(default=None, description="代谢当量，有氧动作用于热量估算")
 
+    # --- Extended fields for GYMAgent (optional, populated for core exercises) ---
+    detailed_technique_zh: str | None = Field(
+        default=None,
+        description="3-5 句详细技术说明，GYMAgent 优先使用此字段而非 LLM 生成",
+    )
+    common_mistakes_zh: list[str] = Field(
+        default_factory=list,
+        description="常见动作错误（中文），GYMAgent 优先使用此字段",
+    )
+    breathing_pattern_zh: str | None = Field(
+        default=None,
+        description="呼吸模式描述，如 '下降时吸气，推起时呼气'",
+    )
+    video_url: str | None = Field(
+        default=None,
+        description="教学视频链接（Bilibili / YouTube）",
+    )
+
 
 # ---------------------------------------------------------------------------
 # FoodItem

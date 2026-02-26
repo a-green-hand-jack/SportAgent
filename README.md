@@ -1,20 +1,23 @@
 # 🏋️ Fitness Agent — AI 个性化健身规划助手
 
 > 通过一次简单的问答，由 AI 为你生成量身定制的**周训练计划 + 每日营养方案**。
-> 支持 Anthropic Claude、OpenAI、DeepSeek、Qwen、Google Gemini 等多家 LLM 提供商。
+> 支持通义千问（Qwen）、Anthropic Claude、OpenAI、DeepSeek 等多家大模型，**推荐 Qwen 作为最佳服务商**。
 
 ---
 
 ## ✨ 核心功能
 
-| 功能                  | 说明                                                  |
-| --------------------- | ----------------------------------------------------- |
-| 🎯 **个性化训练计划** | AI 根据你的目标、经验、可用器材生成每周训练安排       |
-| 🥗 **每日营养方案**   | 自动计算 BMR / TDEE，给出热量、蛋白质、碳水、脂肪目标 |
-| 🛡️ **伤病安全过滤**   | 支持自由文本描述伤病，AI 自动识别并规避高风险动作     |
-| 📦 **结构化知识库**   | 动作库、营养数据、训练规则全部本地化存储，不依赖网络  |
-| 💾 **档案复用**       | 首次问答后自动保存用户画像，下次可直接加载跳过问答    |
-| 🔄 **多 LLM 支持**    | 一行命令切换 Claude / GPT / DeepSeek / Gemini         |
+我们采用了 **多 Agent 架构**，各个智能体各司其职，为您全方位打造专业计划：
+
+| 功能                  | 说明                                                                     |
+| --------------------- | ------------------------------------------------------------------------ |
+| 🎯 **个性化训练大纲** | **Planner Agent** 综合分析目标与经验，为你量身定做每周训练与宏观营养框架 |
+| 🍳 **智能餐饮规划**   | **Cooking Agent** 提供带动态热量缩放的逐日餐食、食谱组合与量化采购清单   |
+| 💪 **单次执行指导**   | **Gym Agent** 下发包含热身、呼吸调整及动作细节（KB Cues）的实操课表      |
+| 🛡️ **伤病安全过滤**   | 支持自由输入伤病描述，自动调取知识库识别并修改高风险动作                 |
+| 📦 **全景静态知识库** | 动作库、食谱数据、营养/训练规则完全本地化存储，严格控制大模型幻觉        |
+| 💾 **档案复用**       | 首次问答后自动保存体测档案，支持各级 Agent 增量调用与按需组合运行        |
+| 🔄 **多模型适配**     | 一行配置灵活无缝切换 Qwen / Claude / DeepSeek / GPT                      |
 
 ---
 
@@ -52,16 +55,16 @@ cp .env.example .env
 用文本编辑器打开 `.env`，至少填写一个 LLM 提供商的 Key：
 
 ```env
-# 选择你拥有 API Key 的提供商（至少填一个）
-ANTHROPIC_API_KEY=sk-ant-...      # Claude（默认）
+# 选择你拥有 API Key 的提供商（推荐填入通义千问）
+QWEN_API_KEY=sk-...               # 通义千问（推荐）
+ANTHROPIC_API_KEY=sk-ant-...      # Claude
 OPENAI_API_KEY=sk-...             # GPT-4o
-DEEPSEEK_API_KEY=sk-...           # DeepSeek（较经济）
-QWEN_API_KEY=sk-...               # 通义千问
+DEEPSEEK_API_KEY=sk-...           # DeepSeek
 GOOGLE_API_KEY=AIza...            # Gemini
 
-# 指定默认使用的提供商和模型
-LLM_PROVIDER=anthropic
-LLM_MODEL=claude-opus-4-6
+# 指定默认使用的大模型提供商
+LLM_PROVIDER=qwen
+LLM_MODEL=qwen3.5-plus
 ```
 
 ### 4. 生成你的第一个训练计划
@@ -106,37 +109,48 @@ uv run fitness-agent plan
 
 ## ⚙️ 命令行选项
 
-### `fitness-agent plan` — 生成训练计划
+### `fitness-agent plan` — 生成周计划与日常营养大纲
 
 ```
 Options:
-  -p, --provider TEXT   LLM 提供商 (anthropic/openai/deepseek/qwen/gemini)
+  -p, --provider TEXT   LLM 提供商 (qwen/anthropic/openai/deepseek/gemini)
   -m, --model TEXT      模型名称，覆盖 .env 中的默认值
   --profile PATH        加载已有用户档案 JSON（跳过问答）
   -o, --output PATH     将生成的计划保存为 JSON 文件
+  --cook                生成计划后，继续调用 Cooking Agent 生成详细食谱与购物清单
+  --gym                 生成计划后，继续调用 Gym Agent 生成实操训练指导
   --help                显示帮助
 ```
 
 **示例：**
 
 ```bash
-# 使用默认（.env 中配置）的 LLM 提供商
+# 使用默认的 LLM 提供商（推荐使用 Qwen）
 uv run fitness-agent plan
 
-# 指定使用 DeepSeek（更经济实惠）
+# 一键生成完整总方案（包含周计划长流程、详细逐日食谱安排与具体训练日动作指导）
+uv run fitness-agent plan --cook --gym
+
+# 临时指定使用 DeepSeek / GPT 等
 uv run fitness-agent plan --provider deepseek --model deepseek-chat
-
-# 指定使用 GPT-4o
-uv run fitness-agent plan --provider openai --model gpt-4o
-
-# 使用 Gemini Flash（速度快、免费额度充足）
-uv run fitness-agent plan --provider gemini --model gemini-2.0-flash
 
 # 加载已有档案，跳过问答直接生成计划
 uv run fitness-agent plan --profile data/processed/profile.json
 
-# 生成计划并保存到文件
+# 生成计划并指定保存到某文件
 uv run fitness-agent plan --output outputs/my_plan.json
+```
+
+### 多 Agent 独立执行
+
+如果你已经获得一份周计划（默认存为 `plan.json`），你可以挂载个人状态单独按需调用专项 Agent：
+
+```bash
+# 执行 Cooking Agent 并生成后续餐饮采购需求
+uv run fitness-agent cook --plan data/processed/plan.json --profile data/processed/profile.json
+
+# 执行 Gym Agent 对周计划进行解包，生成可供健身房直接翻阅的单次课详细指引
+uv run fitness-agent gym --plan data/processed/plan.json --profile data/processed/profile.json
 ```
 
 ### `fitness-agent version` — 查看版本
@@ -149,13 +163,15 @@ uv run fitness-agent version
 
 ## 🔑 支持的 LLM 提供商
 
-| 提供商            | 环境变量            | 推荐模型           | 特点                   |
-| ----------------- | ------------------- | ------------------ | ---------------------- |
-| **Anthropic**     | `ANTHROPIC_API_KEY` | `claude-opus-4-6`  | 中文理解优秀，推荐首选 |
-| **OpenAI**        | `OPENAI_API_KEY`    | `gpt-4o`           | 通用能力强             |
-| **DeepSeek**      | `DEEPSEEK_API_KEY`  | `deepseek-chat`    | 价格低廉，中文支持好   |
-| **通义千问**      | `QWEN_API_KEY`      | `qwen-plus`        | 国内访问友好           |
-| **Google Gemini** | `GOOGLE_API_KEY`    | `gemini-2.0-flash` | 速度快，有免费额度     |
+我们强烈推荐采用 **通义千问（Qwen）** 作为主力驱动的大模型供应商，并首选使用 **`qwen3.5-plus`** 模型，能够提供绝佳的指令遵循、生成稳定性及性价比。
+
+| 提供商            | 环境变量            | 推荐模型           | 特点                                 |
+| ----------------- | ------------------- | ------------------ | ------------------------------------ |
+| **通义千问**      | `QWEN_API_KEY`      | `qwen3.5-plus`     | 国内访问极速，逻辑稳定，**首选推荐** |
+| **Anthropic**     | `ANTHROPIC_API_KEY` | `claude-opus-4-6`  | 中文理解极佳，规划能力强             |
+| **OpenAI**        | `OPENAI_API_KEY`    | `gpt-4o`           | 通用推理能力强                       |
+| **DeepSeek**      | `DEEPSEEK_API_KEY`  | `deepseek-chat`    | 极其经济实惠，中文支持好             |
+| **Google Gemini** | `GOOGLE_API_KEY`    | `gemini-2.0-flash` | 速度极快，免费额度充沛               |
 
 ---
 
@@ -205,18 +221,23 @@ uv run fitness-agent plan --profile data/processed/profile.json
 ```
 SportAgent/
 ├── src/fitness_agent/
-│   ├── knowledge_base/   # 动作库 · 营养数据 · 训练规则（本地 KB）
-│   ├── planner/          # 规划 Agent：核心 AI 交互与计划生成逻辑
-│   ├── user/             # 用户模型：问答流程 · 画像 · BMR/TDEE 计算
-│   ├── utils/            # LLM 客户端封装 · 日志 · 配置
-│   └── cli.py            # 命令行入口
+│   ├── knowledge_base/   # 各类知识库加载与校验模块（独立管理）
+│   ├── planner/          # Planner Agent：规划每周健身与宏观营养大纲
+│   ├── cooking/          # Cooking Agent：结合约束与食谱生成逐日带缩放详细配餐
+│   ├── gym/              # Gym Agent：生成单次课具体执行细节及针对性建议
+│   ├── user/             # 用户档案与 BMR/TDEE 模型系统
+│   ├── utils/            # LLM 客户端封装 · 日志 · 配置等公共设施
+│   └── cli.py            # 命令行入口，统筹多 Agent 调度
 ├── data/
-│   └── raw/
-│       ├── exercises.json          # 动作库（100+ 动作）
-│       ├── nutrition.json          # 食物数据库
-│       ├── nutrition_principles.json # 营养原则与时机规则
+│   └── raw/              # 本地静态 JSON 知识库资源
+│       ├── exercises.json          # 动作库（详尽的解剖、纠错、提示信息）
+│       ├── recipes.json            # 本地食谱库（供 Cooking Agent 使用）
+│       ├── nutrition.json          # 食材基础信息库
+│       ├── nutrition_principles.json # 营养与加餐分配原则
 │       ├── rules.json              # 训练规则集（容量/频率/安全）
-│       └── anatomy.json            # 肌群解剖与训练量参考
+│       ├── anatomy.json            # 肌群解剖参考
+│       ├── injury_profiles.json    # 伤病类型分析与动作规避方案
+│       └── warmup_templates.json   # 专项热身与拉伸模块
 ├── .env.example          # 环境变量配置模板
 └── pyproject.toml        # 项目配置与依赖声明
 ```

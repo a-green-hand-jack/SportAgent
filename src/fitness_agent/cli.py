@@ -267,6 +267,204 @@ def _plan_to_markdown(plan) -> str:  # type: ignore[no-untyped-def]
     return "\n".join(lines)
 
 
+def _display_gym_plan(plan) -> None:  # type: ignore[no-untyped-def]
+    """Render a WeeklyGymPlan with Rich formatting."""
+    from fitness_agent.gym.models import WeeklyGymPlan
+    assert isinstance(plan, WeeklyGymPlan)
+
+    console.print()
+    console.print(Panel.fit(
+        f"[bold green]💪 {plan.user_name} 的训练执行指导[/bold green]\n"
+        f"训练日: [cyan]{len(plan.sessions)}[/cyan]  |  "
+        f"总动作: [cyan]{sum(len(s.exercises) for s in plan.sessions)}[/cyan]  |  "
+        f"器材: [cyan]{len(plan.equipment_checklist)}[/cyan]",
+        border_style="green",
+    ))
+
+    # --- Sessions ---
+    for session in plan.sessions:
+        # Exercise table
+        ex_table = Table(
+            "动作", "组×次", "休息", "起始重量", "节奏",
+            box=box.SIMPLE_HEAD, show_header=True,
+            header_style="bold cyan",
+        )
+        for ex in session.exercises:
+            tempo = ex.tempo_zh or "—"
+            ex_table.add_row(
+                f"[bold]{ex.exercise_name_zh}[/bold]",
+                f"{ex.sets}×{ex.reps}",
+                f"{ex.rest_seconds}s",
+                ex.starting_weight_zh,
+                tempo,
+            )
+
+        day_header = (
+            f"[bold yellow]{session.day_label}[/bold yellow]: {session.focus}  "
+            f"[dim](约 {session.estimated_duration_minutes} 分钟)[/dim]"
+        )
+        console.print(Panel(ex_table, title=day_header, border_style="yellow"))
+
+        # Warmup
+        if session.warmup_sequence:
+            warmup_text = "\n".join(session.warmup_sequence)
+            console.print(f"  [bold green]🔥 热身:[/bold green]")
+            for step in session.warmup_sequence:
+                console.print(f"    {step}")
+            if session.warmup_injury_modifications:
+                for tag, mod in session.warmup_injury_modifications.items():
+                    console.print(f"    [red]⚠ {tag}:[/red] {mod}")
+
+        # Exercise details
+        for ex in session.exercises:
+            console.print(f"\n  [bold]{ex.exercise_name_zh}[/bold] ({ex.exercise_id})")
+            if ex.kb_cues:
+                console.print(f"    [dim]KB Cues: {' | '.join(ex.kb_cues)}[/dim]")
+            for tip in ex.coaching_tips_zh:
+                console.print(f"    [cyan]💡 {tip}[/cyan]")
+            console.print(f"    [blue]🫁 呼吸: {ex.breathing_zh}[/blue]")
+            for mistake in ex.common_mistakes_zh:
+                console.print(f"    [red]❌ {mistake}[/red]")
+            if ex.injury_adaptations_zh:
+                console.print(f"    [yellow]⚠ 伤病适配: {ex.injury_adaptations_zh}[/yellow]")
+
+        # Cooldown
+        if session.cooldown_sequence:
+            console.print(f"\n  [bold blue]🧊 拉伸:[/bold blue]")
+            for step in session.cooldown_sequence:
+                console.print(f"    {step}")
+
+        # Session flow notes
+        if session.session_flow_notes_zh:
+            console.print(f"\n  [dim]📋 {session.session_flow_notes_zh}[/dim]")
+
+    # --- 4-week progression ---
+    prog_table = Table(
+        "周", "主题", "训练量", "强度", "RPE",
+        box=box.SIMPLE_HEAD, show_header=True,
+        header_style="bold cyan",
+    )
+    for pw in plan.four_week_progression:
+        prog_table.add_row(
+            f"第{pw.week_number}周",
+            pw.theme_zh,
+            pw.volume_change_zh,
+            pw.intensity_change_zh,
+            pw.rpe_target,
+        )
+    console.print(Panel(prog_table, title="[bold]📅 4周渐进计划[/bold]", border_style="cyan"))
+
+    # --- Equipment checklist ---
+    if plan.equipment_checklist:
+        equip_str = "、".join(plan.equipment_checklist)
+        console.print(f"\n  [bold]🏗 所需器材:[/bold] {equip_str}")
+
+    # --- General tips ---
+    if plan.general_tips_zh:
+        console.print(Panel(
+            plan.general_tips_zh,
+            title="[bold]💬 通用训练建议[/bold]",
+            border_style="magenta",
+        ))
+
+    console.print()
+
+
+def _gym_plan_to_markdown(plan) -> str:  # type: ignore[no-untyped-def]
+    """Convert a WeeklyGymPlan to a human-readable Markdown string."""
+    lines: list[str] = []
+
+    lines.append(f"# 💪 {plan.user_name} 的训练执行指导\n")
+    lines.append(
+        f"**训练日**: {len(plan.sessions)}  |  "
+        f"**总动作**: {sum(len(s.exercises) for s in plan.sessions)}  |  "
+        f"**器材**: {', '.join(plan.equipment_checklist) if plan.equipment_checklist else '无'}\n"
+    )
+
+    # --- Sessions ---
+    for session in plan.sessions:
+        lines.append("---\n")
+        lines.append(
+            f"## {session.day_label}：{session.focus}"
+            f"（约 {session.estimated_duration_minutes} 分钟）\n"
+        )
+
+        # Warmup
+        if session.warmup_sequence:
+            lines.append("### 🔥 热身\n")
+            for step in session.warmup_sequence:
+                lines.append(f"- {step}")
+            if session.warmup_injury_modifications:
+                lines.append("\n**伤病调整:**\n")
+                for tag, mod in session.warmup_injury_modifications.items():
+                    lines.append(f"- ⚠ {tag}: {mod}")
+            lines.append("")
+
+        # Exercise table
+        lines.append("### 训练动作\n")
+        lines.append("| 动作 | 组×次 | 休息 | 起始重量 | 节奏 |")
+        lines.append("|------|-------|------|---------|------|")
+        for ex in session.exercises:
+            tempo = ex.tempo_zh or "—"
+            lines.append(
+                f"| {ex.exercise_name_zh} | {ex.sets}×{ex.reps} | "
+                f"{ex.rest_seconds}s | {ex.starting_weight_zh} | {tempo} |"
+            )
+        lines.append("")
+
+        # Exercise details
+        for ex in session.exercises:
+            lines.append(f"#### {ex.exercise_name_zh}（{ex.exercise_name}）\n")
+            if ex.primary_muscles:
+                lines.append(f"- **主要肌群**: {', '.join(ex.primary_muscles)}")
+            if ex.kb_cues:
+                lines.append(f"- **KB Cues**: {' | '.join(ex.kb_cues)}")
+            lines.append(f"- **呼吸**: {ex.breathing_zh}")
+            lines.append("- **教练提示**:")
+            for tip in ex.coaching_tips_zh:
+                lines.append(f"  - 💡 {tip}")
+            lines.append("- **常见错误**:")
+            for mistake in ex.common_mistakes_zh:
+                lines.append(f"  - ❌ {mistake}")
+            if ex.injury_adaptations_zh:
+                lines.append(f"- **⚠ 伤病适配**: {ex.injury_adaptations_zh}")
+            if ex.video_url:
+                lines.append(f"- **教学视频**: [{ex.video_url}]({ex.video_url})")
+            lines.append("")
+
+        # Cooldown
+        if session.cooldown_sequence:
+            lines.append("### 🧊 拉伸\n")
+            for step in session.cooldown_sequence:
+                lines.append(f"- {step}")
+            lines.append("")
+
+        # Session notes
+        if session.session_flow_notes_zh:
+            lines.append(f"> 📋 {session.session_flow_notes_zh}\n")
+
+    # --- 4-week progression ---
+    lines.append("---\n")
+    lines.append("## 📅 4周渐进计划\n")
+    lines.append("| 周 | 主题 | 训练量 | 强度 | RPE | 备注 |")
+    lines.append("|---|----|-------|------|-----|------|")
+    for pw in plan.four_week_progression:
+        lines.append(
+            f"| 第{pw.week_number}周 | {pw.theme_zh} | {pw.volume_change_zh} | "
+            f"{pw.intensity_change_zh} | {pw.rpe_target} | {pw.notes_zh} |"
+        )
+    lines.append("")
+
+    # --- General tips ---
+    if plan.general_tips_zh:
+        lines.append("---\n")
+        lines.append("## 💬 通用训练建议\n")
+        lines.append(plan.general_tips_zh)
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 def _cooking_plan_to_markdown(plan) -> str:  # type: ignore[no-untyped-def]
     """Convert a WeeklyCookingPlan to a human-readable Markdown string."""
     lines: list[str] = []
@@ -372,6 +570,11 @@ def plan(
         "--cook",
         help="Also generate a detailed weekly cooking plan after the training plan.",
     ),
+    gym_flag: bool = typer.Option(
+        False,
+        "--gym",
+        help="Also generate detailed gym exercise guidance after the training plan.",
+    ),
 ) -> None:
     """
     Run onboarding Q&A (or load an existing profile) then generate a
@@ -439,6 +642,10 @@ def plan(
     if cook_flag:
         _run_cooking_plan(client, fitness_plan, user_profile, save_path)
 
+    # --- Optional: generate gym guidance ---
+    if gym_flag:
+        _run_gym_plan(client, fitness_plan, user_profile, save_path)
+
 
 def _run_cooking_plan(
     client: object,
@@ -475,6 +682,109 @@ def _run_cooking_plan(
         encoding="utf-8",
     )
     console.print(f"[dim]Cooking plan saved to {cook_path} and {cook_md_path}[/dim]")
+
+
+def _run_gym_plan(
+    client: object,
+    fitness_plan: object,
+    user_profile: object,
+    save_path: Path,
+) -> None:
+    """Shared gym plan generation logic used by both `plan --gym` and `gym`."""
+    from fitness_agent.gym.agent import GYMAgent
+    from fitness_agent.knowledge_base.loader import KnowledgeBase
+
+    console.print("\n[bold]正在生成训练执行指导，请稍候…[/bold]")
+    try:
+        kb = KnowledgeBase()
+        gym_agent = GYMAgent(client=client, kb=kb)  # type: ignore[arg-type]
+        gym_plan = gym_agent.generate_gym_plan(
+            fitness_plan, user_profile  # type: ignore[arg-type]
+        )
+    except Exception as exc:
+        console.print(f"[red]Gym plan generation failed:[/red] {exc}")
+        return
+
+    _display_gym_plan(gym_plan)
+
+    gym_path = save_path.with_name("gym_plan.json")
+    gym_path.parent.mkdir(parents=True, exist_ok=True)
+    gym_path.write_text(
+        gym_plan.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    gym_md_path = gym_path.with_suffix(".md")
+    gym_md_path.write_text(
+        _gym_plan_to_markdown(gym_plan),
+        encoding="utf-8",
+    )
+    console.print(f"[dim]Gym plan saved to {gym_path} and {gym_md_path}[/dim]")
+
+
+@app.command()
+def gym(
+    plan_path: Path = typer.Option(
+        ...,
+        "--plan",
+        help="Path to an existing training plan JSON.",
+        exists=True,
+    ),
+    profile_path: Path = typer.Option(
+        ...,
+        "--profile",
+        help="Path to an existing user profile JSON.",
+        exists=True,
+    ),
+    provider: Optional[str] = typer.Option(
+        None,
+        "--provider", "-p",
+        help="LLM provider (anthropic/openai/deepseek/qwen/gemini).",
+    ),
+    model: Optional[str] = typer.Option(
+        None,
+        "--model", "-m",
+        help="Model name override.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output", "-o",
+        help="Save the gym plan JSON to this path.",
+    ),
+) -> None:
+    """
+    Generate detailed gym exercise guidance from an existing training plan
+    and user profile.
+    """
+    import json as _json
+
+    from fitness_agent.planner.models import WeeklyPlan
+    from fitness_agent.user.onboarding import load_profile
+    from fitness_agent.utils.config import DATA_DIR
+    from fitness_agent.utils.llm_client import build_client, build_client_from_config
+
+    # --- Build LLM client ---
+    console.print("\n[dim]Initialising LLM client…[/dim]")
+    try:
+        if provider:
+            client = build_client(provider=provider, model=model)
+        else:
+            client = build_client_from_config()
+        console.print(f"[dim]Using {client}[/dim]")
+    except ValueError as exc:
+        console.print(f"[red]LLM configuration error:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    # --- Load profile and plan ---
+    user_profile = load_profile(profile_path)
+    console.print(f"  已加载用户档案: [bold]{user_profile.name}[/bold]")
+
+    raw_plan = _json.loads(plan_path.read_text(encoding="utf-8"))
+    fitness_plan = WeeklyPlan.model_validate(raw_plan)
+    console.print(f"  已加载训练计划: {len(fitness_plan.training_days)} 训练日")
+
+    # --- Generate gym plan ---
+    save_path = output if output else DATA_DIR / "processed" / "gym_plan.json"
+    _run_gym_plan(client, fitness_plan, user_profile, save_path)
 
 
 @app.command()
