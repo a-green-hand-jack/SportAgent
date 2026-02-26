@@ -580,8 +580,6 @@ def plan(
     Run onboarding Q&A (or load an existing profile) then generate a
     personalised weekly training + nutrition plan.
     """
-    from fitness_agent.knowledge_base.loader import KnowledgeBase
-    from fitness_agent.planner.agent import PlannerAgent
     from fitness_agent.user.onboarding import load_profile, run_onboarding, save_profile
     from fitness_agent.utils.config import DATA_DIR
     from fitness_agent.utils.llm_client import build_client, build_client_from_config
@@ -614,15 +612,32 @@ def plan(
         save_profile(user_profile, default_profile_path)
         console.print(f"\n[dim]Profile saved to {default_profile_path}[/dim]")
 
-    # --- Generate plan ---
+    # --- Generate plan via LangGraph ---
     console.print("\n[bold]正在生成训练计划，请稍候…[/bold]")
     try:
-        kb = KnowledgeBase()  # warmup_templates and injury_profiles loaded from default paths
-        agent = PlannerAgent(client=client, kb=kb)
-        fitness_plan = agent.generate_plan(user_profile)
+        from fitness_agent.graph import build_fitness_graph, FitnessAgentState
+
+        graph = build_fitness_graph()
+        initial_state: FitnessAgentState = {
+            "user_profile": user_profile.model_dump(),
+            "provider": client.provider,
+            "model": client.model,
+            "should_cook": cook_flag,
+            "should_gym": gym_flag,
+            "errors": [],
+        }
+        result = graph.invoke(initial_state)
     except Exception as exc:
         console.print(f"[red]Plan generation failed:[/red] {exc}")
         raise typer.Exit(code=1)
+
+    # --- Extract results from graph state ---
+    from fitness_agent.planner.models import WeeklyPlan
+    if "weekly_plan" not in result:
+        console.print("[red]Plan generation failed: no weekly_plan in graph state.[/red]")
+        raise typer.Exit(code=1)
+
+    fitness_plan = WeeklyPlan.model_validate(result["weekly_plan"])
 
     # --- Display ---
     _display_plan(fitness_plan)
@@ -638,13 +653,29 @@ def plan(
     md_path.write_text(_plan_to_markdown(fitness_plan), encoding="utf-8")
     console.print(f"[dim]Plan saved to {save_path} and {md_path}[/dim]")
 
-    # --- Optional: generate cooking plan ---
-    if cook_flag:
-        _run_cooking_plan(client, fitness_plan, user_profile, save_path)
+    # --- Display cooking plan if generated ---
+    if cook_flag and "cooking_plan" in result:
+        from fitness_agent.cooking.models import WeeklyCookingPlan
+        cooking_plan = WeeklyCookingPlan.model_validate(result["cooking_plan"])
+        _display_cooking_plan(cooking_plan)
+        cook_path = save_path.with_name("cooking_plan.json")
+        cook_path.parent.mkdir(parents=True, exist_ok=True)
+        cook_path.write_text(cooking_plan.model_dump_json(indent=2), encoding="utf-8")
+        cook_md_path = cook_path.with_suffix(".md")
+        cook_md_path.write_text(_cooking_plan_to_markdown(cooking_plan), encoding="utf-8")
+        console.print(f"[dim]Cooking plan saved to {cook_path} and {cook_md_path}[/dim]")
 
-    # --- Optional: generate gym guidance ---
-    if gym_flag:
-        _run_gym_plan(client, fitness_plan, user_profile, save_path)
+    # --- Display gym plan if generated ---
+    if gym_flag and "gym_plan" in result:
+        from fitness_agent.gym.models import WeeklyGymPlan
+        gym_plan = WeeklyGymPlan.model_validate(result["gym_plan"])
+        _display_gym_plan(gym_plan)
+        gym_path = save_path.with_name("gym_plan.json")
+        gym_path.parent.mkdir(parents=True, exist_ok=True)
+        gym_path.write_text(gym_plan.model_dump_json(indent=2), encoding="utf-8")
+        gym_md_path = gym_path.with_suffix(".md")
+        gym_md_path.write_text(_gym_plan_to_markdown(gym_plan), encoding="utf-8")
+        console.print(f"[dim]Gym plan saved to {gym_path} and {gym_md_path}[/dim]")
 
 
 def _run_cooking_plan(
@@ -782,9 +813,32 @@ def gym(
     fitness_plan = WeeklyPlan.model_validate(raw_plan)
     console.print(f"  已加载训练计划: {len(fitness_plan.training_days)} 训练日")
 
-    # --- Generate gym plan ---
+    # --- Generate gym plan via graph ---
+    from fitness_agent.graph.agents.gym import gym_node
+    from fitness_agent.gym.models import WeeklyGymPlan
+
     save_path = output if output else DATA_DIR / "processed" / "gym_plan.json"
-    _run_gym_plan(client, fitness_plan, user_profile, save_path)
+    try:
+        state_result = gym_node({  # type: ignore[arg-type]
+            "user_profile": user_profile.model_dump(),
+            "weekly_plan": fitness_plan.model_dump(),
+            "provider": client.provider,
+            "model": client.model,
+            "should_cook": False,
+            "should_gym": True,
+            "errors": [],
+        })
+    except Exception as exc:
+        console.print(f"[red]Gym plan generation failed:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    gym_plan = WeeklyGymPlan.model_validate(state_result["gym_plan"])
+    _display_gym_plan(gym_plan)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    save_path.write_text(gym_plan.model_dump_json(indent=2), encoding="utf-8")
+    gym_md_path = save_path.with_suffix(".md")
+    gym_md_path.write_text(_gym_plan_to_markdown(gym_plan), encoding="utf-8")
+    console.print(f"[dim]Gym plan saved to {save_path} and {gym_md_path}[/dim]")
 
 
 @app.command()
@@ -848,9 +902,32 @@ def cook(
     fitness_plan = WeeklyPlan.model_validate(raw_plan)
     console.print(f"  已加载训练计划: {len(fitness_plan.training_days)} 训练日")
 
-    # --- Generate cooking plan ---
+    # --- Generate cooking plan via graph ---
+    from fitness_agent.graph.agents.cooking import cook_node
+    from fitness_agent.cooking.models import WeeklyCookingPlan
+
     save_path = output if output else DATA_DIR / "processed" / "cooking_plan.json"
-    _run_cooking_plan(client, fitness_plan, user_profile, save_path)
+    try:
+        state_result = cook_node({  # type: ignore[arg-type]
+            "user_profile": user_profile.model_dump(),
+            "weekly_plan": fitness_plan.model_dump(),
+            "provider": client.provider,
+            "model": client.model,
+            "should_cook": True,
+            "should_gym": False,
+            "errors": [],
+        })
+    except Exception as exc:
+        console.print(f"[red]Cooking plan generation failed:[/red] {exc}")
+        raise typer.Exit(code=1)
+
+    cooking_plan = WeeklyCookingPlan.model_validate(state_result["cooking_plan"])
+    _display_cooking_plan(cooking_plan)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    save_path.write_text(cooking_plan.model_dump_json(indent=2), encoding="utf-8")
+    cook_md_path = save_path.with_suffix(".md")
+    cook_md_path.write_text(_cooking_plan_to_markdown(cooking_plan), encoding="utf-8")
+    console.print(f"[dim]Cooking plan saved to {save_path} and {cook_md_path}[/dim]")
 
 
 @app.command()
