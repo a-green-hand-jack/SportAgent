@@ -142,10 +142,19 @@ class TestSystemPrompt:
         assert "strength_assessment" in GYM_SYSTEM
         assert "beginner_no_weights" in GYM_SYSTEM
 
+    def test_gym_system_weight_hint_constraint(self) -> None:
+        """GYM_SYSTEM should instruct LLM not to exceed PlanAgent's weight_hint."""
+        assert "weight_hint" in GYM_SYSTEM
+        assert "不应超过" in GYM_SYSTEM
+
     def test_progression_system_mentions_4_weeks(self) -> None:
         assert "4" in GYM_PROGRESSION_SYSTEM
         assert "ProgressionWeek" in GYM_PROGRESSION_SYSTEM
         assert "RPE" in GYM_PROGRESSION_SYSTEM
+
+    def test_progression_system_exercise_specific(self) -> None:
+        """Progression prompt should require exercise-specific progressions."""
+        assert "exercise_specific_zh" in GYM_PROGRESSION_SYSTEM
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +219,39 @@ class TestBuildGymUserMessage:
         msg = build_gym_user_message(profile, weekly_plan, training_day, kb)
         assert "已生成训练日历史" not in msg
 
+    def test_warmup_notes_included_when_present(
+        self, profile: UserProfile, weekly_plan: WeeklyPlan, kb: KnowledgeBase,
+    ) -> None:
+        """When training_day has warmup_notes, they should appear in prompt."""
+        td_with_warmup = TrainingDay(
+            day_label="周一 (Day 1)",
+            focus="上肢推力",
+            exercises=[
+                ExerciseSet(
+                    exercise_id="push_up",
+                    exercise_name="Push Up",
+                    exercise_name_zh="俯卧撑",
+                    sets=3, reps="10", rest_seconds=60,
+                ),
+            ],
+            estimated_duration_minutes=60,
+            warmup_notes="① 弹力带肩外旋 → ② 胸椎旋转",
+            cooldown_notes="① 胸肌拉伸 30秒 → ② 肩部拉伸 30秒",
+        )
+        msg = build_gym_user_message(profile, weekly_plan, td_with_warmup, kb)
+        assert "PlanAgent 热身方案" in msg
+        assert "弹力带肩外旋" in msg
+        assert "PlanAgent 拉伸方案" in msg
+        assert "胸肌拉伸" in msg
+
+    def test_weight_hint_constraint_in_task(
+        self, profile: UserProfile, weekly_plan: WeeklyPlan,
+        training_day: TrainingDay, kb: KnowledgeBase,
+    ) -> None:
+        """Task instruction should mention weight_hint constraint."""
+        msg = build_gym_user_message(profile, weekly_plan, training_day, kb)
+        assert "weight_hint" in msg
+
     def test_injury_guidance_included(
         self, weekly_plan: WeeklyPlan,
         training_day: TrainingDay, kb: KnowledgeBase,
@@ -254,3 +296,21 @@ class TestBuildProgressionMessage:
         msg = build_gym_progression_message(profile, "[]")
         assert "ProgressionWeek" in msg
         assert "减量周" in msg
+
+    def test_contains_injury_info(self) -> None:
+        """Progression message should include user injury info."""
+        profile_injured = UserProfile(
+            name="InjuredBob",
+            age=30,
+            gender="male",
+            height_cm=180.0,
+            weight_kg=80.0,
+            goal=GoalType.muscle_gain,
+            experience_level=ExperienceLevel.beginner,
+            training_days_per_week=3,
+            session_duration_minutes=60,
+            available_equipment=[Equipment.bodyweight],
+            injuries=[ContraindicationTag.wrist_injury],
+        )
+        msg = build_gym_progression_message(profile_injured, "[]")
+        assert "wrist_injury" in msg

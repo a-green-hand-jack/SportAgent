@@ -54,6 +54,9 @@ GYM_SYSTEM = """\
 - **beginner_moderate**: 杠铃 25-35kg，哑铃 5-10kg
 - **intermediate**: 根据动作类型建议合理重量（大肌群复合动作更重）
 
+⚠️ **重要**：GYMAgent 的起始重量建议**不应超过** PlanAgent 提供的 weight_hint。\
+有伤病时应在 weight_hint 基础上降低 20-40%，而非增加。
+
 ## 输出格式
 
 严格输出单个 GymSessionPlan JSON 对象：
@@ -114,6 +117,9 @@ GYM_PROGRESSION_SYSTEM = """\
 3. 渐进须符合用户经验水平：初学者增量更保守，中级可更激进。
 4. 输出纯 JSON 数组（4 个 ProgressionWeek 对象）。
 5. 不含 markdown 代码块或额外文字。
+6. **exercise_specific_zh** 字段必须绑定到具体动作，给出明确数值变化。\
+格式示例：["深蹲: 20kg→22.5kg", "卧推: 保持 3×8-12 但 +1 组至 4×8-12"]。
+7. 有伤病的动作渐进幅度应更保守（如每周仅增加 1 rep 而非增加重量）。
 
 ## 输出格式
 
@@ -124,7 +130,11 @@ GYM_PROGRESSION_SYSTEM = """\
     "volume_change_zh": "按计划执行基准组数",
     "intensity_change_zh": "使用计划建议的起始重量",
     "rpe_target": "RPE 6-7",
-    "notes_zh": "重点掌握动作模式，不要追求重量"
+    "notes_zh": "重点掌握动作模式，不要追求重量",
+    "exercise_specific_zh": [
+      "杠铃深蹲: 空杆 20kg × 4组8-12次",
+      "哑铃卧推: 5kg × 3组10-12次"
+    ]
   },
   ...
 ]
@@ -189,13 +199,18 @@ def build_gym_user_message(
             line += f" 注: {ex.notes}"
         exercise_lines.append(line)
 
-    sections.append(
+    plan_section = (
         f"## 当天训练计划（来自 PlanAgent）\n\n"
         f"- 训练日：{training_day.day_label}\n"
         f"- 重点：{training_day.focus}\n"
         f"- 预估时长：{training_day.estimated_duration_minutes} 分钟\n"
         f"- 动作列表：\n" + "\n".join(exercise_lines)
     )
+    if training_day.warmup_notes:
+        plan_section += f"\n- PlanAgent 热身方案：{training_day.warmup_notes}"
+    if training_day.cooldown_notes:
+        plan_section += f"\n- PlanAgent 拉伸方案：{training_day.cooldown_notes}"
+    sections.append(plan_section)
 
     # --- Section 3: Exercise reference data from KB ---
     kb_exercise_lines = ["## 动作 KB 参考数据\n"]
@@ -237,6 +252,7 @@ def build_gym_user_message(
         f"- exercise_id 必须严格使用上方 PlanAgent 提供的 ID\n"
         f"- 每个动作 2-3 条教练提示（不要重复 KB cues 中已有的内容）\n"
         f"- 基于力量评估（{strength}）给出合理的起始重量建议\n"
+        f"- 起始重量不应超过 PlanAgent 提供的 weight_hint；有伤病时应进一步降低 20-40%\n"
         f"- 输出单个 GymSessionPlan JSON 对象，day_label 必须为 \"{training_day.day_label}\""
     )
 
@@ -286,13 +302,16 @@ def build_gym_progression_message(
 
     sections: list[str] = []
 
+    injuries_str = ", ".join(i.value for i in profile.injuries) if profile.injuries else "无"
+
     sections.append(
         f"## 用户概况\n\n"
         f"- 姓名：{profile.name}\n"
         f"- 经验水平：{profile.experience_level.value}\n"
         f"- 力量评估：{strength}\n"
         f"- 目标：{profile.goal.value}\n"
-        f"- 每周训练天数：{profile.training_days_per_week}"
+        f"- 每周训练天数：{profile.training_days_per_week}\n"
+        f"- 伤病/禁忌：{injuries_str}"
     )
 
     sections.append(

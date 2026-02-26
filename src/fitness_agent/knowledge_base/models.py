@@ -334,6 +334,10 @@ class InjuryProfile(BaseModel):
     )
     warmup_focus_zh: str = Field(description="热身阶段的重点说明")
     general_guidance_zh: str = Field(description="整体训练注意事项（1-2 句）")
+    warmup_routine: list[str] = Field(
+        default_factory=list,
+        description="伤病专项热身动作列表（具体动作+次数/时长），注入到每天热身最前面",
+    )
 
 
 # ---------------------------------------------------------------------------

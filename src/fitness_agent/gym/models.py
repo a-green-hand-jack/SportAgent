@@ -168,6 +168,10 @@ class ProgressionWeek(BaseModel):
         default="",
         description="Additional notes for this week.",
     )
+    exercise_specific_zh: list[str] = Field(
+        default_factory=list,
+        description="Per-exercise progression details, e.g. ['深蹲: 20kg→22.5kg', '卧推: 保持+1组'].",
+    )
 
 
 # ---------------------------------------------------------------------------

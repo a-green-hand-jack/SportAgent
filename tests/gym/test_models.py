@@ -168,6 +168,20 @@ class TestProgressionWeek:
         with pytest.raises(ValidationError):
             ProgressionWeek.model_validate(data)
 
+    def test_exercise_specific_default_empty(self) -> None:
+        pw = ProgressionWeek.model_validate(_make_progression_week(1))
+        assert pw.exercise_specific_zh == []
+
+    def test_exercise_specific_with_data(self) -> None:
+        data = _make_progression_week(2)
+        data["exercise_specific_zh"] = [
+            "深蹲: 20kg→22.5kg",
+            "卧推: 保持+1组",
+        ]
+        pw = ProgressionWeek.model_validate(data)
+        assert len(pw.exercise_specific_zh) == 2
+        assert "深蹲" in pw.exercise_specific_zh[0]
+
 
 # ---------------------------------------------------------------------------
 # WeeklyGymPlan tests

@@ -17,6 +17,7 @@ The agent is deliberately stateless — each call is a fresh generation.
 from __future__ import annotations
 
 import json
+import re
 
 from fitness_agent.gym.models import (
     ExerciseGuidance,
@@ -284,35 +285,105 @@ class GYMAgent:
         training_day: TrainingDay,
         profile: UserProfile,
     ) -> None:
-        """Inject warmup/cooldown sequences from KB templates.
+        """Inject warmup/cooldown sequences.
 
-        Matches template by extracting movement patterns from the day's exercises.
+        Priority: PlanAgent's warmup_notes/cooldown_notes > KB templates > empty.
+
+        After base warmup is determined, injury-specific warmup routines are
+        prepended from KB injury_profiles (e.g. wrist warm-up module).
         """
-        # Collect movement patterns from KB for each exercise in the session
+        # --- Priority 1: PlanAgent's targeted warmup/cooldown ---
+        if training_day.warmup_notes:
+            session.warmup_sequence = self._parse_notes_to_sequence(
+                training_day.warmup_notes
+            )
+        if training_day.cooldown_notes:
+            session.cooldown_sequence = self._parse_notes_to_sequence(
+                training_day.cooldown_notes
+            )
+
+        # --- Priority 2: KB template fallback (if PlanAgent didn't provide) ---
         movement_patterns: set[str] = set()
         for eg in session.exercises:
             kb_ex = self.kb.get_exercise_by_id(eg.exercise_id)
             if kb_ex is not None:
                 movement_patterns.add(kb_ex.movement_pattern.value)
 
-        if not movement_patterns:
-            return
+        template = (
+            self.kb.get_warmup_template(list(movement_patterns))
+            if movement_patterns
+            else None
+        )
 
-        template = self.kb.get_warmup_template(list(movement_patterns))
-        if template is None:
-            return
+        if not session.warmup_sequence and template is not None:
+            session.warmup_sequence = list(template.warmup_sequence)
+        if not session.cooldown_sequence and template is not None:
+            session.cooldown_sequence = list(template.cooldown_sequence)
 
-        session.warmup_sequence = list(template.warmup_sequence)
-        session.cooldown_sequence = list(template.cooldown_sequence)
-
-        # Inject injury-specific warmup modifications
-        if profile.injuries and template.injury_modifications:
+        # --- Injury-specific warmup modifications from KB template ---
+        if profile.injuries and template is not None and template.injury_modifications:
             mods: dict[str, str] = {}
             for injury in profile.injuries:
                 tag_value = injury.value
                 if tag_value in template.injury_modifications:
                     mods[tag_value] = template.injury_modifications[tag_value]
             session.warmup_injury_modifications = mods
+
+        # --- Injury-specific warmup routine prepend ---
+        if profile.injuries and session.warmup_sequence:
+            injury_warmup_steps: list[str] = []
+            for injury_tag in profile.injuries:
+                ip = self.kb.get_injury_profile(injury_tag)
+                if ip is not None and ip.warmup_routine:
+                    injury_warmup_steps.append(
+                        f"【{ip.name_zh}专项热身 ~3分钟】"
+                    )
+                    injury_warmup_steps.extend(ip.warmup_routine)
+            if injury_warmup_steps:
+                session.warmup_sequence = (
+                    injury_warmup_steps + ["---"] + session.warmup_sequence
+                )
+
+    # ------------------------------------------------------------------
+    # Warmup/cooldown notes parser
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _parse_notes_to_sequence(notes: str) -> list[str]:
+        """Parse PlanAgent's warmup/cooldown notes into a step list.
+
+        PlanAgent outputs numbered steps joined by ``→``, for example::
+
+            "① 动作A → ② 动作B → ③ 动作C"
+
+        This method splits on ``→`` first.  If there is only one segment
+        (no ``→`` separator), it falls back to splitting on circled-number
+        markers (①②③…).
+        """
+        notes = notes.strip()
+        if not notes:
+            return []
+
+        # Strategy 1: split by → separator
+        if "→" in notes:
+            parts = [p.strip() for p in notes.split("→") if p.strip()]
+            if len(parts) > 1:
+                return parts
+
+        # Strategy 2: split by circled-number markers ①②③…
+        # Pattern: split before each ①-⑳ character
+        circled_re = re.compile(r"(?=[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳])")
+        parts = [p.strip() for p in circled_re.split(notes) if p.strip()]
+        if len(parts) > 1:
+            return parts
+
+        # Strategy 3: split by newlines
+        parts = [p.strip() for p in notes.splitlines() if p.strip()]
+        if len(parts) > 1:
+            return parts
+
+        # Fallback: return as single-item list
+        return [notes]
 
     def _inject_injury_adaptations(
         self,

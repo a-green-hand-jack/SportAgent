@@ -299,6 +299,106 @@ class TestGYMAgent:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# PlanAgent warmup priority tests
+# ---------------------------------------------------------------------------
+
+
+class TestWarmupPriority:
+    def test_planagent_warmup_used_over_kb_template(
+        self, kb: KnowledgeBase, profile: UserProfile,
+    ) -> None:
+        """When PlanAgent provides warmup_notes, those should be used instead
+        of KB templates."""
+        plan = WeeklyPlan(
+            user_name="Test",
+            goal=GoalType.muscle_gain,
+            experience_level="beginner",
+            training_days=[
+                TrainingDay(
+                    day_label="周一 (Day 1)",
+                    focus="上肢拉力",
+                    exercises=[
+                        ExerciseSet(
+                            exercise_id="pull_up",
+                            exercise_name="Pull Up",
+                            exercise_name_zh="引体向上",
+                            sets=3, reps="6-8", rest_seconds=90,
+                        ),
+                    ],
+                    estimated_duration_minutes=45,
+                    warmup_notes="① 弹力带直臂下拉 15次 → ② 肩胛骨下压 10次 → ③ 轻划船 10次",
+                    cooldown_notes="① 背阔肌拉伸 每侧30秒 → ② 菱形肌拉伸 30秒",
+                ),
+            ],
+            daily_nutrition=DailyNutrition(
+                calorie_target=2500, protein_g=150, carbs_g=250, fat_g=65,
+            ),
+        )
+
+        client = _make_mock_client(plan)
+        agent = GYMAgent(client=client, kb=kb, max_retries=0)
+        result = agent.generate_gym_plan(plan, profile)
+
+        session = result.sessions[0]
+        # Should use PlanAgent's targeted warmup, not KB template
+        warmup_text = " ".join(session.warmup_sequence)
+        assert "直臂下拉" in warmup_text
+        assert "肩胛骨下压" in warmup_text
+
+        cooldown_text = " ".join(session.cooldown_sequence)
+        assert "背阔肌" in cooldown_text
+
+    def test_kb_template_fallback_when_no_notes(
+        self, kb: KnowledgeBase, profile: UserProfile, weekly_plan: WeeklyPlan,
+    ) -> None:
+        """When PlanAgent doesn't provide warmup_notes, KB template should be used."""
+        # weekly_plan fixture has no warmup_notes
+        client = _make_mock_client(weekly_plan)
+        agent = GYMAgent(client=client, kb=kb, max_retries=0)
+        result = agent.generate_gym_plan(weekly_plan, profile)
+
+        # Should still have warmup (from KB template fallback)
+        for session in result.sessions:
+            assert len(session.warmup_sequence) > 0
+
+
+# ---------------------------------------------------------------------------
+# Parse notes to sequence tests
+# ---------------------------------------------------------------------------
+
+
+class TestParseNotesToSequence:
+    def test_arrow_separator(self) -> None:
+        notes = "① 弹力带肩外旋 → ② 胸椎旋转 → ③ 轻侧平举"
+        result = GYMAgent._parse_notes_to_sequence(notes)
+        assert len(result) == 3
+        assert "弹力带肩外旋" in result[0]
+
+    def test_circled_number_separator(self) -> None:
+        notes = "①开合跳30秒②髋关节绕环③弓步走④徒手深蹲"
+        result = GYMAgent._parse_notes_to_sequence(notes)
+        assert len(result) == 4
+
+    def test_newline_separator(self) -> None:
+        notes = "弹力带直臂下拉 15次\n肩胛骨下压 10次\n轻划船 10次"
+        result = GYMAgent._parse_notes_to_sequence(notes)
+        assert len(result) == 3
+
+    def test_empty_string(self) -> None:
+        assert GYMAgent._parse_notes_to_sequence("") == []
+        assert GYMAgent._parse_notes_to_sequence("  ") == []
+
+    def test_single_item(self) -> None:
+        result = GYMAgent._parse_notes_to_sequence("热身5分钟")
+        assert result == ["热身5分钟"]
+
+
+# ---------------------------------------------------------------------------
+# KB injection tests
+# ---------------------------------------------------------------------------
+
+
 class TestKBInjection:
     def test_kb_cues_injected(
         self, kb: KnowledgeBase, profile: UserProfile, weekly_plan: WeeklyPlan,
@@ -406,6 +506,58 @@ class TestInjuryAdaptation:
         # Check warmup injury modifications
         session = result.sessions[0]
         assert session.warmup_injury_modifications != {}
+
+    def test_injury_warmup_routine_prepended(self, kb: KnowledgeBase) -> None:
+        """Injury-specific warmup routine should be prepended to warmup_sequence."""
+        profile_injured = UserProfile(
+            name="WristUser",
+            age=28,
+            gender="male",
+            height_cm=178.0,
+            weight_kg=78.0,
+            goal=GoalType.muscle_gain,
+            experience_level=ExperienceLevel.beginner,
+            training_days_per_week=3,
+            session_duration_minutes=60,
+            available_equipment=[Equipment.bodyweight, Equipment.dumbbell],
+            injuries=[ContraindicationTag.wrist_injury],
+        )
+
+        plan = WeeklyPlan(
+            user_name="WristUser",
+            goal=GoalType.muscle_gain,
+            experience_level="beginner",
+            training_days=[
+                TrainingDay(
+                    day_label="周一 (Day 1)",
+                    focus="上肢推力",
+                    exercises=[
+                        ExerciseSet(
+                            exercise_id="push_up",
+                            exercise_name="Push Up",
+                            exercise_name_zh="俯卧撑",
+                            sets=3, reps="10", rest_seconds=60,
+                        ),
+                    ],
+                    estimated_duration_minutes=45,
+                ),
+            ],
+            daily_nutrition=DailyNutrition(
+                calorie_target=2500, protein_g=150, carbs_g=250, fat_g=65,
+            ),
+        )
+
+        client = _make_mock_client(plan)
+        agent = GYMAgent(client=client, kb=kb, max_retries=0)
+        result = agent.generate_gym_plan(plan, profile_injured)
+
+        session = result.sessions[0]
+        # First item should be the injury warmup header
+        assert len(session.warmup_sequence) > 0
+        assert "手腕损伤" in session.warmup_sequence[0]
+        assert "专项热身" in session.warmup_sequence[0]
+        # Should contain separator before regular warmup
+        assert "---" in session.warmup_sequence
 
 
 # ---------------------------------------------------------------------------
