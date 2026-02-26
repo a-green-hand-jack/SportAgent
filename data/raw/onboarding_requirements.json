@@ -1,0 +1,18 @@
+{
+    "core": {
+        "fields": [
+            "name", "age", "gender", "height_cm", "weight_kg",
+            "goal", "experience_level", "training_days_per_week",
+            "session_duration_minutes", "available_equipment", "activity_level"
+        ],
+        "description": "所有下游 Agent 必需的基础用户信息"
+    },
+    "cooking": {
+        "fields": ["dietary_restrictions"],
+        "description": "CookingAgent 需要的额外信息（膳食偏好与限制）"
+    },
+    "gym": {
+        "fields": ["injuries", "strength_assessment", "preferred_training_time"],
+        "description": "GYMAgent 需要的额外信息（伤病、力量、训练时间）"
+    }
+}

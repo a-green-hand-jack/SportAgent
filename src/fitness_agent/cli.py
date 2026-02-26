@@ -580,7 +580,7 @@ def plan(
     Run onboarding Q&A (or load an existing profile) then generate a
     personalised weekly training + nutrition plan.
     """
-    from fitness_agent.user.onboarding import load_profile, run_onboarding, save_profile
+    from fitness_agent.user.onboarding import load_profile, save_profile
     from fitness_agent.utils.config import DATA_DIR
     from fitness_agent.utils.llm_client import build_client, build_client_from_config
 
@@ -602,10 +602,14 @@ def plan(
         user_profile = load_profile(profile_path)
         console.print(f"  欢迎回来，[bold]{user_profile.name}[/bold]！")
     else:
-        user_profile = run_onboarding(
-            ask_fn=lambda prompt: typer.prompt(prompt, prompt_suffix=" "),
+        from fitness_agent.entrance.agent import EntranceAgent
+
+        entrance_agent = EntranceAgent(client=client)
+        user_profile = entrance_agent.run(
+            ask_fn=lambda _: typer.prompt("", prompt_suffix=""),
             print_fn=console.print,
-            llm_client=client,
+            should_cook=cook_flag,
+            should_gym=gym_flag,
         )
         # Auto-save profile for future reuse
         default_profile_path = DATA_DIR / "processed" / "profile.json"
