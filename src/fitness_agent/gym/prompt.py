@@ -15,15 +15,13 @@ detailed exercise guidance for a single training day.  The LLM receives:
 A separate progression prompt generates the 4-week periodisation table
 after all sessions are complete.
 """
+
 from __future__ import annotations
 
-import json
-
 from fitness_agent.knowledge_base.loader import KnowledgeBase
-from fitness_agent.knowledge_base.models import ContraindicationTag, Exercise
+from fitness_agent.knowledge_base.models import Exercise
 from fitness_agent.planner.models import TrainingDay, WeeklyPlan
 from fitness_agent.user.models import UserProfile
-
 
 # ---------------------------------------------------------------------------
 # System prompt (role + output schema)
@@ -145,6 +143,7 @@ GYM_PROGRESSION_SYSTEM = """\
 # User message builder — single session
 # ---------------------------------------------------------------------------
 
+
 def build_gym_user_message(
     profile: UserProfile,
     weekly_plan: WeeklyPlan,
@@ -167,7 +166,11 @@ def build_gym_user_message(
 
     # --- Section 1: User profile summary ---
     injuries_str = ", ".join(i.value for i in profile.injuries) if profile.injuries else "无"
-    equipment_str = ", ".join(e.value for e in profile.available_equipment) if profile.available_equipment else "无"
+    equipment_str = (
+        ", ".join(e.value for e in profile.available_equipment)
+        if profile.available_equipment
+        else "无"
+    )
     strength = profile.strength_assessment or "未评估"
     preferred_time = profile.preferred_training_time or "flexible"
 
@@ -185,6 +188,12 @@ def build_gym_user_message(
         f"- 可用器材：{equipment_str}\n"
         f"- 偏好训练时间：{preferred_time}"
     )
+
+    # --- Section 1.5: Onboarding conversation summary ---
+    if profile.profile_summary:
+        sections.append(
+            f"## 用户背景摘要（来自入门对话，请仔细阅读并优先参考）\n\n{profile.profile_summary}"
+        )
 
     # --- Section 2: Training day details (from PlanAgent) ---
     exercise_lines = []
@@ -224,9 +233,7 @@ def build_gym_user_message(
                 f"**{ex_set.exercise_name_zh} ({ex_set.exercise_id})**：KB 中无数据\n"
             )
             continue
-        kb_exercise_lines.append(
-            _format_exercise_kb_reference(kb_ex)
-        )
+        kb_exercise_lines.append(_format_exercise_kb_reference(kb_ex))
     sections.append("\n".join(kb_exercise_lines))
 
     # --- Section 4: Injury guidance ---
@@ -253,7 +260,7 @@ def build_gym_user_message(
         f"- 每个动作 2-3 条教练提示（不要重复 KB cues 中已有的内容）\n"
         f"- 基于力量评估（{strength}）给出合理的起始重量建议\n"
         f"- 起始重量不应超过 PlanAgent 提供的 weight_hint；有伤病时应进一步降低 20-40%\n"
-        f"- 输出单个 GymSessionPlan JSON 对象，day_label 必须为 \"{training_day.day_label}\""
+        f'- 输出单个 GymSessionPlan JSON 对象，day_label 必须为 "{training_day.day_label}"'
     )
 
     return "\n\n".join(sections)
@@ -277,9 +284,7 @@ def _format_exercise_kb_reference(ex: Exercise) -> str:
     if ex.breathing_pattern_zh:
         lines.append(f"  - KB 呼吸模式：{ex.breathing_pattern_zh}")
     if ex.contraindications:
-        lines.append(
-            f"  - 禁忌：{', '.join(c.value for c in ex.contraindications)}"
-        )
+        lines.append(f"  - 禁忌：{', '.join(c.value for c in ex.contraindications)}")
     lines.append("")
     return "\n".join(lines)
 
@@ -287,6 +292,7 @@ def _format_exercise_kb_reference(ex: Exercise) -> str:
 # ---------------------------------------------------------------------------
 # Progression message builder
 # ---------------------------------------------------------------------------
+
 
 def build_gym_progression_message(
     profile: UserProfile,

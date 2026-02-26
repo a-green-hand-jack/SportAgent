@@ -66,6 +66,11 @@ def _make_llm_response(reply: str, extracted: dict) -> LLMResponse:
     return LLMResponse(content=content, provider="mock", model="mock-model")
 
 
+def _make_summary_response(text: str = "这是一段模拟生成的用户背景摘要。") -> LLMResponse:
+    """Build a mock LLMResponse for the summary step (plain text, not dual-output JSON)."""
+    return LLMResponse(content=text, provider="mock", model="mock-model")
+
+
 def _make_mock_client(*responses: LLMResponse) -> BaseLLMClient:
     """Return a mock BaseLLMClient that yields the given responses in sequence."""
     mock = MagicMock(spec=BaseLLMClient)
@@ -192,7 +197,7 @@ class TestEntranceAgent:
         # Single turn that provides all core fields at once
         turn_resp = _make_llm_response("收到！已为你记录所有信息。", _CORE_PROFILE)
 
-        client = _make_mock_client(greeting_resp, turn_resp)
+        client = _make_mock_client(greeting_resp, turn_resp, _make_summary_response())
         agent = EntranceAgent(client=client, requirements_path=REQ_PATH)
 
         user_msg = "28岁男，175cm，70kg，增肌，新手，3次/周，60min，哑铃自重，轻度活跃"
@@ -217,7 +222,7 @@ class TestEntranceAgent:
         greeting_resp = _make_llm_response("你好！", {})
         turn_resp = _make_llm_response("好的！", _CORE_WITH_COOK)
 
-        client = _make_mock_client(greeting_resp, turn_resp)
+        client = _make_mock_client(greeting_resp, turn_resp, _make_summary_response())
         agent = EntranceAgent(client=client, requirements_path=REQ_PATH)
 
         inputs = iter(["所有信息"])
@@ -235,7 +240,7 @@ class TestEntranceAgent:
         greeting_resp = _make_llm_response("你好！", {})
         turn_resp = _make_llm_response("已记录！", _CORE_WITH_GYM)
 
-        client = _make_mock_client(greeting_resp, turn_resp)
+        client = _make_mock_client(greeting_resp, turn_resp, _make_summary_response())
         agent = EntranceAgent(client=client, requirements_path=REQ_PATH)
 
         inputs = iter(["所有信息"])
@@ -261,7 +266,7 @@ class TestEntranceAgent:
             "好的，已记录你的腰部伤病。", {"injuries": ["lower_back_pain"]}
         )
 
-        client = _make_mock_client(greeting_resp, turn1_resp, turn2_resp)
+        client = _make_mock_client(greeting_resp, turn1_resp, turn2_resp, _make_summary_response())
         agent = EntranceAgent(client=client, requirements_path=REQ_PATH)
 
         inputs = iter(["基本信息", "腰痛"])
@@ -285,7 +290,7 @@ class TestEntranceAgent:
         remaining = {k: v for k, v in _CORE_PROFILE.items() if k not in ("name", "age")}
         turn2_resp = _make_llm_response("信息收集完毕！", remaining)
 
-        client = _make_mock_client(greeting_resp, turn1_resp, turn2_resp)
+        client = _make_mock_client(greeting_resp, turn1_resp, turn2_resp, _make_summary_response())
         agent = EntranceAgent(client=client, requirements_path=REQ_PATH)
 
         inputs = iter(["我叫Alice，25岁", "其余信息"])
@@ -315,7 +320,7 @@ class TestEntranceAgent:
         bad_profile = {**_CORE_PROFILE, "age": 200}  # age > 80 is invalid
         turn_resp = _make_llm_response("好的！", bad_profile)
 
-        client = _make_mock_client(greeting_resp, turn_resp)
+        client = _make_mock_client(greeting_resp, turn_resp, _make_summary_response())
         agent = EntranceAgent(client=client, requirements_path=REQ_PATH)
 
         inputs = iter(["所有信息"])
@@ -332,7 +337,7 @@ class TestEntranceAgent:
         greeting_resp = _make_llm_response("你好！", {})
         turn_resp = _make_llm_response("完成！", _CORE_PROFILE)
 
-        client = _make_mock_client(greeting_resp, turn_resp)
+        client = _make_mock_client(greeting_resp, turn_resp, _make_summary_response())
         agent = EntranceAgent(client=client, requirements_path=REQ_PATH)
 
         # First two inputs are empty, third has all data
@@ -344,5 +349,49 @@ class TestEntranceAgent:
             should_gym=False,
         )
 
-        # LLM.chat should be called exactly twice: greeting + one real turn
-        assert client.chat.call_count == 2
+        # LLM.chat should be called exactly 3 times: greeting + one real turn + summary
+        assert client.chat.call_count == 3
+
+    def test_summary_stored_in_profile(self) -> None:
+        """profile_summary should be set when the LLM returns a non-empty summary."""
+        greeting_resp = _make_llm_response("你好！", {})
+        turn_resp = _make_llm_response("完成！", _CORE_PROFILE)
+        summary_text = "## 训练背景\n用户为28岁男性，目标增肌，新手级别。"
+        summary_resp = _make_summary_response(summary_text)
+
+        client = _make_mock_client(greeting_resp, turn_resp, summary_resp)
+        agent = EntranceAgent(client=client, requirements_path=REQ_PATH)
+
+        profile = agent.run(
+            ask_fn=lambda _: "所有信息",
+            print_fn=lambda _: None,
+            should_cook=False,
+            should_gym=False,
+        )
+
+        assert profile.profile_summary == summary_text
+
+    def test_summary_failure_is_graceful(self) -> None:
+        """If the summary LLM call raises, the agent should still return a valid profile."""
+        from unittest.mock import MagicMock
+
+        greeting_resp = _make_llm_response("你好！", {})
+        turn_resp = _make_llm_response("完成！", _CORE_PROFILE)
+
+        mock = MagicMock(spec=BaseLLMClient)
+        # greeting call → turn call → summary call raises
+        mock.chat.side_effect = [greeting_resp, turn_resp, RuntimeError("network error")]
+        mock.provider = "mock"
+        mock.model = "mock-model"
+
+        agent = EntranceAgent(client=mock, requirements_path=REQ_PATH)
+        profile = agent.run(
+            ask_fn=lambda _: "所有信息",
+            print_fn=lambda _: None,
+            should_cook=False,
+            should_gym=False,
+        )
+
+        # Profile should be valid even though summary failed
+        assert profile.name == "Test User"
+        assert profile.profile_summary is None

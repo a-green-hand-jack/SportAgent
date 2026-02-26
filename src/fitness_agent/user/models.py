@@ -1,6 +1,9 @@
 """User profile Pydantic model."""
+
 from datetime import datetime
+
 from pydantic import BaseModel, Field
+
 from fitness_agent.knowledge_base.models import (
     ContraindicationTag,
     Equipment,
@@ -11,6 +14,7 @@ from fitness_agent.knowledge_base.models import (
 
 class Gender(str):
     """Gender strings."""
+
     MALE = "male"
     FEMALE = "female"
     OTHER = "other"
@@ -18,10 +22,11 @@ class Gender(str):
 
 class ActivityLevel(str):
     """Activity level outside of structured training."""
-    SEDENTARY = "sedentary"               # 久坐办公
-    LIGHTLY_ACTIVE = "lightly_active"     # 日常少量活动
+
+    SEDENTARY = "sedentary"  # 久坐办公
+    LIGHTLY_ACTIVE = "lightly_active"  # 日常少量活动
     MODERATELY_ACTIVE = "moderately_active"  # 日常较多走动
-    VERY_ACTIVE = "very_active"           # 体力劳动
+    VERY_ACTIVE = "very_active"  # 体力劳动
 
 
 class UserProfile(BaseModel):
@@ -44,18 +49,15 @@ class UserProfile(BaseModel):
 
     # --- 健康状况 ---
     injuries: list[ContraindicationTag] = Field(
-        default_factory=list,
-        description="当前伤病/身体限制"
+        default_factory=list, description="当前伤病/身体限制"
     )
     activity_level: str = Field(
-        default="lightly_active",
-        description="日常活动水平（不含计划训练）"
+        default="lightly_active", description="日常活动水平（不含计划训练）"
     )
 
     # --- 饮食 ---
     dietary_restrictions: list[str] = Field(
-        default_factory=list,
-        description="饮食限制，如 vegetarian, no_pork, lactose_intolerant"
+        default_factory=list, description="饮食限制，如 vegetarian, no_pork, lactose_intolerant"
     )
 
     # --- 力量与训练偏好 ---
@@ -72,6 +74,12 @@ class UserProfile(BaseModel):
             "偏好训练时间，影响餐食时机建议。"
             "取值: morning / forenoon / afternoon / evening / flexible"
         ),
+    )
+
+    # --- 入门对话摘要 ---
+    profile_summary: str | None = Field(
+        default=None,
+        description="EntranceAgent 对话结束后由 LLM 生成的用户背景摘要，供下游 Agent 参考",
     )
 
     # --- 计算字段（收集信息后填入）---

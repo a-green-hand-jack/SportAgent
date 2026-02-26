@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from fitness_agent.entrance.prompt import build_system_prompt
+from fitness_agent.entrance.prompt import SUMMARY_SYSTEM, build_system_prompt
 from fitness_agent.user.calculator import enrich_profile
 from fitness_agent.user.models import UserProfile
 from fitness_agent.utils.llm_client import BaseLLMClient, Message
@@ -118,6 +118,34 @@ def _parse_turn(raw: str) -> TurnResult:
     except (json.JSONDecodeError, ValueError, TypeError) as exc:
         logger.warning(f"EntranceAgent: failed to parse turn JSON: {exc!r}. Raw: {raw[:200]!r}")
         return TurnResult(reply=raw, extracted={})
+
+
+def _generate_summary(client: BaseLLMClient, messages: list[Message]) -> str | None:
+    """
+    Ask the LLM to produce a structured natural-language summary of the full
+    onboarding conversation.
+
+    The summary preserves all valuable context (current training programme,
+    injury details, lifestyle, dietary habits, etc.) in a compact, readable
+    form that downstream agents can inject into their prompts.
+
+    Returns None on failure so the caller can continue gracefully without it.
+    """
+    if not messages:
+        return None
+    try:
+        response = client.chat(
+            messages=messages,
+            system=SUMMARY_SYSTEM,
+            max_tokens=8192,
+            temperature=0.3,
+        )
+        summary = response.content.strip()
+        logger.debug(f"EntranceAgent: summary generated ({len(summary)} chars)")
+        return summary if summary else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"EntranceAgent: summary generation failed: {exc!r}")
+        return None
 
 
 def _save_conversation_log(
@@ -283,7 +311,15 @@ class EntranceAgent:
                 f"{[f for f in required_fields if f not in partial_profile]}"
             )
 
-        # --- 3. Optionally persist conversation log ---
+        # --- 3. Generate conversation summary ---
+        summary = _generate_summary(self.client, messages)
+        if summary:
+            partial_profile["profile_summary"] = summary
+            logger.debug("EntranceAgent: profile_summary stored in partial_profile.")
+        else:
+            logger.warning("EntranceAgent: profile_summary not generated; continuing without it.")
+
+        # --- 4. Optionally persist conversation log ---
         if conversation_log_path is not None:
             try:
                 _save_conversation_log(
@@ -292,6 +328,6 @@ class EntranceAgent:
             except Exception as exc:  # noqa: BLE001
                 logger.warning(f"EntranceAgent: failed to save conversation log: {exc!r}")
 
-        # --- 4. Validate and enrich ---
+        # --- 5. Validate and enrich ---
         profile = UserProfile.model_validate(partial_profile)
         return enrich_profile(profile)

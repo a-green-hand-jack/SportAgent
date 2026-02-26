@@ -15,13 +15,13 @@ a single day of a WeeklyCookingPlan.  The LLM receives:
      - Already-generated days (as JSON, for diversity/context awareness)
      - Final instruction for the specific day to generate
 """
+
 from __future__ import annotations
 
 from fitness_agent.knowledge_base.loader import KnowledgeBase
 from fitness_agent.knowledge_base.models import RecipeTemplate
 from fitness_agent.planner.models import WeeklyPlan
 from fitness_agent.user.models import UserProfile
-
 
 # ---------------------------------------------------------------------------
 # System prompt (role + output schema)
@@ -165,6 +165,12 @@ def build_cooking_user_message(
         f"- 脂肪目标：{weekly_plan.daily_nutrition.fat_g:.0f} g/天"
     )
 
+    # --- Section 1.5: Onboarding conversation summary ---
+    if profile.profile_summary:
+        sections.append(
+            f"## 用户背景摘要（来自入门对话，请仔细阅读并优先参考）\n\n{profile.profile_summary}"
+        )
+
     # --- Section 2: Training schedule ---
     # Normalize training day labels to Chinese weekday prefix for robust matching.
     # PlanAgent outputs day_label like "周一 (Day 1)" but CookingAgent iterates
@@ -254,7 +260,7 @@ def build_cooking_user_message(
     day_cal_target = training_cal if is_training else rest_cal
 
     instruction_lines = [
-        f"## 任务\n",
+        "## 任务\n",
         f"请为 {profile.name} 生成 **{day_label}**（{day_type}）的烹饪计划。",
         f"- 热量目标：~{day_cal_target:.0f} kcal",
         f"- 蛋白质目标：≥{pro:.0f} g",
@@ -273,7 +279,7 @@ def build_cooking_user_message(
     instruction_lines += [
         "- food_id 必须严格使用食材数据库中的 ID",
         "- 检查已生成历史，避免菜品（recipe_id）超过 2 次",
-        "- 输出单个 DayMealPlan JSON 对象，day_label 必须为 \"" + day_label + "\"",
+        '- 输出单个 DayMealPlan JSON 对象，day_label 必须为 "' + day_label + '"',
     ]
     sections.append("\n".join(instruction_lines))
 

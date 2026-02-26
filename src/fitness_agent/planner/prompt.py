@@ -14,12 +14,13 @@ a personalised WeeklyPlan.  The LLM receives:
      - Week schedule template (concrete day assignment)
      - Available exercise pool (already filtered for safety + equipment)
 """
+
 from __future__ import annotations
 
 import json
 
 from fitness_agent.knowledge_base.loader import KnowledgeBase
-from fitness_agent.knowledge_base.models import Exercise, ExperienceLevel
+from fitness_agent.knowledge_base.models import Exercise
 from fitness_agent.user.models import UserProfile
 
 # ---------------------------------------------------------------------------
@@ -170,17 +171,17 @@ def _build_week_schedule(training_days: int) -> tuple[list[str], list[str]]:
     if training_days == 1:
         train_indices = [0]
     elif training_days == 2:
-        train_indices = [0, 3]           # Mon, Thu
+        train_indices = [0, 3]  # Mon, Thu
     elif training_days == 3:
-        train_indices = [0, 2, 4]        # Mon, Wed, Fri
+        train_indices = [0, 2, 4]  # Mon, Wed, Fri
     elif training_days == 4:
-        train_indices = [0, 1, 3, 4]     # Mon, Tue, Thu, Fri
+        train_indices = [0, 1, 3, 4]  # Mon, Tue, Thu, Fri
     elif training_days == 5:
         train_indices = [0, 1, 2, 3, 4]  # Mon-Fri
     elif training_days == 6:
         train_indices = [0, 1, 2, 3, 4, 5]  # Mon-Sat
     else:
-        train_indices = list(range(7))   # all days
+        train_indices = list(range(7))  # all days
 
     training_labels = [_WEEKDAYS[i] for i in train_indices]
     rest_labels = [_WEEKDAYS[i] for i in range(7) if i not in train_indices]
@@ -190,6 +191,7 @@ def _build_week_schedule(training_days: int) -> tuple[list[str], list[str]]:
 # ---------------------------------------------------------------------------
 # User message builder
 # ---------------------------------------------------------------------------
+
 
 def build_user_message(
     profile: UserProfile,
@@ -218,6 +220,12 @@ def build_user_message(
     # 1. User profile summary
     sections.append(_format_profile(profile, training_labels, rest_labels))
 
+    # 1.5. Onboarding conversation summary (injected when available)
+    if profile.profile_summary:
+        sections.append(
+            f"## 用户背景摘要（来自入门对话，请仔细阅读并优先参考）\n\n{profile.profile_summary}"
+        )
+
     # 2. Applicable training rules
     rules_text = kb.format_rules_for_prompt(
         goal=profile.goal,
@@ -239,6 +247,7 @@ def build_user_message(
     # 3.6. Injury-specific training guidance (injected only when user has injuries)
     if profile.injuries:
         from fitness_agent.knowledge_base.models import ContraindicationTag
+
         valid_tags = {t.value for t in ContraindicationTag}
         injury_tags = [
             ContraindicationTag(inj.strip().lower())
@@ -312,19 +321,27 @@ def _format_profile(
     ]
 
     if profile.injuries:
-        lines.append(f"- ⚠️ 受伤/禁忌: {', '.join(profile.injuries)}（已在动作库中过滤，但热身和动作 notes 需特别注意）")
+        lines.append(
+            f"- ⚠️ 受伤/禁忌: {', '.join(profile.injuries)}（已在动作库中过滤，但热身和动作 notes 需特别注意）"
+        )
 
     if profile.dietary_restrictions:
-        lines.append(f"- 饮食限制: {', '.join(profile.dietary_restrictions)}（meal_suggestions 中绝对不要出现禁忌食物）")
+        lines.append(
+            f"- 饮食限制: {', '.join(profile.dietary_restrictions)}（meal_suggestions 中绝对不要出现禁忌食物）"
+        )
 
     if profile.target_weight_kg:
         lines.append(f"- 目标体重: {profile.target_weight_kg} kg")
 
     if profile.strength_assessment:
-        lines.append(f"- 当前力量水平: {profile.strength_assessment}（请据此估算每个动作的 weight_hint）")
+        lines.append(
+            f"- 当前力量水平: {profile.strength_assessment}（请据此估算每个动作的 weight_hint）"
+        )
 
     if profile.preferred_training_time:
-        lines.append(f"- 偏好训练时间: {profile.preferred_training_time}（影响 pre_workout_meal / post_workout_meal 时机建议）")
+        lines.append(
+            f"- 偏好训练时间: {profile.preferred_training_time}（影响 pre_workout_meal / post_workout_meal 时机建议）"
+        )
 
     lines += [
         "",
