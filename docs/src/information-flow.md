@@ -15,34 +15,33 @@
    │
    ▼
 [Onboarding Q&A]  user/onboarding.py
-   │  终端问答 → UserProfile（Pydantic）
-   │  + enrich_profile() → BMR/TDEE/热量目标
-   │  + parse_injuries_with_llm()（可选 LLM 调用）
-   │
-   ▼
-[PlannerAgent.generate_plan(profile)]
-   │
-   ├─ KB 过滤：动作安全池
-   ├─ build_user_message() → prompt
-   ├─ LLM call #1 (system + user)
-   ├─ validate → 若有问题追加 correction message
-   ├─ LLM call #2（可选，最多 max_retries 次）
-   └─ → WeeklyPlan（JSON）
-   │
-   ├──► 保存 JSON + Markdown 到 outputs/
-   ├──► Rich 终端渲染显示
-   │
-   └── [--cook 标志 或 cook 子命令？]
-           yes ↓
-   ▼
-[CookingAgent.generate_cooking_plan(weekly_plan, profile)]
+    │  终端问答 → UserProfile（Pydantic）
+    │  + enrich_profile() → BMR/TDEE/热量目标
+    │  + parse_injuries_with_llm()（可选 LLM 调用）
     │
-    ├─ KB 过滤：食谱兼容性
-    ├─ 增量逐日生成（7 次 LLM 调用，每次生成 1 天，历史 JSON 注入）
-    ├─ 确定性后处理流水线（宏量覆写→蛋白强化→热量缩放→上限夹紧→取整→二次覆写）
-    └─ → WeeklyCookingPlan（JSON）
-   │
-   └──► 保存 JSON + Markdown → Rich 终端渲染
+    ▼
+[LangGraph 编排流 (StateGraph)]
+    │
+    ▼ (START)
+[plan_node] — 生成周训练计划
+    │  ├─ 调用 split_engine (KB 过滤)
+    │  ├─ LLM 生成 WeeklyPlan
+    │  ├─ 调用 volume_checker (容量校验)
+    │  └─ 对话式重试 (max_retries=2)
+    │
+    ▼ (Conditional Edge)
+[cook_node] — 生成周饮食计划 (should_cook 为 True 时)
+    │  ├─ 增量逐日生成 (7 次调用，历史 JSON 注入)
+    │  ├─ 调用 deterministic_scaler (热量/蛋白修正)
+    │  └─ 调用 grocery_gen (购物清单聚合)
+    │
+    ▼ (Conditional Edge)
+[gym_node] — 生成单课训练卡 (should_gym 为 True 时)
+    │  ├─ 热身/拉伸模板自动匹配
+    │  ├─ 调用 rpe_engine (重量推荐)
+    │  └─ 调用 training_card_exporter (KB 数据注入)
+    │
+    ▼ (END)
 ```
 
 ---
@@ -115,37 +114,29 @@ parse_injuries_with_llm(raw_text, llm_client)
 
 ---
 
-## 阶段三：PlannerAgent 内部信息流
+## 阶段三：plan_node 内部信息流
 
 ```
-UserProfile
+FitnessAgentState (user_profile)
     │
-    ├─► KB.get_safe_exercises(injuries, equipment)
+    ├─► split_engine(profile, kb)
     │       → exercise_pool: list[Exercise]（最多 60 个）
     │
     ├─► build_user_message(profile, kb, exercise_pool)
-    │       → user_message: str（包含用户画像摘要 + 规则 + 动作池）
+    │       → user_message: str
     │
-    └─► LLM 多轮对话
-            messages = [
-              Message(role="user", content=user_message),
-              # 若验证失败，追加：
-              Message(role="assistant", content=上轮LLM回复),
-              Message(role="user", content=correction_message),
-              # 最多 max_retries 轮
-            ]
-            system = PLANNER_SYSTEM
+    └─► LLM 多轮对话 (plan_nodeRetry)
+            messages = [Message(role="user", content=user_message)]
+            LLM → JSON string
 
-            LLMResponse.content (JSON string)
-                │
-            _parse_response()
-                │
-            WeeklyPlan (Pydantic)
-                │
-            validate (volume / duration / injury)
-                │
-            若通过 → 返回
-            若失败 → 追加 correction → 重试
+            [校验项 - 触发对话式重试]
+            ├─ volume_checker()         # 容量校验 (from anatomy.json)
+            ├─ _validate_duration()     # 时长校验
+            └─ _validate_injuries()     # 伤病再确认
+
+            若失败 → 追加 correction message → 重试 (max 2)
+
+    写入 state["weekly_plan"]
 ```
 
 **LLM 看到的信息**：
@@ -159,61 +150,53 @@ UserProfile
 
 ---
 
-## 阶段四：CookingAgent 内部信息流
+## 阶段四：cook_node 内部信息流
 
 ```
-WeeklyPlan + UserProfile
+FitnessAgentState (user_profile + weekly_plan)
     │
-    ├─► KB.get_compatible_recipes(dietary_restrictions)
+    ├─► CookingKnowledge.get_recipes()
     │       → compatible_recipes: list[RecipeTemplate]
     │
-    ├─► KB.get_banned_food_ids(dietary_restrictions)
-    │       → banned_food_ids: set[str]
+    └─► 增量逐日生成循环 (Incremental Loop)
+        for day in [周一 … 周日]:
+            already_generated_json = json.dumps(history)
+            LLM call → DayMealPlan
+
+            [重试型校验 - 针对当天]
+            ├─ _validate_food_ids()           # 食材 ID 幻觉
+            └─ _validate_dietary_compliance() # 忌口违规
+
+            若失败 → 追加 correction → 局部重试
+
+    [确定性后处理工具链 - 一次性处理 7 天]
+    ├─ deterministic_scaler()
+    │    ├─ _overwrite_macros_deterministic() # 覆写宏量素（查 KB）
+    │    ├─ _scale_day_to_calorie_target()    # 自动热量缩放
+    │    └─ _boost_protein_for_day()          # 针对性强化蛋白
+    └─ grocery_gen()                          # 跨天聚合购物清单
+
+    写入 state["cooking_plan"]
+```
+
+---
+
+## 阶段五：gym_node 内部信息流
+
+```
+FitnessAgentState (user_profile + weekly_plan)
     │
-    └─► 增量逐日生成（7 轮 LLM 调用）
-        all_days = []
-        for day_label in [周一 … 周日]:
-            already_json = json.dumps(all_days)   ← 已生成的天注入为历史上下文
-            │
-            _generate_day(day_label, already_json):
-                messages = [
-                  Message(role="user", content=build_cooking_user_message(
-                      ..., already_generated_json=already_json
-                  )),
-                ]
-                LLM call (max_tokens=4096)
-                _parse_day_response() → DayMealPlan
-                _overwrite_macros_deterministic()  ← 当天宏量立即覆写
-                │
-                [重试型校验 - 仅针对当天]
-                ├─ _validate_food_ids()           # >2 个幻觉 ID → 触发重试
-                └─ _validate_dietary_compliance() # 忌口违规 → 触发重试
-                │
-                若需重试: messages += [assistant 回复, correction] → 再次 LLM call
-                └─ 返回 DayMealPlan
-            all_days.append(day)
+    ├─► GYMKnowledge.get_warmup_template()
+    │       → 基于动作模式自动匹配热身序列
+    │
+    ├─► LLM 生成单课计划 (GymSessionPlan)
+    │
+    └─► training_card_exporter() (确定性注入)
+            ├─ 注入动作细节 (cues, muscles, videos)
+            ├─ 注入热身/拉伸序列 (带伤病调整)
+            └─ 注入伤病适配提示 (injury_adaptations)
 
-确定性后处理流水线（全 7 天一次性）：
-    a. _overwrite_macros_deterministic()   ← 用 KB 全量覆写 LLM 宏量报告
-    b. _boost_protein_for_day()            ← 按比例强化高蛋白食材（+5g 缓冲）
-    c. _scale_day_to_calorie_target()      ← 等比缩放，精确达到训练日/休息日目标
-    d. _clamp_meal_calories()              ← snack/pre_workout 超上限则向下强制缩放
-    e. _round_ingredient_amounts()         ← 克数取整（≥10g→整10g；<10g→整5g）
-    f. _overwrite_macros_deterministic()   ← 二次覆写（反映取整后精确值）
-
-[警告型验证 - 全局，仅记录，不重试]
-    ├─ _validate_calorie_compliance()      → 热量偏差提醒
-    ├─ _validate_protein_compliance()      → 蛋白质不足提醒
-    ├─ _validate_post_workout_protein()    → 训练后餐蛋白提醒
-    ├─ _validate_diversity()               → 跨天食谱多样性
-    ├─ _validate_intraday_diversity()      → 日内蛋白质食材重复
-    ├─ _validate_meal_structure()          → 训练日/休息日餐型结构
-    └─ _validate_meal_calorie_ranges()     → 单餐热量范围
-
-    所有警告追加至 plan.cooking_tips_zh（不崩溃）
-
-_aggregate_shopping_list() → 跨 7 天去重汇总购物清单
-→ WeeklyCookingPlan
+    写入 state["gym_plan"]
 ```
 
 ---
@@ -221,23 +204,19 @@ _aggregate_shopping_list() → 跨 7 天去重汇总购物清单
 ## 数据在各层之间的传递
 
 ```
-JSON 文件 (data/raw/)
-    ↓ 启动时加载（cached_property）
-KnowledgeBase（内存对象）
-    ↓ 传入
-Agent.__init__(client, kb)
-    ↓ 每次调用
-generate_plan(profile) / generate_cooking_plan(plan, profile)
+KnowledgeBase (Raw JSON)
     ↓
-构建 prompt str → 发给 LLM API
-    ↓ 返回
-JSON str → Pydantic 模型验证
+KnowledgeAccessors (Scoped View)
     ↓
-WeeklyPlan / WeeklyCookingPlan
+Graph State (FitnessAgentState)
     ↓
-CLI 渲染（Rich）+ 保存（JSON + Markdown）
+Agent Nodes (Logic & LLM)
     ↓
-用户看到的终端输出 + outputs/ 目录下的文件
+Deterministic Tools (Calculations)
+    ↓
+Graph State (Results)
+    ↓
+CLI (Rich Rendering)
 ```
 
 ---
@@ -261,11 +240,11 @@ profile = run_onboarding(
 
 ## 无状态 vs 有状态
 
-| 组件            | 状态                   | 说明                                    |
-| --------------- | ---------------------- | --------------------------------------- |
-| `KnowledgeBase` | **有状态**（内存缓存） | 启动后常驻，不同请求共享同一实例        |
-| `PlannerAgent`  | **无状态**             | 每次 `generate_plan()` 独立，不保留历史 |
-| `CookingAgent`  | **无状态**             | 同上                                    |
-| `UserProfile`   | **文件持久化**         | 以 JSON 保存在用户指定路径              |
-| 训练/烹饪计划   | **文件持久化**         | 以 JSON + Markdown 保存在 outputs/      |
-| LLM 对话历史    | **请求内临时**         | 仅在 retry 循环内追加，请求结束后丢弃   |
+| 组件            | 状态                       | 说明                                    |
+| --------------- | -------------------------- | --------------------------------------- |
+| `KnowledgeBase` | **有状态**（内存缓存）     | 启动后常驻，跨节点共享                  |
+| `graph`         | **无状态/短轮询**          | 每次 invoke 一个新图，由 LangGraph 管理 |
+| `Agent Nodes`   | **无状态**                 | 纯函数节点，不保留私有历史              |
+| `UserProfile`   | **持久化 JSON**            | 用户关键特征，作为图的初始输入          |
+| `WeeklyPlan`等  | **持久化 JSON / Markdown** | 图运行完成后的最终产物                  |
+| `LLM 历史`      | **状态感知**               | 在 cook_node 循环中通过 state 显式传递  |
