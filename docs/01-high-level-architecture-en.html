@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Fitness System · High-Level Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;700;900&amp;family=JetBrains+Mono:wght@400;600&amp;family=Playfair+Display:wght@700;900&amp;display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #06060b;
+    --surface: #0e0e16;
+    --surface-2: #16161f;
+    --surface-3: #1e1e2a;
+    --border: #252535;
+    --border-light: #35354a;
+    --text: #e4e4ef;
+    --text-dim: #8585a0;
+    --text-muted: #55556a;
+    --orange: #ff6b35;
+    --orange-glow: rgba(255,107,53,0.15);
+    --blue: #4a9eff;
+    --blue-glow: rgba(74,158,255,0.15);
+    --green: #34d399;
+    --green-glow: rgba(52,211,153,0.15);
+    --purple: #a78bfa;
+    --purple-glow: rgba(167,139,250,0.15);
+    --yellow: #fbbf24;
+    --cyan: #22d3ee;
+    --pink: #f472b6;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Noto Sans',sans-serif; line-height:1.8; overflow-x:hidden; }
+  .container { max-width:1140px; margin:0 auto; padding:72px 36px; }
+
+  /* ===== HEADER ===== */
+  .header { text-align:center; margin-bottom:88px; position:relative; }
+  .header::after { content:''; position:absolute; bottom:-44px; left:50%; transform:translateX(-50%); width:48px; height:2px; background:var(--orange); }
+  .header-sup { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--orange); text-transform:uppercase; letter-spacing:4px; margin-bottom:16px; }
+  .header h1 { font-family:'Playfair Display',serif; font-size:48px; font-weight:900; letter-spacing:-1px; margin-bottom:14px; background:linear-gradient(135deg, var(--orange) 0%, var(--yellow) 50%, var(--orange) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .header-desc { font-size:15px; color:var(--text-dim); font-weight:300; max-width:600px; margin:0 auto; }
+
+  /* ===== SECTION ===== */
+  .section { margin-bottom:80px; }
+  .section-head { display:flex; align-items:center; gap:14px; margin-bottom:28px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+  .section-num { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; padding:4px 11px; border-radius:5px; }
+  .section-title { font-size:22px; font-weight:800; }
+
+  /* ===== TWO AGENTS ===== */
+  .agents-row { display:grid; grid-template-columns:1fr 60px 1fr; gap:0; align-items:center; margin-bottom:40px; }
+  .agent-box { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:32px; position:relative; overflow:hidden; }
+  .agent-box::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .agent-plan::before { background:linear-gradient(90deg, var(--orange), var(--yellow)); }
+  .agent-vision::before { background:linear-gradient(90deg, var(--blue), var(--purple)); }
+  .agent-icon { font-size:32px; margin-bottom:12px; }
+  .agent-name { font-size:20px; font-weight:800; margin-bottom:4px; }
+  .agent-plan .agent-name { color:var(--orange); }
+  .agent-vision .agent-name { color:var(--blue); }
+  .agent-sub { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); margin-bottom:16px; }
+  .agent-desc { font-size:13px; color:var(--text-dim); line-height:1.9; }
+  .agent-link { display:flex; align-items:center; justify-content:center; }
+  .agent-link-text { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); writing-mode:vertical-rl; letter-spacing:2px; }
+
+  /* ===== THREE PHASES ===== */
+  .phases { display:grid; grid-template-columns:1fr 1fr 1fr; gap:3px; background:var(--border); border-radius:16px; overflow:hidden; }
+  .phase { background:var(--surface); padding:32px 28px; position:relative; }
+  .phase-num { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:2px; margin-bottom:12px; }
+  .phase-title { font-size:18px; font-weight:800; margin-bottom:8px; }
+  .phase-desc { font-size:13px; color:var(--text-dim); line-height:1.8; margin-bottom:16px; }
+  .phase-tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .phase-tag { font-family:'JetBrains Mono',monospace; font-size:10px; padding:3px 8px; border-radius:4px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-muted); }
+
+  .phase:nth-child(1) .phase-title { color:var(--orange); }
+  .phase:nth-child(1) .phase-tag { border-color:rgba(255,107,53,0.2); color:var(--orange); }
+  .phase:nth-child(2) .phase-title { color:var(--blue); }
+  .phase:nth-child(2) .phase-tag { border-color:rgba(74,158,255,0.2); color:var(--blue); }
+  .phase:nth-child(3) .phase-title { color:var(--green); }
+  .phase:nth-child(3) .phase-tag { border-color:rgba(52,211,153,0.2); color:var(--green); }
+
+  .phase-status {
+    display:inline-flex; align-items:center; gap:6px; margin-bottom:14px;
+    font-family:'JetBrains Mono',monospace; font-size:10px; padding:4px 10px; border-radius:5px;
+  }
+  .status-active { background:rgba(255,107,53,0.1); color:var(--orange); border:1px solid rgba(255,107,53,0.3); }
+  .status-planned { background:var(--surface-2); color:var(--text-muted); border:1px solid var(--border); }
+  .status-dot { width:6px; height:6px; border-radius:50%; }
+  .status-active .status-dot { background:var(--orange); box-shadow:0 0 6px var(--orange); }
+  .status-planned .status-dot { background:var(--text-muted); }
+
+  /* ===== PHASE 1 DETAIL (roadmap) ===== */
+  .roadmap { margin-top:40px; }
+  .roadmap-track { position:relative; padding-left:36px; }
+  .roadmap-track::before { content:''; position:absolute; left:14px; top:0; bottom:0; width:2px; background:linear-gradient(to bottom, var(--orange), var(--yellow), var(--cyan), var(--blue), var(--green), var(--pink)); border-radius:1px; }
+
+  .roadmap-item { position:relative; margin-bottom:24px; }
+  .roadmap-item::before { content:''; position:absolute; left:-28px; top:8px; width:10px; height:10px; border-radius:50%; border:2px solid; }
+  .roadmap-item:nth-child(1)::before { border-color:var(--orange); background:rgba(255,107,53,0.3); }
+  .roadmap-item:nth-child(2)::before { border-color:var(--yellow); background:rgba(251,191,36,0.3); }
+  .roadmap-item:nth-child(3)::before { border-color:var(--cyan); background:rgba(34,211,238,0.3); }
+  .roadmap-item:nth-child(4)::before { border-color:var(--blue); background:rgba(74,158,255,0.3); }
+  .roadmap-item:nth-child(5)::before { border-color:var(--green); background:rgba(52,211,153,0.3); }
+  .roadmap-item:nth-child(6)::before { border-color:var(--pink); background:rgba(244,114,182,0.3); }
+
+  .roadmap-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 26px; }
+  .roadmap-ver { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; margin-bottom:6px; }
+  .roadmap-item:nth-child(1) .roadmap-ver { color:var(--orange); }
+  .roadmap-item:nth-child(2) .roadmap-ver { color:var(--yellow); }
+  .roadmap-item:nth-child(3) .roadmap-ver { color:var(--cyan); }
+  .roadmap-item:nth-child(4) .roadmap-ver { color:var(--blue); }
+  .roadmap-item:nth-child(5) .roadmap-ver { color:var(--green); }
+  .roadmap-item:nth-child(6) .roadmap-ver { color:var(--pink); }
+  .roadmap-name { font-size:15px; font-weight:700; margin-bottom:6px; }
+  .roadmap-desc { font-size:12px; color:var(--text-dim); line-height:1.8; }
+  .roadmap-agents { display:flex; gap:6px; margin-top:10px; }
+  .roadmap-agent-tag { font-family:'JetBrains Mono',monospace; font-size:9px; padding:2px 7px; border-radius:3px; }
+  .tag-plan { background:rgba(255,107,53,0.1); color:var(--orange); border:1px solid rgba(255,107,53,0.15); }
+  .tag-cook { background:rgba(251,191,36,0.1); color:var(--yellow); border:1px solid rgba(251,191,36,0.15); }
+  .tag-gym { background:rgba(34,211,238,0.1); color:var(--cyan); border:1px solid rgba(34,211,238,0.15); }
+  .tag-kb { background:rgba(52,211,153,0.1); color:var(--green); border:1px solid rgba(52,211,153,0.15); }
+  .tag-user { background:rgba(167,139,250,0.1); color:var(--purple); border:1px solid rgba(167,139,250,0.15); }
+  .tag-vis { background:rgba(74,158,255,0.1); color:var(--blue); border:1px solid rgba(74,158,255,0.15); }
+
+  /* ===== CORE PRINCIPLE ===== */
+  .principle {
+    background:linear-gradient(135deg, rgba(255,107,53,0.04), rgba(74,158,255,0.04));
+    border:1px solid rgba(255,107,53,0.12);
+    border-radius:14px; padding:32px; text-align:center; margin-top:40px;
+  }
+  .principle-icon { font-size:36px; margin-bottom:12px; }
+  .principle-text { font-size:15px; font-weight:500; line-height:2; max-width:640px; margin:0 auto; }
+  .principle-text em { color:var(--orange); font-style:normal; font-weight:700; }
+
+  /* ===== FOOTER ===== */
+  .footer { text-align:center; padding:40px 0; border-top:1px solid var(--border); color:var(--text-muted); font-size:11px; font-family:'JetBrains Mono',monospace; }
+
+  @media (max-width:768px) {
+    .agents-row { grid-template-columns:1fr; gap:16px; }
+    .agent-link { display:none; }
+    .phases { grid-template-columns:1fr; }
+    .header h1 { font-size:32px; }
+    .container { padding:48px 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-sup">System Architecture</div>
+    <h1>AI Fitness System</h1>
+    <div class="header-desc">A personalized fitness management system powered by LLMs and VLMs. Two core agents, three development phases, one goal: the user only needs to execute.</div>
+  </div>
+
+  <!-- SECTION 1: TWO AGENTS -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num" style="background:rgba(255,107,53,0.08);color:var(--orange);border:1px solid rgba(255,107,53,0.2);">01</span>
+      <span class="section-title">Two Core Agents</span>
+    </div>
+
+    <div class="agents-row">
+      <div class="agent-box agent-plan">
+        <div class="agent-icon">🏗️</div>
+        <div class="agent-name">Planning Agent</div>
+        <div class="agent-sub">LLM-POWERED · PLANNING &amp; SCHEDULING</div>
+        <div class="agent-desc">
+          Owns planning and management across the full fitness lifecycle. Starting from the user's body metrics, goals, and schedule, it generates training plans and nutrition programs at multiple levels of granularity (year → month → week → day → meal/exercise level). Through continuous interaction, it dynamically adjusts the plan to match real-life changes. Core sub-agents include CookingAgent (nutrition planning), GYMAgent (training orchestration), and KBAgent (self-evolving knowledge base).
+        </div>
+      </div>
+
+      <div class="agent-link">
+        <div class="agent-link-text">SYNC</div>
+      </div>
+
+      <div class="agent-box agent-vision">
+        <div class="agent-icon">👁️</div>
+        <div class="agent-name">Vision Agent</div>
+        <div class="agent-sub">VLM-POWERED · VISUAL FEEDBACK</div>
+        <div class="agent-desc">
+          Owns real-time visual understanding and feedback. It analyzes workout videos to identify movement patterns, compares them against a gold standard, and returns precise correction cues. It recognizes ingredients and estimates calories from food photos, and it tracks body changes from periodic physique photos. The Vision Agent feeds its outputs back into the Planning Agent to form a complete closed loop.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: THREE PHASES -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num" style="background:rgba(74,158,255,0.08);color:var(--blue);border:1px solid rgba(74,158,255,0.2);">02</span>
+      <span class="section-title">Three Development Phases</span>
+    </div>
+
+    <div class="phases">
+      <div class="phase">
+        <div class="phase-num">Phase 1</div>
+        <div class="phase-status status-active"><span class="status-dot"></span>Current Phase</div>
+        <div class="phase-title">Planning Agent</div>
+        <div class="phase-desc">
+          Build the Planning Agent as a complete standalone system. It evolves from static plan generation (v0.1.x) to conversational adjustment (v0.2.x), to self-evolving knowledge (v0.3.x), and finally to monitoring with closed-loop feedback (v0.4.x). Goal: deliver a complete, executable, dynamically adjustable, and continuously tracked fitness system through text interaction alone.
+        </div>
+        <div class="phase-tags">
+          <span class="phase-tag">PlanAgent</span>
+          <span class="phase-tag">CookingAgent</span>
+          <span class="phase-tag">GYMAgent</span>
+          <span class="phase-tag">KBAgent</span>
+          <span class="phase-tag">MonitorAgent</span>
+          <span class="phase-tag">User Interaction</span>
+          <span class="phase-tag">Schedule Awareness</span>
+          <span class="phase-tag">Dashboard</span>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-num">Phase 2</div>
+        <div class="phase-status status-planned"><span class="status-dot"></span>Planned</div>
+        <div class="phase-title">Vision Agent</div>
+        <div class="phase-desc">
+          Build the core capabilities of the Vision Agent as a standalone system: exercise recognition and correction, food-photo understanding with calorie estimation, and physique-change tracking. Goal: give the system "eyes" so it can understand the real quality of execution.
+        </div>
+        <div class="phase-tags">
+          <span class="phase-tag">Exercise Recognition</span>
+          <span class="phase-tag">Form Correction</span>
+          <span class="phase-tag">Food Recognition</span>
+          <span class="phase-tag">Calorie Estimation</span>
+          <span class="phase-tag">Physique Tracking</span>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-num">Phase 3</div>
+        <div class="phase-status status-planned"><span class="status-dot"></span>Planned</div>
+        <div class="phase-title">Two-Agent Integration</div>
+        <div class="phase-desc">
+          Deeply integrate the Planning Agent and the Vision Agent. Findings from the Vision Agent automatically feed back into the Planning Agent (for example: movement deviations → update the training plan, meal photos → update nutrition logs automatically). This is the final step toward the vision that the user only needs to execute.
+        </div>
+        <div class="phase-tags">
+          <span class="phase-tag">Two-Agent Collaboration</span>
+          <span class="phase-tag">Automatic Feedback Loop</span>
+          <span class="phase-tag">Fully Automatic Adjustment</span>
+          <span class="phase-tag">Injury Prevention</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: PHASE 1 ROADMAP -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num" style="background:rgba(255,107,53,0.08);color:var(--orange);border:1px solid rgba(255,107,53,0.2);">03</span>
+      <span class="section-title">Phase 1 Roadmap: Planning Agent</span>
+    </div>
+
+    <div class="roadmap">
+      <div class="roadmap-track">
+
+        <!-- v0.1.0 -->
+        <div class="roadmap-item">
+          <div class="roadmap-card">
+            <div class="roadmap-ver">v0.1.0 · Static Planning — Foundational Plan Generation</div>
+            <div class="roadmap-name">User Onboarding + Plan Generation</div>
+            <div class="roadmap-desc">
+              The user provides personal information through guided Q&amp;A, including body metrics, goals, available equipment, injuries, dietary restrictions, and daily routine. PlanAgent uses the knowledge base to generate a personalized weekly training plan and daily nutrition program. A multi-round generate → validate → revise loop ensures plan quality.
+            </div>
+            <div class="roadmap-agents">
+              <span class="roadmap-agent-tag tag-plan">PlanAgent</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- v0.1.x -->
+        <div class="roadmap-item">
+          <div class="roadmap-card">
+            <div class="roadmap-ver">v0.1.x · Static Planning — Fine-Grained Guidance</div>
+            <div class="roadmap-name">CookingAgent + GYMAgent Fine-Grained Guidance</div>
+            <div class="roadmap-desc">
+              On top of the base Plan, specialized sub-agents generate far more detailed guidance. CookingAgent produces concrete recipes, ingredient substitutions, and grocery lists. GYMAgent produces training details such as execution cues, weekly progression parameters, and warm-up/stretching flows. The Plan is the skeleton; Guidance is the flesh.
+            </div>
+            <div class="roadmap-agents">
+              <span class="roadmap-agent-tag tag-plan">PlanAgent</span>
+              <span class="roadmap-agent-tag tag-cook">CookingAgent</span>
+              <span class="roadmap-agent-tag tag-gym">GYMAgent</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- v0.2.x -->
+        <div class="roadmap-item">
+          <div class="roadmap-card">
+            <div class="roadmap-ver">v0.2.x · Dynamic Interaction — User Corrections and Adjustments</div>
+            <div class="roadmap-name">Conversational Adjustments + Cascading Global Updates</div>
+            <div class="roadmap-desc">
+              Users can correct and adjust the content of the Plan and Guidance through natural conversation ("I want noodles today", "I have to work late on Wednesday and can't train"). The key challenge is that a local change often requires a global update: reducing one training day means redistributing weekly volume, and changing one meal means rebalancing nutrition across the rest of the day. The agent must perform and log these cascading updates automatically.
+            </div>
+            <div class="roadmap-agents">
+              <span class="roadmap-agent-tag tag-plan">PlanAgent</span>
+              <span class="roadmap-agent-tag tag-cook">CookingAgent</span>
+              <span class="roadmap-agent-tag tag-gym">GYMAgent</span>
+              <span class="roadmap-agent-tag tag-user">UserDialog</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- v0.2.x+ -->
+        <div class="roadmap-item">
+          <div class="roadmap-card">
+            <div class="roadmap-ver">v0.2.x · Dynamic Interaction — Schedule Awareness</div>
+            <div class="roadmap-name">Calendar / Cycle / Work Schedule Integration</div>
+            <div class="roadmap-desc">
+              By importing ICS files or connecting calendar APIs, the agent can perceive the user's real schedule: assign lighter workouts on meeting-heavy days, switch to hotel-friendly bodyweight plans during travel, and automatically adjust training intensity and nutrition strategy during different cycle phases. The system evolves from "the user tells me what changed" to "I detect what changed proactively."
+            </div>
+            <div class="roadmap-agents">
+              <span class="roadmap-agent-tag tag-plan">PlanAgent</span>
+              <span class="roadmap-agent-tag tag-user">CalendarSync</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- v0.3.x -->
+        <div class="roadmap-item">
+          <div class="roadmap-card">
+            <div class="roadmap-ver">v0.3.x · Self-Evolution — Automatic Knowledge Base Updates</div>
+            <div class="roadmap-name">KBAgent: Learning from the Internet + Adapting to User Preferences</div>
+            <div class="roadmap-desc">
+              KBAgent is responsible for the continuous evolution of the knowledge base in two directions: (1) ingesting the latest validated knowledge in nutrition and exercise science from the internet, books, and papers; and (2) adapting the emphasis of the knowledge base based on the user's historical conversations and preferences. For example, if the user frequently asks vegetarian questions, KBAgent will proactively deepen its vegetarian nutrition knowledge.
+            </div>
+            <div class="roadmap-agents">
+              <span class="roadmap-agent-tag tag-kb">KBAgent</span>
+              <span class="roadmap-agent-tag tag-plan">PlanAgent</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- v0.4.x -->
+        <div class="roadmap-item">
+          <div class="roadmap-card">
+            <div class="roadmap-ver">v0.4.x · Monitoring &amp; Feedback — Closed-Loop Tracking and Correction</div>
+            <div class="roadmap-name">MonitorAgent: Expected vs Actual + Continuous Course Correction</div>
+            <div class="roadmap-desc">
+              MonitorAgent tracks what the user actually does, including workout completion, real food intake, and changes in weight or body-fat percentage. It maintains a dashboard of expected metrics vs actual metrics. It has two core objectives: (1) keep reality as close as possible to the intended plan, and (2) keep key indicators moving in a positive direction. When deviations exceed a threshold, it automatically triggers PlanAgent to update the plan, forming a complete closed-loop feedback system.
+            </div>
+            <div class="roadmap-agents">
+              <span class="roadmap-agent-tag" style="background:rgba(244,114,182,0.1);color:#f472b6;border:1px solid rgba(244,114,182,0.15);">MonitorAgent</span>
+              <span class="roadmap-agent-tag tag-plan">PlanAgent</span>
+              <span class="roadmap-agent-tag tag-cook">CookingAgent</span>
+              <span class="roadmap-agent-tag tag-gym">GYMAgent</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- CORE PRINCIPLE -->
+  <div class="principle">
+    <div class="principle-icon">🎯</div>
+    <div class="principle-text">
+      Core goal: the user <em>only needs to execute</em>.<br>
+      All planning, adjustment, tracking, and learning are handled automatically by agents.<br>
+      The system should feel like a <em>24/7 personal trainer + nutritionist + health concierge</em>.
+    </div>
+  </div>
+
+  <div class="footer">AI Fitness System · Architecture · 2026</div>
+
+</div>
+</body>
+</html>
