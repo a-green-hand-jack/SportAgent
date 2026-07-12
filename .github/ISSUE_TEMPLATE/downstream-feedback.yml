@@ -1,0 +1,58 @@
+name: 下游反馈（模板缺口 / 增强）
+description: 从某个下游 ml-research-project 上报模板需要新增/修改/增强的能力
+title: "[downstream] "
+labels: ["from-downstream"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        由下游项目在使用中触发。通常由 `template-feedback` skill 自动填充。
+        目标是让「真实使用暴露的缺口」变成可解决的上游 issue，解决后再 sync 回下游。
+  - type: input
+    id: template-version
+    attributes:
+      label: 下游当前模板版本
+      description: 下游 .template.toml 里的 version（例 v1.0.0）。sync 追平后用来对齐闭环。
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: framework-path
+    attributes:
+      label: 涉及的框架层路径
+      description: 哪个 agent/skill/hook/validator/doctrine。多个用逗号分隔。
+      placeholder: .claude/skills/xxx/SKILL.md, scripts/validate-governance.py
+    validations:
+      required: true
+  - type: dropdown
+    id: change-kind
+    attributes:
+      label: 期望的改动类型
+      options:
+        - 新增能力（预期 MINOR）
+        - 修复缺陷（预期 PATCH）
+        - 增强/调整既有能力
+        - 破坏性变更（预期 MAJOR）
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 场景（下游遇到了什么）
+      description: 具体在做什么、被什么挡住、期望模板怎么支持。
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现 / 证据
+      description: 命令、报错、validator 输出、相关文件坐标。不确定就写观察到的现象。
+    validations:
+      required: false
+  - type: input
+    id: downstream-origin
+    attributes:
+      label: 下游项目（可选）
+      description: 下游 repo 名或路径，便于回溯是谁在用。
+    validations:
+      required: false

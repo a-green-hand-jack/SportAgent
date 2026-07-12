@@ -1,0 +1,25 @@
+# recipe 复测任务。回填自 lab/recipes/claude-code/settings-hook-reload-needs-new-session.yaml
+# 的 retest: 字段，转写为 lab/evals/cc-workflow/EXAMPLE.yaml 的 schema，不新增场景。
+# recipe 文件已随本 PR 一起从 worktree-case+elf-template-replay 分支原样带入
+# lab/recipes/claude-code/，recipe_id 引用不再悬空。
+
+recipe_id: cc-recipe-settings-hook-reload-needs-new-session
+eval_id: settings-hook-reload-needs-new-session
+cases:
+  - kind: positive
+    name: "同一 session 内 Exit/EnterWorktree 不会刷新 hook 配置"
+    setup: "在一个正在运行的 session 里，编辑（或 merge 进）`.claude/settings.json` 的 hook 命令改动，用 Read 确认磁盘内容确实已更新为修复后的版本"
+    procedure: >
+      不退出 Claude Code，仅用 `ExitWorktree(action=keep)` → `EnterWorktree(path=...)`
+      重新进入同一 worktree，重现原触发条件（例如原先触发 hook fail-closed 的同一操作）
+    pass_if: "报错信息里仍是旧命令/旧行为（修复前的裸相对路径），确认同 session 内 Exit/EnterWorktree 不会让 hook 配置重新生效"
+  - kind: boundary
+    name: "是否存在比开全新 session 更轻量的刷新方式"
+    setup: "同一 session 内，尝试 Exit/EnterWorktree 之外的其他内建操作，观察是否有任何操作能让新 hook 配置生效"
+    pass_if: "记录是否找到任何比「开全新 session」更轻量、确实能刷新 hook 配置的操作；若找到，需更新本配方结论，不能再断言必须开全新 session"
+  - kind: negative
+    name: "非 hook/settings 类改动不需要开新 session"
+    setup: "同一 session 内，只改动一个 skill 文档或 subagent 说明的纯文本内容，不涉及 hook/settings.json"
+    pass_if: "确认这类改动不需要开新 session 即可验证生效，从而验证本配方只覆盖 hook/settings 生效时机这一类问题，不应泛化套用到所有配置改动"
+judge: "human 或 fresh verifier 依据上面 pass_if 判定；连续通过 >=2 次可推进至 provisional（见 .agent/claude-code-recipe-policy.md）"
+last_results: []

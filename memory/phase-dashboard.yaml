@@ -1,0 +1,18 @@
+# phase-dashboard.yaml — phase 看板
+# 项目按 phase 推进。每个 phase 有明确的 objective 与 exit_criteria。
+# 结构化文件：应可被 harness validator 解析。改状态时只改字段，保持合法 YAML。
+#
+# status 取值：planned | active | done | blocked
+# owner：负责该 phase 的 human 或 agent 角色。
+
+phases:
+  # ↓ 示例条目（复制并按需修改；正式使用时可删除本示例）
+  - id: p0-scaffold
+    title: 搭建 agent-native repo 骨架
+    status: active
+    objective: 建立 memory / deliverables / human 三层的导航与状态文件
+    exit_criteria:
+      - 三层四件套齐全
+      - validator 通过
+      - 采用本模板的 ADR 已 accepted
+    owner: repo-doc-steward

@@ -1,0 +1,22 @@
+# 证据台账。只收录「已确认」的结果。未复现/草稿结果不进这里。
+# 进入门槛（见 .agent/artifact-policy.md）：run 可定位、config 可复现、metric 来源清楚、
+# 与 baseline 比较清楚、caveat 写明、经 fresh verifier 或本人复核。
+#
+# grade: log | metric | table | figure | paper-claim  （证据层级）
+# 每条 evidence 必须能回答：来自哪个 command/commit/run id/config/checkpoint/data split。
+
+evidence:
+  - id: ev-000
+    supports_claim: claim-000
+    grade: metric
+    summary: "<这条证据说明了什么>"
+    command: "<产生它的命令>"
+    commit: "<git sha>"
+    run_id: "<experiment-ledger 里的 run id>"
+    config: "<lab/code/configs/... 路径>"
+    checkpoint: "<checkpoint-index 里的逻辑 id，若适用>"
+    data_split: "<dataset-index 里的 split id>"
+    metric_source: "<wandb/mlflow run id 或 result-index 条目>"
+    caveats: "<已知限制>"
+    verified_by_fresh_reviewer: false
+    updated: "YYYY-MM-DD"

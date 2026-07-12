@@ -1,0 +1,23 @@
+# change-control.yaml — 变更登记账
+# 登记结构（structure）、doctrine、能力（capability）、契约（contract）级别的变更。
+# 这类变更影响 repo 的骨架或规则，必须留痕：ANATOMY 是否同步、validator 是否通过、是否走了 human gate。
+# 结构化文件：应可被 harness validator 解析，保持合法 YAML。
+#
+# kind 取值：structure | doctrine | capability | contract
+
+changes:
+  # ↓ 示例条目（正式使用时可删除本示例）
+  - id: chg-0001
+    date: 2026-07-08
+    kind: structure
+    summary: 新增 memory / deliverables / human 三层导航与状态文件
+    anatomy_updated: true
+    validator_passed: true
+    human_approved: true
+  - id: chg-20260710-codex-adapters
+    date: 2026-07-10
+    kind: capability
+    summary: 新增 Codex project adapters：.codex config/custom agents、.agents skills、同步脚本与共享 hook 适配
+    anatomy_updated: true
+    validator_passed: true
+    human_approved: true

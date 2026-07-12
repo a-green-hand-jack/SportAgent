@@ -1,0 +1,12 @@
+# 表格索引。防止「table 是哪次 run 生成的、是不是旧口径」被遗忘。
+
+tables:
+  - id: table-000
+    caption: "<表格标题/用途>"
+    source_path: "<生成脚本或数据路径>"
+    generated_by_run: "<run-id>"
+    commit: "<git sha>"
+    appears_in: "<deliverables/... 或 paper section>"
+    supports_claim: "<claim id>"
+    status: unknown        # active | superseded | archived | unknown
+    updated: "YYYY-MM-DD"

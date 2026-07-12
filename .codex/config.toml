@@ -1,0 +1,94 @@
+# Project-scoped Codex config. Trust this repo before relying on these hooks.
+
+[agents]
+max_threads = 6
+max_depth = 1
+
+[[hooks.PreToolUse]]
+matcher = "^(Bash|apply_patch|Edit|Write)$"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/pre_tool_guard.py"'
+timeout = 30
+statusMessage = "Checking repo safety floor"
+
+[[hooks.PostToolUse]]
+matcher = "^(apply_patch|Edit|Write)$"
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/format_changed_python.py"'
+timeout = 30
+statusMessage = "Formatting changed Python files"
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/zh_review_advisory.py"'
+timeout = 30
+statusMessage = "Checking Chinese-default docs"
+
+[[hooks.PreCompact]]
+matcher = "^.*$"
+
+[[hooks.PreCompact.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/pre_compact_memory_check.py"'
+timeout = 30
+statusMessage = "Checking memory freshness"
+
+[[hooks.SubagentStop]]
+matcher = "^.*$"
+
+[[hooks.SubagentStop.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/subagent_report_index.py"'
+timeout = 30
+statusMessage = "Indexing subagent report"
+
+# 上下文调配（对齐 Claude 表面 .claude/settings.json）：
+# Codex 确认支持 UserPromptSubmit（见 ~/.codex 全局 hooks），且把压缩拆成独立 PostCompact
+# 事件（其 SessionStart matcher 只含 startup|resume|clear，不含 compact）——故 continuity 同时
+# 挂 SessionStart(clear) 与 PostCompact，hook 内也认 hook_event_name=="PostCompact"。
+[[hooks.UserPromptSubmit]]
+
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/context_threshold_notice.py"'
+timeout = 30
+statusMessage = "Checking context usage"
+
+# agent 身份：首个 prompt 若未命名则注入自命名指令（对齐 Claude 表面）
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/agent_identity_hook.py"'
+timeout = 30
+statusMessage = "Agent self-naming"
+
+[[hooks.SessionStart]]
+matcher = "clear"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/context_continuity.py"'
+timeout = 30
+statusMessage = "Restoring status continuity"
+
+# agent 身份：SessionStart 若已命名则重申「你是 <name>」（Codex matcher 含 startup|resume|clear）
+[[hooks.SessionStart]]
+matcher = "startup|resume|clear"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/agent_identity_hook.py"'
+timeout = 30
+statusMessage = "Reasserting agent identity"
+
+[[hooks.PostCompact]]
+matcher = "^.*$"
+
+[[hooks.PostCompact.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/context_continuity.py"'
+timeout = 30
+statusMessage = "Restoring status continuity"

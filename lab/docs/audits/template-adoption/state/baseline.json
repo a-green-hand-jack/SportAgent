@@ -1,0 +1,807 @@
+{
+  "created_at": "2026-07-12T21:20:43+00:00",
+  "git_head": {
+    "command": "git rev-parse --verify HEAD",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "737c34ca97efe371a84dc7ed9ceddb23175409aa\n",
+    "timeout": false
+  },
+  "git_status": {
+    "command": "git status --short",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "?? lab/\n",
+    "timeout": false
+  },
+  "root_entries": [
+    {
+      "allowed_root": true,
+      "kind": "dir",
+      "path": ".agent",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": false,
+      "kind": "file",
+      "path": ".coverage",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "file",
+      "path": ".env.example",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": ".gitignore",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".omx",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".pytest_cache",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": ".python-version",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".venv",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".vscode",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": "CLAUDE.md",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": "README.md",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": "data",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": "docs",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "dir",
+      "path": "lab",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": "outputs",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": "pyproject.toml",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "dir",
+      "path": "scripts",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": "src",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": "tests",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": "uv.lock",
+      "protected": false,
+      "template_control_item": false
+    }
+  ],
+  "schema": "template-adoption-baseline-v1",
+  "target": "/home/user/Projects/SportAgent",
+  "test_command": "UV_CACHE_DIR=/tmp/uv-cache uv run --frozen pytest \"$(git rev-parse --show-toplevel)/$(if [ -d \"$(git rev-parse --show-toplevel)/tests\" ]; then printf tests; else printf lab/code/imported/SportAgent/tests; fi)\"",
+  "test_result": {
+    "command": "UV_CACHE_DIR=/tmp/uv-cache uv run --frozen pytest \"$(git rev-parse --show-toplevel)/$(if [ -d \"$(git rev-parse --show-toplevel)/tests\" ]; then printf tests; else printf lab/code/imported/SportAgent/tests; fi)\"",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "  [ 88%]\ntests/user/test_onboarding.py::TestAskInt::test_float_rejected PASSED    [ 88%]\ntests/user/test_onboarding.py::TestAskInt::test_out_of_range_rejected PASSED [ 88%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_returns_user_profile PASSED [ 88%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_name_captured PASSED [ 89%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_age_captured PASSED [ 89%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_gender_male PASSED [ 89%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_gender_female PASSED [ 89%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_goal_fat_loss PASSED [ 90%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_goal_muscle_gain PASSED [ 90%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_computed_fields_filled PASSED [ 90%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_equipment_bodyweight_only PASSED [ 90%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_training_days_captured PASSED [ 90%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_injuries_captured_with_llm PASSED [ 91%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_injuries_rejected_by_user PASSED [ 91%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_no_injuries_empty_list PASSED [ 91%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_injuries_skipped_without_llm PASSED [ 91%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_dietary_restrictions_captured PASSED [ 91%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_experience_level_beginner PASSED [ 92%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_experience_level_intermediate PASSED [ 92%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_strength_assessment_captured PASSED [ 92%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_preferred_training_time_captured PASSED [ 92%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_strength_assessment_default_is_beginner_no_weights PASSED [ 92%]\ntests/user/test_onboarding.py::TestRunOnboarding::test_preferred_training_time_default_is_flexible PASSED [ 93%]\ntests/user/test_onboarding.py::TestProfilePersistence::test_save_and_load_roundtrip PASSED [ 93%]\ntests/user/test_onboarding.py::TestProfilePersistence::test_saved_file_is_valid_json PASSED [ 93%]\ntests/user/test_onboarding.py::TestProfilePersistence::test_save_creates_parent_directories PASSED [ 93%]\ntests/utils/test_llm_client.py::TestAnthropicClient::test_chat_returns_llm_response PASSED [ 94%]\ntests/utils/test_llm_client.py::TestAnthropicClient::test_chat_passes_system_prompt PASSED [ 94%]\ntests/utils/test_llm_client.py::TestAnthropicClient::test_chat_no_system_omits_key PASSED [ 94%]\ntests/utils/test_llm_client.py::TestOpenAICompatClient::test_chat_returns_llm_response PASSED [ 94%]\ntests/utils/test_llm_client.py::TestOpenAICompatClient::test_system_prepended_as_system_message PASSED [ 94%]\ntests/utils/test_llm_client.py::TestOpenAICompatClient::test_no_system_omits_system_message PASSED [ 95%]\ntests/utils/test_llm_client.py::TestOpenAICompatClient::test_multi_turn_messages PASSED [ 95%]\ntests/utils/test_llm_client.py::TestGeminiClient::test_chat_returns_llm_response PASSED [ 95%]\ntests/utils/test_llm_client.py::TestBuildClient::test_unknown_provider_raises PASSED [ 95%]\ntests/utils/test_llm_client.py::TestBuildClient::test_builds_anthropic PASSED [ 95%]\ntests/utils/test_llm_client.py::TestBuildClient::test_builds_deepseek PASSED [ 96%]\ntests/utils/test_llm_client.py::TestBuildClient::test_builds_qwen PASSED [ 96%]\ntests/utils/test_llm_client.py::TestBuildClient::test_builds_gemini PASSED [ 96%]\ntests/utils/test_llm_client.py::TestBuildClient::test_missing_api_key_raises PASSED [ 96%]\ntests/utils/test_llm_client.py::TestBuildClient::test_build_from_config PASSED [ 97%]\ntests/utils/test_llm_client.py::TestLLMResponse::test_total_tokens PASSED [ 97%]\ntests/utils/test_llm_client.py::TestLLMResponse::test_repr_roundtrip PASSED [ 97%]\ntests/utils/test_text_parser.py::TestParseInjuriesWithLLM::test_single_injury PASSED [ 97%]\ntests/utils/test_text_parser.py::TestParseInjuriesWithLLM::test_multiple_injuries PASSED [ 97%]\ntests/utils/test_text_parser.py::TestParseInjuriesWithLLM::test_empty_input_returns_empty PASSED [ 98%]\ntests/utils/test_text_parser.py::TestParseInjuriesWithLLM::test_no_match_returns_empty PASSED [ 98%]\ntests/utils/test_text_parser.py::TestParseInjuriesWithLLM::test_unknown_tag_ignored PASSED [ 98%]\ntests/utils/test_text_parser.py::TestParseInjuriesWithLLM::test_llm_returns_non_list PASSED [ 98%]\ntests/utils/test_text_parser.py::TestParseInjuriesWithLLM::test_llm_returns_invalid_json PASSED [ 98%]\ntests/utils/test_text_parser.py::TestParseInjuriesWithLLM::test_llm_exception_returns_empty PASSED [ 99%]\ntests/utils/test_text_parser.py::TestParseInjuriesWithLLM::test_markdown_fences_stripped PASSED [ 99%]\ntests/utils/test_text_parser.py::TestFormatInjuriesForDisplay::test_empty_list PASSED [ 99%]\ntests/utils/test_text_parser.py::TestFormatInjuriesForDisplay::test_single_tag PASSED [ 99%]\ntests/utils/test_text_parser.py::TestFormatInjuriesForDisplay::test_multiple_tags PASSED [100%]\n\n================================ tests coverage ================================\n_______________ coverage: platform linux, python 3.12.3-final-0 ________________\n\nName                                           Stmts   Miss  Cover   Missing\n----------------------------------------------------------------------------\nsrc/fitness_agent/__init__.py                      1      0   100%\nsrc/fitness_agent/cli.py                         424    424     0%   2-871\nsrc/fitness_agent/cooking/__init__.py              0      0   100%\nsrc/fitness_agent/cooking/agent.py               451     64    86%   150, 200, 264, 274, 379, 422-423, 434-438, 442-445, 451-452, 640, 677, 692, 698, 826, 829, 880, 883-884, 917, 954-963, 1014-1038, 1051-1076\nsrc/fitness_agent/cooking/models.py               52      0   100%\nsrc/fitness_agent/cooking/prompt.py               68      0   100%\nsrc/fitness_agent/gym/__init__.py                  0      0   100%\nsrc/fitness_agent/gym/agent.py                   250     29    88%   90, 276, 280, 407, 415, 423, 426-427, 437, 466, 502-504, 506-507, 521-522, 532-533, 547, 550, 556-557, 562-576, 638-639\nsrc/fitness_agent/gym/models.py                   53      0   100%\nsrc/fitness_agent/gym/prompt.py                   73      6    92%   199, 223-226, 274, 276, 278\nsrc/fitness_agent/knowledge_base/__init__.py       0      0   100%\nsrc/fitness_agent/knowledge_base/loader.py       370     14    96%   241, 265, 371, 462, 486, 519, 565, 678, 691, 714-715, 722-724\nsrc/fitness_agent/knowledge_base/models.py       236      0   100%\nsrc/fitness_agent/planner/__init__.py              0      0   100%\nsrc/fitness_agent/planner/agent.py               176      9    95%   101-104, 270, 371-375, 378-382\nsrc/fitness_agent/planner/models.py               43      0   100%\nsrc/fitness_agent/planner/prompt.py               76      9    88%   167, 173, 178-183, 318, 321\nsrc/fitness_agent/user/__init__.py                 0      0   100%\nsrc/fitness_agent/user/calculator.py              31      0   100%\nsrc/fitness_agent/user/models.py                  35      0   100%\nsrc/fitness_agent/user/onboarding.py             150      7    95%   76-78, 204, 206, 261-262\nsrc/fitness_agent/utils/__init__.py                0      0   100%\nsrc/fitness_agent/utils/config.py                 14      0   100%\nsrc/fitness_agent/utils/llm_client.py            104     23    78%   112-113, 127, 136-138, 175-177, 196, 223-225, 235-259, 309\nsrc/fitness_agent/utils/logging.py                 9      0   100%\nsrc/fitness_agent/utils/text_parser.py            41      0   100%\n----------------------------------------------------------------------------\nTOTAL                                           2657    585    78%\n============================= 471 passed in 3.62s ==============================\n",
+    "timeout": false
+  },
+  "tracked_files": [
+    {
+      "path": ".agent/workflows/add-git-tag.md",
+      "protected": false,
+      "sha256": "984ff5872623bd301605b2a1ddc5cfd1cf7c7fdd85187049c34b7510164c77bb",
+      "size": 2858
+    },
+    {
+      "path": ".agent/workflows/update-docs.md",
+      "protected": false,
+      "sha256": "c854ea669ab377389ea1892c5104225f434a67d4335f6242ce5c3c1efe5e5285",
+      "size": 4983
+    },
+    {
+      "path": ".env.example",
+      "protected": false,
+      "sha256": "165a02728477abdf34ad1da0d8fdd081f977432cd00be3bacfa7bf4dbe19877b",
+      "size": 792
+    },
+    {
+      "path": ".gitignore",
+      "protected": false,
+      "sha256": "1390ad4751e6a746758f65fd530448ea2e9e437847496d322f1e78c727f72a1b",
+      "size": 723
+    },
+    {
+      "path": ".python-version",
+      "protected": false,
+      "sha256": "7b55f8e67b5623c4bef3fa691288da9437d79d3aba156de48d481db32ac7d16d",
+      "size": 5
+    },
+    {
+      "path": ".vscode/settings.json",
+      "protected": false,
+      "sha256": "3ce348697318f9ff5a455464347a7c2dc268df5c0c89ad20ae4d0eb5b4a62ab4",
+      "size": 539
+    },
+    {
+      "path": "CLAUDE.md",
+      "protected": false,
+      "sha256": "4c139c11d17d5af29736a025c358c334901a1484934ab2980446be01360dcbaf",
+      "size": 13466
+    },
+    {
+      "path": "README.md",
+      "protected": false,
+      "sha256": "823fdc6d92d463681f4bc003428cc9bd4568647470e73e471c7a2cc0d84ac8bd",
+      "size": 10831
+    },
+    {
+      "path": "data/processed/.gitkeep",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "data/raw/.gitkeep",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "data/raw/anatomy.json",
+      "protected": false,
+      "sha256": "92b86fce496983facadab7cccf17d0de3ac7c4bd07bec9f86bc04b0afff27ff1",
+      "size": 8136
+    },
+    {
+      "path": "data/raw/exercises.json",
+      "protected": false,
+      "sha256": "355c284bf2198259cc455180c959e7cc32a3ef364c766711d528c933d150d879",
+      "size": 64698
+    },
+    {
+      "path": "data/raw/injury_profiles.json",
+      "protected": false,
+      "sha256": "7506ed4be975125b1d1e9cce79e2d4397aa7355b8c35a43c1cfdc51a79e08035",
+      "size": 12703
+    },
+    {
+      "path": "data/raw/nutrition.json",
+      "protected": false,
+      "sha256": "5c12a42e33c547602a019ca6d4f9ded4b76ed4e2768f55cc8f67a6b139e91b46",
+      "size": 36091
+    },
+    {
+      "path": "data/raw/nutrition_principles.json",
+      "protected": false,
+      "sha256": "bba217f1182f1a66cc515c562c2eaf8b2e0538a74edb5cdaa1d5911e3de0c4d2",
+      "size": 9645
+    },
+    {
+      "path": "data/raw/recipes.json",
+      "protected": false,
+      "sha256": "45b73ec53994517523ba3ae0ba67a27f5742c7c4a21daa4cc61dd2aadc97128c",
+      "size": 47963
+    },
+    {
+      "path": "data/raw/rules.json",
+      "protected": false,
+      "sha256": "f403a23feb837e77fee720291712ce2eee6747ccceccdc56c1c23c0c467fc803",
+      "size": 14293
+    },
+    {
+      "path": "data/raw/warmup_templates.json",
+      "protected": false,
+      "sha256": "2ce8fb5718b4f2998b50cabfe28ee014877e0c794522d31731f53bc0738db53b",
+      "size": 13424
+    },
+    {
+      "path": "docs/01-high-level-architecture-en.html",
+      "protected": false,
+      "sha256": "11ff4a565ddcdbcb7da5a81d650c1e8396c7071f17bd06fbc7d37dc75143eb18",
+      "size": 22316
+    },
+    {
+      "path": "docs/01-high-level-architecture.html",
+      "protected": false,
+      "sha256": "472024c64d8cdefba5dae0972ce77aca4f613e86a46f1905ba831c4e6cb289bf",
+      "size": 21056
+    },
+    {
+      "path": "docs/02-phase1-detailed-design-en.html",
+      "protected": false,
+      "sha256": "0ac4fdadc9efaca88410dbb1a032472d75a37006cfb7ff6fe2b9cde8f9e415f0",
+      "size": 66402
+    },
+    {
+      "path": "docs/02-phase1-detailed-design.html",
+      "protected": false,
+      "sha256": "a34f14b5f45fa8353da0b9da28a81fd156c384a83920512828aadd65bbc13a79",
+      "size": 63675
+    },
+    {
+      "path": "docs/kb/README.md",
+      "protected": false,
+      "sha256": "25a4dfa56e186e97294c9daee3ec35997932f3c0505970331dfe51d9e0767086",
+      "size": 3573
+    },
+    {
+      "path": "docs/kb/exercise-db.md",
+      "protected": false,
+      "sha256": "b4405174117bc7d85c6619e85c5e322d4e9161663a37ef31cecf23da3f38024a",
+      "size": 2200
+    },
+    {
+      "path": "docs/kb/nutrition-db.md",
+      "protected": false,
+      "sha256": "2cf81176cb4a99fa9e97e4a243d87581c8e87b30193fb2cb055a8b9d0549f676",
+      "size": 2422
+    },
+    {
+      "path": "docs/kb/principles-and-rules.md",
+      "protected": false,
+      "sha256": "f39bf7ed7834aae4cbfd3563b10478b0084b8f9a1d92934324d498bf32db1432",
+      "size": 2346
+    },
+    {
+      "path": "docs/kb/recipe-db.md",
+      "protected": false,
+      "sha256": "2c3496a6f59f8507d1973e05745597a6413dd98daa403e0928c5f2c2b3f82dea",
+      "size": 2224
+    },
+    {
+      "path": "docs/llm_token_limits.md",
+      "protected": false,
+      "sha256": "b77b7e7c0104ffd16ea43c50ea5318b1145d1d666d7a25f9bc3471a426863750",
+      "size": 6976
+    },
+    {
+      "path": "docs/review/CookingAgent/cooking-agent-review-1.html",
+      "protected": false,
+      "sha256": "f925cfa0c4b9727ed99f498c246166a29b8dee8fb19c719752d57ef327bcb8a2",
+      "size": 31736
+    },
+    {
+      "path": "docs/review/CookingAgent/cooking-agent-review-2.html",
+      "protected": false,
+      "sha256": "6f29226f52cc9478ff77e3d3707945b99b946651473d5ece7b0fe14e82f30f15",
+      "size": 26787
+    },
+    {
+      "path": "docs/review/CookingAgent/cooking-agent-review-3.html",
+      "protected": false,
+      "sha256": "af77f4a2d516f55488ee64c524000825d917ee0be97a6033ad8b50e75a3f7dff",
+      "size": 24334
+    },
+    {
+      "path": "docs/review/CookingAgent/cooking-agent-review-4.html",
+      "protected": false,
+      "sha256": "352dd5eb8c873d9979f5883f1e8a6fba0f29287b31db51b415e0e6d7ecdd8a93",
+      "size": 19523
+    },
+    {
+      "path": "docs/review/CookingAgent/cooking-agent-review-5.html",
+      "protected": false,
+      "sha256": "1c34caf996d1fa7736115c2bdd079f258bfb6ed6ebd65a2527952b4e84e8faa0",
+      "size": 24248
+    },
+    {
+      "path": "docs/review/CookingAgent/cooking-agent-review-6.html",
+      "protected": false,
+      "sha256": "05cf14634f81d032c739bb1694490bbc1e18f129ee99f85b1136c5442bc8691f",
+      "size": 22016
+    },
+    {
+      "path": "docs/review/CookingAgent/cooking-agent-review-7.html",
+      "protected": false,
+      "sha256": "600280efbcb755fb97c23b5577f93c60dec733987a85b1aa361a1358c33f900e",
+      "size": 18187
+    },
+    {
+      "path": "docs/review/GYMAgent/gymplan-v1-review.html",
+      "protected": false,
+      "sha256": "f6f998da5530022ad0842d1a1e08a4d151a172d08bce9faa406b6dd7c38124b6",
+      "size": 21293
+    },
+    {
+      "path": "docs/review/GYMAgent/gymplan-v2-review.html",
+      "protected": false,
+      "sha256": "93283dde78399e137ce59dcafa306853e2be71b900018ece56d56f526ba72b48",
+      "size": 15369
+    },
+    {
+      "path": "docs/src/agent-implementation.md",
+      "protected": false,
+      "sha256": "3f2348b5ff57ede608ca84d60a962ae77b943b70853fdfebb4189e4a1fc02351",
+      "size": 16468
+    },
+    {
+      "path": "docs/src/dependencies.md",
+      "protected": false,
+      "sha256": "608a8601de52535d5904793c5d3bd212a1280fe3c23248c57966aa6d67b6d454",
+      "size": 1711
+    },
+    {
+      "path": "docs/src/information-flow.md",
+      "protected": false,
+      "sha256": "764ec9eb6b0b17d24a79c7bef655169fe8e7af756f1c6092141a7e71dd928e8c",
+      "size": 9401
+    },
+    {
+      "path": "docs/src/knowledge-storage.md",
+      "protected": false,
+      "sha256": "5a71ec55b2eabc3ad579f006deb22036fac04c558e1af04b6b60898c07bb7eec",
+      "size": 5678
+    },
+    {
+      "path": "outputs/.gitkeep",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "pyproject.toml",
+      "protected": false,
+      "sha256": "ff90435dd6eb7872854506664ff0f100f7b16a932e54fc8a14b59f112ab2879d",
+      "size": 1456
+    },
+    {
+      "path": "scripts/generate_kb_data.py",
+      "protected": false,
+      "sha256": "a1f6aced4d1fa9b88274f8ec425e47946b1c04a28c772d31f5653e6b585e59f5",
+      "size": 12853
+    },
+    {
+      "path": "src/fitness_agent/__init__.py",
+      "protected": false,
+      "sha256": "c007b804ba4183d53df12aa4bb6ce15afabb496bc0f8464997d693b38e53c38c",
+      "size": 93
+    },
+    {
+      "path": "src/fitness_agent/cli.py",
+      "protected": false,
+      "sha256": "9e66bf7e114cade6738121baed78f27dcd99cd9b0bedd34151fc273c801647dc",
+      "size": 32200
+    },
+    {
+      "path": "src/fitness_agent/cooking/__init__.py",
+      "protected": false,
+      "sha256": "86f8088a551a125c560a55f1ab264fd42448d1ea2299ad6cb6ad168b8bb6f122",
+      "size": 84
+    },
+    {
+      "path": "src/fitness_agent/cooking/agent.py",
+      "protected": false,
+      "sha256": "3b81b69fae26c0b39a1639807fce8879e4e876cb9033df815c68e3ff4a444f96",
+      "size": 44234
+    },
+    {
+      "path": "src/fitness_agent/cooking/models.py",
+      "protected": false,
+      "sha256": "df49e329368312d6888a44f753c0c058a9ca7385a07906cb42d69d9ad06e3aec",
+      "size": 5989
+    },
+    {
+      "path": "src/fitness_agent/cooking/prompt.py",
+      "protected": false,
+      "sha256": "c12cb595850ed34108e39d96a47ec908d499afa1f350ee0ae5c8a93220f57fa7",
+      "size": 12186
+    },
+    {
+      "path": "src/fitness_agent/gym/__init__.py",
+      "protected": false,
+      "sha256": "8d3f83bcac9f69b275c8e3ca5b42130ceeb101d5d329f78a8c3669df32dda841",
+      "size": 74
+    },
+    {
+      "path": "src/fitness_agent/gym/agent.py",
+      "protected": false,
+      "sha256": "c39bfd2fb64b8b96ad9ce9abb10776edb6bbfd6ae84532356ee3ed3158612737",
+      "size": 25573
+    },
+    {
+      "path": "src/fitness_agent/gym/models.py",
+      "protected": false,
+      "sha256": "8085fa6b3dab2e1690709ea6c567b1eff6a2a7f76d7b13ec48ddefe58efe2a75",
+      "size": 7361
+    },
+    {
+      "path": "src/fitness_agent/gym/prompt.py",
+      "protected": false,
+      "sha256": "e6855d2da34658a99bffb0b259de30018ee7001702076ad4e55560021cdd4654",
+      "size": 13612
+    },
+    {
+      "path": "src/fitness_agent/knowledge_base/__init__.py",
+      "protected": false,
+      "sha256": "3d1b143942624fec283b929fd8979dd862e18aa4fbe243619a8cf96b875faee4",
+      "size": 72
+    },
+    {
+      "path": "src/fitness_agent/knowledge_base/loader.py",
+      "protected": false,
+      "sha256": "dd4d5081403419ed57fc83fd0a461a5db57273802916dc27c1a7b1df1b82c502",
+      "size": 29110
+    },
+    {
+      "path": "src/fitness_agent/knowledge_base/models.py",
+      "protected": false,
+      "sha256": "25ecf1c064cc13ef94a4fbc93944975a67771c63ef6284221d41698288b50359",
+      "size": 16909
+    },
+    {
+      "path": "src/fitness_agent/planner/__init__.py",
+      "protected": false,
+      "sha256": "a4c4cb0911fe216406675289d284abf754440aec1fee91a124ec4373b9d525eb",
+      "size": 57
+    },
+    {
+      "path": "src/fitness_agent/planner/agent.py",
+      "protected": false,
+      "sha256": "66ee8e67034711275e6f2c0f51cd564c2a59d889c4ac60c50b166694d37d6d3a",
+      "size": 18407
+    },
+    {
+      "path": "src/fitness_agent/planner/models.py",
+      "protected": false,
+      "sha256": "c5131b08a3aa93c3428d45b56abc2205b88bd38eb2594a4e2eb4227e466cbfa2",
+      "size": 5742
+    },
+    {
+      "path": "src/fitness_agent/planner/prompt.py",
+      "protected": false,
+      "sha256": "25fe68512a30e2cd383d1c31c3514a4377fba5b8e28620851523fa30057caa8b",
+      "size": 17230
+    },
+    {
+      "path": "src/fitness_agent/user/__init__.py",
+      "protected": false,
+      "sha256": "64d07534a7e09f32e079a0f93c9f814cc880d8b50a85bd37c4cb70e3d015d229",
+      "size": 72
+    },
+    {
+      "path": "src/fitness_agent/user/calculator.py",
+      "protected": false,
+      "sha256": "92761bcb9696076b01980228434f2f60b61ed8b393e8c4bd41369209cdaed52b",
+      "size": 5152
+    },
+    {
+      "path": "src/fitness_agent/user/models.py",
+      "protected": false,
+      "sha256": "680a47e9c37a848fd4b665adf05ff2ee6e8683f58146275f179a474ea09364cc",
+      "size": 3019
+    },
+    {
+      "path": "src/fitness_agent/user/onboarding.py",
+      "protected": false,
+      "sha256": "f042f963e1e93fe2d055e6798458fd02224e4f4e8a9d2fad2ec4d83f02adc35b",
+      "size": 14471
+    },
+    {
+      "path": "src/fitness_agent/utils/__init__.py",
+      "protected": false,
+      "sha256": "174d8c5458e8e0b0f80abc13aa2cb0236ae018807f6b427207d65aaa9f61d097",
+      "size": 62
+    },
+    {
+      "path": "src/fitness_agent/utils/config.py",
+      "protected": false,
+      "sha256": "52f4379bfef3dc6ab86746ba97211b142efd784ca983b05ac56e29fc0c6310f9",
+      "size": 847
+    },
+    {
+      "path": "src/fitness_agent/utils/llm_client.py",
+      "protected": false,
+      "sha256": "28a7841a8f8bea1d3f177d974a5c8cf6f44362a4aadc544776aec4d042fd38b0",
+      "size": 11267
+    },
+    {
+      "path": "src/fitness_agent/utils/logging.py",
+      "protected": false,
+      "sha256": "fd75f16c09cfa2638b649fb7aedd36960111d8b3c7dc89023a0c0112a8a44c3d",
+      "size": 454
+    },
+    {
+      "path": "src/fitness_agent/utils/text_parser.py",
+      "protected": false,
+      "sha256": "1bab15b67987b2a55cdfafdd68dec0e504f2eec4ed3a8b20d761607838f913bc",
+      "size": 3897
+    },
+    {
+      "path": "tests/__init__.py",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "tests/conftest.py",
+      "protected": false,
+      "sha256": "3c58b2d0f7308cd5db36f78ce8d3ad0533734724a91ac9c14e3322dc55240651",
+      "size": 947
+    },
+    {
+      "path": "tests/cooking/__init__.py",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "tests/cooking/test_agent.py",
+      "protected": false,
+      "sha256": "ca7aae75799e2c8f6355af24bf40260fa08eb09347505d86e1c48ecbefee1e61",
+      "size": 90453
+    },
+    {
+      "path": "tests/cooking/test_models.py",
+      "protected": false,
+      "sha256": "d5f6529b86eee3e6613739f064802a93fa6e5a87e98279cda4f0cbe867a808bb",
+      "size": 6723
+    },
+    {
+      "path": "tests/cooking/test_prompt.py",
+      "protected": false,
+      "sha256": "fb0db5f592fe3ec4eec6959094f8276eca95a9b5d7c75e5829ad6b2be86c4874",
+      "size": 8396
+    },
+    {
+      "path": "tests/data/.gitkeep",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "tests/data/anatomy.json",
+      "protected": false,
+      "sha256": "47080c00d6e6b277015e963dc102affe878436868776609bb1b8b69782da70af",
+      "size": 1675
+    },
+    {
+      "path": "tests/data/exercises.json",
+      "protected": false,
+      "sha256": "1999b7b87ffff8e4e3ae46dcbc75ed37d55c9c5e043cc11aa63daaa80ddc503e",
+      "size": 3159
+    },
+    {
+      "path": "tests/data/injury_profiles.json",
+      "protected": false,
+      "sha256": "678e0a1fcb2b2e3a0fe46ed65a914268d441f8b40f3ee6ca47e7187e27ff5eda",
+      "size": 1913
+    },
+    {
+      "path": "tests/data/nutrition.json",
+      "protected": false,
+      "sha256": "eb47c88837dac203b936f284b009eb1daab14aea01af4206097f05ef5ae8833f",
+      "size": 1475
+    },
+    {
+      "path": "tests/data/nutrition_principles.json",
+      "protected": false,
+      "sha256": "cfb1e54e5ad9e3a60adc5769979a000ba2dda94ee3999eb40801bf7d1166b271",
+      "size": 3103
+    },
+    {
+      "path": "tests/data/recipes.json",
+      "protected": false,
+      "sha256": "c04b05871f0fd3a8a46de7cba988795c68aebbd7d1c5ebf874c6501762ab1677",
+      "size": 6933
+    },
+    {
+      "path": "tests/data/rules.json",
+      "protected": false,
+      "sha256": "94ecc054577ac2df3039cc2f3dfee65521465de9ffd291ccc7064979757f4237",
+      "size": 2383
+    },
+    {
+      "path": "tests/data/warmup_templates.json",
+      "protected": false,
+      "sha256": "b7e9cd3929978bec1dc81be766d26ab0813c4387a143c011852ac24e21a038f1",
+      "size": 2087
+    },
+    {
+      "path": "tests/gym/__init__.py",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "tests/gym/test_agent.py",
+      "protected": false,
+      "sha256": "b199ad63e5da2f5c371f4cd41eb2849246ab559d0a12ce4c2ebd50b964e32bda",
+      "size": 26359
+    },
+    {
+      "path": "tests/gym/test_models.py",
+      "protected": false,
+      "sha256": "380fe3de491a2c9cf087be4346cea22638e0f2fabe94d076c4dceadb0743a455",
+      "size": 8346
+    },
+    {
+      "path": "tests/gym/test_prompt.py",
+      "protected": false,
+      "sha256": "a197d863260727a6908492942037b1d63fe4df3ab1f7425d1c6f3c32cb9add91",
+      "size": 11031
+    },
+    {
+      "path": "tests/knowledge_base/__init__.py",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "tests/knowledge_base/test_loader.py",
+      "protected": false,
+      "sha256": "1784a30eee1987d84d4493570b2639438409ff922cfb4c2477e9ab8b47445585",
+      "size": 30478
+    },
+    {
+      "path": "tests/knowledge_base/test_models.py",
+      "protected": false,
+      "sha256": "6579a07f5f967a639c269bbc5e42eefbb442a08a3346d9db6e0a225016003a68",
+      "size": 6445
+    },
+    {
+      "path": "tests/outputs/.gitkeep",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "tests/planner/__init__.py",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "tests/planner/test_agent.py",
+      "protected": false,
+      "sha256": "b4b6f864a87752a598aa3efffb48517a2eb69988855a9bf42fa915ac05579e0b",
+      "size": 32356
+    },
+    {
+      "path": "tests/planner/test_models.py",
+      "protected": false,
+      "sha256": "dd0557068fae5ccb6802f1e836701c8ee5bcd9719b7e56200aea59c84449f2bd",
+      "size": 8648
+    },
+    {
+      "path": "tests/planner/test_prompt.py",
+      "protected": false,
+      "sha256": "7c68fdb1a3faac8b63a203e1bb8c77c6f832f4197554952b389c6bd562c507ab",
+      "size": 9200
+    },
+    {
+      "path": "tests/test_smoke.py",
+      "protected": false,
+      "sha256": "65768e5e983f5a43476dc5bf124fe30505ed26070ee62493e8d30a4c3cf2500c",
+      "size": 442
+    },
+    {
+      "path": "tests/user/__init__.py",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "tests/user/test_calculator.py",
+      "protected": false,
+      "sha256": "9e237eca39408a89d104794375dfa69d4de791dceefa93cc5614573930767b27",
+      "size": 7654
+    },
+    {
+      "path": "tests/user/test_models.py",
+      "protected": false,
+      "sha256": "0605fed7180b6915309b6835676710e7cc74be9b503d33953070757c91e23bd7",
+      "size": 5968
+    },
+    {
+      "path": "tests/user/test_onboarding.py",
+      "protected": false,
+      "sha256": "1d936ebde52c624341f98be21a72b116d46ce318287c3bfedda836ec050ac0b1",
+      "size": 13731
+    },
+    {
+      "path": "tests/utils/__init__.py",
+      "protected": false,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "tests/utils/test_llm_client.py",
+      "protected": false,
+      "sha256": "e7a1a9137ea334a2ff7bc23b691b97d97c1ab9107fde6c54f0f90410aa56bf51",
+      "size": 10972
+    },
+    {
+      "path": "tests/utils/test_text_parser.py",
+      "protected": false,
+      "sha256": "9808ecf7ea6f3bf982b3b78e15a40c5e19ff0538de3e81e0b750063024bbfc11",
+      "size": 3770
+    },
+    {
+      "path": "uv.lock",
+      "protected": false,
+      "sha256": "498f43254ec23a0a9647bc70150515f1321f802e81599902076260bd43a02006",
+      "size": 331032
+    }
+  ]
+}

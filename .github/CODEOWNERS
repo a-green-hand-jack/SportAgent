@@ -1,0 +1,17 @@
+# CODEOWNERS —— 高风险控制面变更需 owner review。
+# 派生项目请把 @a-green-hand-jack 替换成该项目真实 GitHub 用户/团队。
+
+# 默认 owner
+*                       @a-green-hand-jack
+
+# doctrine / 能力 / 门禁：改动影响所有 agent 行为，必须 owner review
+/.agent/                @a-green-hand-jack
+/.claude/               @a-green-hand-jack
+/scripts/               @a-green-hand-jack
+/AGENTS.md              @a-green-hand-jack
+/CLAUDE.md              @a-green-hand-jack
+/ANATOMY.md             @a-green-hand-jack
+
+# 研究事实与对外承诺：改动影响 claim/evidence 口径
+/lab/research/          @a-green-hand-jack
+/deliverables/          @a-green-hand-jack

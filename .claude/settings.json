@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Agent(general-purpose)",
+      "Edit(lab/data/**)",
+      "Write(lab/data/**)",
+      "Edit(lab/runs/**)",
+      "Write(lab/runs/**)",
+      "Edit(lab/models/**)",
+      "Write(lab/models/**)",
+      "Edit(lab/infra/private/**)",
+      "Write(lab/infra/private/**)",
+      "Edit(checkpoints/**)",
+      "Write(checkpoints/**)",
+      "Edit(wandb/**)",
+      "Write(wandb/**)",
+      "Edit(.env)",
+      "Write(.env)",
+      "Bash(sudo *)",
+      "Bash(curl *| sh)",
+      "Bash(pip install *)"
+    ],
+    "ask": [
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git reset *)",
+      "Bash(git clean *)",
+      "Bash(git rebase *)",
+      "Bash(git merge *)",
+      "Bash(git branch -d *)",
+      "Bash(git branch -D *)",
+      "Bash(git worktree remove *)",
+      "Bash(uv add *)",
+      "Bash(uv sync *)",
+      "Bash(uv remove *)",
+      "Bash(kill *)",
+      "Bash(sbatch *)",
+      "Bash(runai *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)"
+    ],
+    "allow": [
+      "Edit(**)",
+      "Write(**)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show *)",
+      "Bash(git branch)",
+      "Bash(git branch -v*)",
+      "Bash(git branch -a*)",
+      "Bash(git branch --list*)",
+      "Bash(git branch --show-current)",
+      "Bash(git remote -v)",
+      "Bash(git remote show *)",
+      "Bash(git rev-parse *)",
+      "Bash(git ls-files*)",
+      "Bash(git ls-tree *)",
+      "Bash(git cat-file *)",
+      "Bash(git blame *)",
+      "Bash(git describe*)",
+      "Bash(git shortlog*)",
+      "Bash(git config --get *)",
+      "Bash(git config --list)",
+      "Bash(git config -l)",
+      "Bash(git stash list)",
+      "Bash(git stash show *)",
+      "Bash(git tag)",
+      "Bash(git tag --list*)",
+      "Bash(git reflog*)",
+      "Bash(git for-each-ref*)",
+      "Bash(git merge-base *)",
+      "Bash(git rev-list *)",
+      "Bash(git show-ref*)",
+      "Bash(git worktree list)",
+      "Bash(git worktree add *)",
+      "Bash(git fetch*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git stash)",
+      "Bash(git stash push *)",
+      "Bash(git stash pop*)",
+      "Bash(git restore --staged *)",
+      "Bash(git push *)",
+      "Bash(ls*)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(find *)",
+      "Bash(tree*)",
+      "Bash(file *)",
+      "Bash(stat *)",
+      "Bash(du *)",
+      "Bash(df*)",
+      "Bash(pwd)",
+      "Bash(which *)",
+      "Bash(command -v *)",
+      "Bash(type *)",
+      "Bash(echo *)",
+      "Bash(printf *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(cut *)",
+      "Bash(tr *)",
+      "Bash(column *)",
+      "Bash(nl *)",
+      "Bash(basename *)",
+      "Bash(dirname *)",
+      "Bash(realpath *)",
+      "Bash(readlink *)",
+      "Bash(date*)",
+      "Bash(env)",
+      "Bash(printenv*)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(jq *)",
+      "Bash(yq *)",
+      "Bash(diff *)",
+      "Bash(comm *)",
+      "Bash(md5sum *)",
+      "Bash(sha256sum *)",
+      "Bash(cksum *)",
+      "Bash(pytest*)",
+      "Bash(uv run *)",
+      "Bash(uv pip list*)",
+      "Bash(uv pip show*)",
+      "Bash(uv tree*)",
+      "Bash(uv lock --check*)",
+      "Bash(uv --version)",
+      "Bash(python -c *)",
+      "Bash(python3 -c *)",
+      "Bash(python --version)",
+      "Bash(python3 --version)",
+      "Bash(python -m pytest*)",
+      "Bash(python3 -m pytest*)",
+      "Bash(python -m ruff*)",
+      "Bash(python -m mypy*)",
+      "Bash(python -m json.tool*)",
+      "Bash(python -m venv *)",
+      "Bash(python scripts/*)",
+      "Bash(python3 scripts/*)",
+      "Bash(ruff *)",
+      "Bash(mypy *)",
+      "Bash(pyright *)",
+      "Bash(pre-commit run *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(rm -rf __pycache__*)",
+      "Bash(rm -rf .pytest_cache*)",
+      "Bash(rm -rf .ruff_cache*)",
+      "Bash(rm -rf .mypy_cache*)",
+      "Bash(rm -rf build*)",
+      "Bash(rm -rf dist*)",
+      "Bash(python scripts/check-agent-harness.py *)",
+      "Bash(python scripts/validate-governance.py *)",
+      "Bash(python scripts/check-anatomy-drift.py *)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/statusline.sh\""
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre_tool_guard.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ruff format \"$CLAUDE_FILE_PATHS\" 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/zh_review_advisory.py\""
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre_compact_memory_check.py\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/subagent_report_index.py\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/context_threshold_notice.py\""
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/agent_identity_hook.py\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/context_continuity.py\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/agent_identity_hook.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

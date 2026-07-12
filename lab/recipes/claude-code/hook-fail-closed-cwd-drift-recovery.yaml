@@ -1,0 +1,68 @@
+# Claude Code workflow recipe. Schema ref: lab/recipes/claude-code/EXAMPLE.yaml
+# status: candidate | provisional | stable | deprecated
+
+id: cc-recipe-hook-fail-closed-cwd-drift-recovery
+title: "cwd 漂移进嵌套 git 仓库触发 hook fail-closed 时，用 ExitWorktree/EnterWorktree 脱困，不要重试 Bash cd"
+status: candidate
+
+observed:
+  date: 2026-07-09
+  product: Claude Code
+  version: "<claude --version>"  # 未在 trace 中记录，复测时补齐
+
+claim: >
+  当 `.claude/settings.json` 的 PreToolUse hook 命令是裸相对路径（如
+  `python3 .claude/hooks/pre_tool_guard.py`），而 Bash 用非 subshell 的顶层
+  `cd <nested-repo> && ...` 命令使 cwd 漂移进一个嵌套的、有自己 `.git` 的目录（例如
+  clone 进来的 vendored 仓库）之后：下一次 Bash/Edit/Write 调用会被 hook 整体 fail-closed
+  拦截，报错内容是"找不到 hook 脚本文件"。此时继续在同一个被拦截的 Bash 通道里重试
+  `cd <repo根>` **无法恢复**——hook 在命令体执行前就已经报错，`cd` 本身根本没机会跑，形成自锁。
+  唯一在本次 trace 中验证有效的脱困路径是 `ExitWorktree(action=keep)` 后
+  `EnterWorktree(path=<worktree 根>)`：这两个工具不经过这条 hook，能让 cwd 重置。
+
+preconditions:
+  - 项目 hook 命令是裸相对路径，不是用 `$CLAUDE_PROJECT_DIR` 锚定的绝对路径
+  - 顶层（非 subshell）Bash 命令把 cwd 留在了一个嵌套的、有自己 `.git` 的目录里
+  - 下一次工具调用报错是"找不到 hook 脚本文件"这类基础设施错误，不是任务本身的逻辑错误
+
+steps:
+  - 看到 hook 报错是"文件不存在"类型时，先假设是 cwd 漂移 + hook 相对路径失效，不是任务出错
+  - 不要在同一个被拦截的 Bash 通道里反复重试 `cd` 或换等价命令——hook 会在命令体执行前拦截，重试无意义
+  - 用 `ExitWorktree(action=keep)` 退出当前 worktree（保留未提交改动）
+  - 用 `EnterWorktree(path=<worktree 根路径>)` 重新进入，cwd 重置到 worktree 根，hook 恢复正常
+  - 事后修复根因：把 hook 命令改成 `$CLAUDE_PROJECT_DIR` 锚定绝对路径，避免同类漂移再次触发
+
+evidence:
+  traces:
+    - lab/traces/human-cc/2026-07-09/hook-cwd-drift-stuck-recovery/trace.md  # 事件序列第一轮（第 8-18 行）
+  commits:
+    - "6fed240  # 上游修复：hook 命令改为 $CLAUDE_PROJECT_DIR 锚定绝对路径，经 PR #1 squash-merge 进 main"
+
+retest:
+  task: >
+    在一个装了裸相对路径 hook 命令的沙盒 repo 里，clone 一个有自己 .git 的嵌套仓库，用顶层
+    `cd` 命令漂移进去，确认下一次 Bash 调用确实被 hook fail-closed 拦截；然后分别验证
+    (a) 在同一 Bash 通道里重试 `cd <repo根>` 不能恢复，(b) `ExitWorktree(keep)` →
+    `EnterWorktree(path=...)` 能恢复正常调用。
+  positive_case: >
+    未修复（hook 仍是裸相对路径）的沙盒 repo 里，重现 cwd 漂移 → fail-closed →
+    ExitWorktree/EnterWorktree 脱困成功。
+  boundary_case: >
+    cwd 漂移进的嵌套目录如果不是独立 git 仓库（没有自己 `.git`），是否仍会触发同样的
+    fail-closed，trace 未验证——"嵌套 git 仓库"这个属性可能不是触发的必要条件，可能只是相对
+    路径在新 cwd 下解析失败就够了，需要单独测试排除。
+  negative_case: >
+    若 hook 报错内容是任务本身的真实失败（例如 validator 确实检测到治理问题，或 lint 真的失败），
+    ExitWorktree/EnterWorktree 不会修复它，只是逃避 cwd，不应套用本配方。
+
+counterexamples:
+  - "hook 报错是任务真实失败（例如 `validate-governance` 检测到真实治理问题），Exit/EnterWorktree 不解决问题，不要套用"
+  - "hook 命令已经用 $CLAUDE_PROJECT_DIR 锚定绝对路径的 repo（修复落地后的新 repo/新 session），同样的 cwd 漂移预期不再触发 fail-closed，本配方的触发前提不再成立——但验证这一点需要全新 session（见配方 cc-recipe-settings-hook-reload-needs-new-session），不能在同一 session 里验证"
+  - "证据仅来自一次会话内的一轮复现（未修复前），未跨多个独立 session、多个不同 hook 实现验证，证据强度有限，故状态为 candidate"
+
+gap: >
+  只观察到一次 session、一种 hook 脚本（pre_tool_guard.py）、一种嵌套仓库触发方式。未验证
+  "嵌套 git 仓库"是否为必要条件，也未验证是否有其他工具（除 Exit/EnterWorktree 外）同样不经过
+  该 hook。跨任务类别/跨 CC 版本前不应升级到 provisional 以上。
+
+expires_at: 2026-08-09

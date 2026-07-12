@@ -1,0 +1,20 @@
+# 研究 claim 台账。每个 claim 是这个项目「主张什么」的可追溯单元。
+# 一进 repo，agent 应从这里知道当前主张、支持它的 evidence、是否已被验证。
+# 证据分层：log < metric < table < figure < paper claim。见 .agent/principles.md。
+#
+# status: proposed | partial | supported | refuted | retired
+# evidence: 指向 evidence.yaml 的 evidence id 列表（可为空表示尚无证据）
+# verified_by_fresh_reviewer: paper-grade claim 必须为 true
+
+claims:
+  - id: claim-000
+    title: "<示例：方法 X 在 benchmark Y 上超过 baseline Z>"
+    status: proposed
+    hypothesis: "<可证伪的假设一句话>"
+    scope: "<适用范围 / 限制条件>"
+    evidence: []            # e.g. [ev-001, ev-002]
+    depends_on: []          # 依赖的其他 claim id
+    deliverable_refs: []    # 指向 deliverables/index.md 的条目
+    verified_by_fresh_reviewer: false
+    owner: "<谁负责这个 claim>"
+    updated: "YYYY-MM-DD"

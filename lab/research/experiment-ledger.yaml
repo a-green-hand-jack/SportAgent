@@ -1,0 +1,23 @@
+# 实验台账。每个 run 一条。experiment card 落地为这里的一行 + lab/code/experiments/<id>.md。
+# run bytes（logs/checkpoints/outputs）不进 Git，只留 index/summary（见 lab/runs/、lab/artifacts/）。
+#
+# status: planned | running | done | failed | superseded
+# promote: no | unclear | yes  （是否应升级为 evidence/paper claim；yes 走 human gate）
+
+experiments:
+  - id: run-000
+    question: "<这个 run 测试哪个 claim？>"
+    hypothesis: "<假设>"
+    status: planned
+    commit: "<git sha>"
+    config: "<lab/code/configs/... 路径>"
+    data_split: "<dataset-index split id>"
+    baseline: "<对比对象>"
+    launch_ref: "<lab/infra/launch/ 里的可复现命令>"
+    tracker: "<wandb/mlflow run id 或 name>"
+    expected_runtime: "<预计时长>"
+    success_metric: "<成功判据>"
+    failure_signals: [OOM, NaN, metric-stall, missing-checkpoint, data-mismatch]
+    run_summary: "<lab/code/experiments/<id>.md 或 run summary 路径>"
+    promote: no
+    updated: "YYYY-MM-DD"

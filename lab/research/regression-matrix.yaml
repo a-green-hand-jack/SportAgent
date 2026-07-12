@@ -1,0 +1,16 @@
+# 回归矩阵。防止「修一个 bug 改变了实验结论」而无人察觉。
+# 把关键 claim / 关键实现路径 与「能证明它没退化的检查」绑定。
+#
+# check_kind: test | smoke | metric-threshold | numerical-equivalence
+# last_status: unknown | pass | fail
+
+regressions:
+  - id: reg-000
+    guards_claim: claim-000
+    code_path: "<lab/code/src/... 关键实现>"
+    check_kind: smoke
+    command: "<例如 uv run pytest lab/code/tests/test_smoke.py>"
+    threshold: "<若是 metric-threshold：容差/下界>"
+    last_status: unknown
+    last_run: "YYYY-MM-DD"
+    notes: "<改这段代码前必须重跑此检查>"

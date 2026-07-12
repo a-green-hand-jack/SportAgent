@@ -1,0 +1,65 @@
+# Claude Code workflow recipe. Schema ref: lab/recipes/claude-code/EXAMPLE.yaml
+# status: candidate | provisional | stable | deprecated
+
+id: cc-recipe-settings-hook-reload-needs-new-session
+title: "改了 .claude/settings.json 的 hook 配置后，验证生效必须开全新 session，不能靠同 session 内 Exit/EnterWorktree"
+status: candidate
+
+observed:
+  date: 2026-07-09
+  product: Claude Code
+  version: "<claude --version>"  # 未在 trace 中记录，复测时补齐
+
+claim: >
+  在同一个已经运行中的 Claude Code session 里，即使已经用 Read/git 确认
+  `.claude/settings.json` 磁盘内容确实更新为修复后的版本（例如 hook 命令从裸相对路径改成
+  `$CLAUDE_PROJECT_DIR` 锚定绝对路径），故意重现同一触发操作仍然复现了修复前的报错，报错信息
+  里的命令还是旧的裸相对路径。用 `ExitWorktree(action=keep)` → `EnterWorktree(path=...)`
+  重新进入同一个 worktree 也不会让 hook 配置重新生效，会再次复现同样的报错。这说明 hook 配置
+  在 session 开始时就被固定，至少在 Exit/EnterWorktree 这个粒度不会重新读取
+  `.claude/settings.json`；要验证 hook/settings 修复是否真的生效，必须开一个全新 session。
+
+preconditions:
+  - 需要验证的是"当前正在运行的 session 里、中途被修改过（git merge / 直接编辑）的
+    `.claude/settings.json` 的 hook 或 statusLine 配置"是否生效
+  - 已经用 Read 或 git diff/show 确认磁盘内容确实是修复后的新版本（排除"改动没落盘"这种更基础的问题）
+
+steps:
+  - 确认 `.claude/settings.json` 磁盘内容确实是修复后的版本
+  - 不要在同一个已经运行的 session 里用 ExitWorktree/EnterWorktree 尝试"刷新"hook 配置来验证修复——观察到的行为是这不会重新加载
+  - 需要验证 hook/settings 修复时，结束当前 session，开一个全新 session
+  - 在全新 session 里重现同样的触发操作，确认报错确实消失，再判定修复对新 session 生效
+  - 在报告/PR 描述里注明"本修复已在全新 session 验证"而不是"已在本 session 内用 Exit/EnterWorktree 验证"，避免误导 review
+
+evidence:
+  traces:
+    - lab/traces/human-cc/2026-07-09/hook-cwd-drift-stuck-recovery/trace.md  # 事件序列第二轮（第 26-41 行），含结论段（第 36-43 行）
+  commits:
+    - "6fed240"
+
+retest:
+  task: >
+    在一个正在运行的 session 里，编辑 `.claude/settings.json` 的 hook 命令（或 merge 进这样一个
+    改动），用 Read 确认磁盘内容已更新；不退出 Claude Code，仅用 ExitWorktree/EnterWorktree
+    重新进入同一 worktree，重现原触发条件，记录是否仍复现旧报错；再开一个全新 session 重现同一
+    操作，记录报错是否消失。
+  positive_case: >
+    同一 session 内，Exit/EnterWorktree 后重现原触发条件，仍复现旧报错（旧的裸相对路径命令）——
+    与 trace 记录一致，即本配方成立。
+  boundary_case: >
+    是否存在比"全新 session"更轻量的刷新方式（例如某个专门的 config-reload 工具/命令），trace
+    里没有证据排除这种可能，只是没有观察到 Exit/EnterWorktree 起作用；未测试是否有其他
+    session-内 操作能刷新。
+  negative_case: >
+    若验证的改动不是 hook/settings.json 相关（例如只是改了某个 skill 文档或 subagent 说明的纯
+    文本内容），不需要开新 session 验证，本配方不适用——它只覆盖 hook/settings 生效时机这一类问题。
+
+counterexamples:
+  - "验证的是非 hook/settings 类改动（纯文档、纯 skill 描述改动），不需要新 session，本配方不适用"
+  - "只观察到一次会话内复现（一次 merge + 一次 Exit/EnterWorktree 尝试），未系统性测试是否存在其他刷新粒度，证据只到‘Exit/EnterWorktree 这个粒度不刷新’，不能外推到‘任何 session 内操作都不能刷新’"
+
+gap: >
+  单一 trace、单一 session 观察，未跨多个 Claude Code 版本、多个 hook 配置改动类型验证。未排除
+  "是否有专门的 reload 机制"这一可能性。跨任务类别/跨版本前不应升级到 provisional 以上。
+
+expires_at: 2026-08-09

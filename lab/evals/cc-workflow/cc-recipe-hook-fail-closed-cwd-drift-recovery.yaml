@@ -1,0 +1,27 @@
+# recipe 复测任务。回填自 lab/recipes/claude-code/hook-fail-closed-cwd-drift-recovery.yaml
+# 的 retest: 字段，转写为 lab/evals/cc-workflow/EXAMPLE.yaml 的 schema，不新增场景。
+# recipe 文件已随本 PR 一起从 worktree-case+elf-template-replay 分支原样带入
+# lab/recipes/claude-code/，recipe_id 引用不再悬空。
+
+recipe_id: cc-recipe-hook-fail-closed-cwd-drift-recovery
+eval_id: hook-fail-closed-cwd-drift-recovery
+cases:
+  - kind: positive
+    name: "未修复 repo 里 cwd 漂移触发 fail-closed，Exit/EnterWorktree 脱困成功"
+    setup: "沙盒 repo 的 PreToolUse hook 命令仍是裸相对路径（未套用 $CLAUDE_PROJECT_DIR 锚定修复），clone 一个带自己 .git 的嵌套仓库到 repo 内"
+    procedure: >
+      用顶层（非 subshell）Bash `cd <nested-repo> && ...` 把 cwd 漂移进嵌套仓库，确认下一次
+      Bash/Edit/Write 调用被 hook fail-closed 拦截（报错为"找不到 hook 脚本文件"）；在同一
+      被拦截的 Bash 通道里重试 `cd <repo根>` 确认无法恢复；再用 `ExitWorktree(action=keep)`
+      → `EnterWorktree(path=<worktree 根>)` 尝试恢复
+    pass_if: "同通道重试 cd 确认无法恢复；ExitWorktree/EnterWorktree 之后 cwd 重置、hook 恢复正常，后续调用不再被拦截"
+  - kind: boundary
+    name: "cwd 漂移进的嵌套目录不是独立 git 仓库"
+    setup: "同一沙盒 repo（裸相对路径 hook 命令），但 cwd 漂移的目标目录换成一个没有自己 .git 的普通子目录，而非 vendored 仓库"
+    pass_if: "记录是否仍触发同样的 fail-closed；若仍触发，说明「嵌套 git 仓库」不是必要条件，只是相对路径在新 cwd 下解析失败即可触发，需要据此更新本配方的 preconditions"
+  - kind: negative
+    name: "hook 报错是任务本身的真实失败，不应套用本配方"
+    setup: "同一沙盒 repo 里制造一个真实的治理问题（例如让 validate-governance 检测到真实违规）或真实 lint 失败，而非 cwd 漂移"
+    pass_if: "确认 ExitWorktree/EnterWorktree 不会让报错消失（因为问题不是 cwd 漂移，而是任务本身逻辑错误），验证本配方不应被误套用到这种情形"
+judge: "human 或 fresh verifier 依据上面 pass_if 判定；连续通过 >=2 次可推进至 provisional（见 .agent/claude-code-recipe-policy.md）"
+last_results: []

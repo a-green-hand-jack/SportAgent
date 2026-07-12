@@ -1,0 +1,15 @@
+# checkpoint 索引。checkpoint bytes 永不进 Git；这里是唯一的逻辑真相来源。
+# 删除/移动 checkpoint bytes 走 human gate，agent 只生成归档提案。
+
+checkpoints:
+  - id: ckpt-000
+    storage_path: "<集群/云路径，bytes 不进 Git>"
+    from_run: "<run-id>"
+    step: "<训练 step/epoch>"
+    commit: "<git sha>"
+    config: "<config 路径>"
+    metric: "<选它的依据 metric>"
+    status: unknown        # active | superseded | archived | unknown
+    supersedes: "<被它取代的 ckpt id，若有>"
+    archive_after: "<日期/条件>"
+    updated: "YYYY-MM-DD"

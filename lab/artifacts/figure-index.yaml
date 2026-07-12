@@ -1,0 +1,12 @@
+# 图索引。防止「figure 对应哪个 commit / run」被遗忘。
+
+figures:
+  - id: figure-000
+    caption: "<图标题/用途>"
+    source_path: "<生成脚本 / 原始数据路径>"
+    generated_by_run: "<run-id>"
+    commit: "<git sha>"
+    appears_in: "<deliverables/... 或 paper section>"
+    supports_claim: "<claim id>"
+    status: unknown        # active | superseded | archived | unknown
+    updated: "YYYY-MM-DD"

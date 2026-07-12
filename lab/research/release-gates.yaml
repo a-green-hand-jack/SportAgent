@@ -1,0 +1,17 @@
+# 发布门禁。把「什么条件下一个 claim / deliverable 才能对外」写成可检查条目。
+# deliverables/ 不能超过这里放行的证据（no overclaim）。release/promote 是 human gate。
+#
+# gate_status: open | passed | blocked
+
+gates:
+  - id: gate-000
+    for_claim: claim-000
+    for_deliverable: "<deliverables/index.md 条目 id，若适用>"
+    requirements:
+      - "evidence.yaml 中有 grade >= table 的支撑证据"
+      - "verified_by_fresh_reviewer = true"
+      - "regression-matrix 相关检查 last_status = pass"
+      - "caveats 已在 deliverable 中如实陈述"
+    gate_status: open
+    approved_by: "<human，批准记录进 human/decisions/>"
+    updated: "YYYY-MM-DD"

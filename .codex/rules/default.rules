@@ -1,0 +1,98 @@
+# Codex execpolicy rules for this repo.
+# Hook scripts remain the safety floor; these rules provide the prompt/deny layer.
+
+prefix_rule(
+    pattern = ["sudo"],
+    decision = "forbidden",
+    justification = "Privilege escalation is forbidden by .agent/action-boundary.md.",
+)
+
+prefix_rule(
+    pattern = ["pip", "install"],
+    decision = "forbidden",
+    justification = "Use `uv add` instead of pip install so dependency changes are reviewable.",
+)
+
+prefix_rule(
+    pattern = ["pip3", "install"],
+    decision = "forbidden",
+    justification = "Use `uv add` instead of pip install so dependency changes are reviewable.",
+)
+
+prefix_rule(
+    pattern = [["python", "python3"], "-m", "pip", "install"],
+    decision = "forbidden",
+    justification = "Use `uv add` instead of python -m pip install.",
+)
+
+prefix_rule(
+    pattern = ["git", ["checkout", "switch", "reset", "clean", "rebase", "merge"]],
+    decision = "prompt",
+    justification = "History or worktree-changing git commands need human awareness.",
+)
+
+prefix_rule(
+    pattern = ["git", "branch", ["-d", "-D"]],
+    decision = "prompt",
+    justification = "Deleting branches needs confirmation.",
+)
+
+prefix_rule(
+    pattern = ["git", "worktree", "remove"],
+    decision = "prompt",
+    justification = "Removing worktrees needs confirmation.",
+)
+
+prefix_rule(
+    pattern = ["uv", ["add", "sync", "remove"]],
+    decision = "prompt",
+    justification = "Dependency/environment changes need confirmation.",
+)
+
+prefix_rule(
+    pattern = [["kill", "sbatch", "runai"]],
+    decision = "prompt",
+    justification = "Compute side effects need human approval.",
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["create", "merge"]],
+    decision = "prompt",
+    justification = "PR creation/merge is an external collaboration side effect.",
+)
+
+prefix_rule(
+    pattern = [["rg", "ls", "pwd", "cat", "sed", "head", "tail", "wc", "stat", "find"]],
+    decision = "allow",
+    justification = "Low-risk local inspection commands.",
+)
+
+prefix_rule(
+    pattern = ["git", ["status", "diff", "log", "show", "branch", "remote", "rev-parse", "ls-files", "blame", "fetch", "worktree"]],
+    decision = "allow",
+    justification = "Low-risk git inspection commands; hook still guards protected pushes and destructive paths.",
+)
+
+prefix_rule(
+    pattern = [["python", "python3"], "scripts/validate-governance.py"],
+    decision = "allow",
+    justification = "Repo governance validator.",
+)
+
+prefix_rule(
+    pattern = [["python", "python3"], "scripts/check-agent-harness.py"],
+    decision = "allow",
+    justification = "Repo harness validator.",
+)
+
+prefix_rule(
+    pattern = [["python", "python3"], "scripts/check-anatomy-drift.py"],
+    decision = "allow",
+    justification = "Repo anatomy validator.",
+)
+
+prefix_rule(
+    pattern = [["python", "python3"], "scripts/sync-codex-adapters.py"],
+    decision = "allow",
+    justification = "Regenerates checked-in Codex adapter files from canonical .claude sources.",
+)

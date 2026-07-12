@@ -1,0 +1,12 @@
+# trace 索引。实验 trace / agent trace / human-cc trace 的逻辑索引。
+# human-cc trace 原始文件在 lab/traces/human-cc/，用于 recipe 提炼（见 .agent/claude-code-recipe-policy.md）。
+
+traces:
+  - id: trace-000
+    kind: human-cc        # experiment | agent | human-cc
+    path: "<lab/traces/human-cc/<date>/<session>/ 或其他>"
+    summary: "<这个 trace 记录了什么>"
+    linked_run: "<run-id，若适用>"
+    linked_recipe: "<lab/recipes/claude-code/<id>，若已提炼>"
+    status: unknown        # active | superseded | archived | unknown
+    updated: "YYYY-MM-DD"

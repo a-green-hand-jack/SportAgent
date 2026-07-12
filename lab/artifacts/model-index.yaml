@@ -1,0 +1,14 @@
+# 模型（逻辑）索引。模型 bytes 不进 Git（见根 .gitignore、lab/models/）。
+# 这里记录逻辑身份与来源，checkpoint 细节见 lab/models/checkpoint-index.yaml。
+
+models:
+  - id: model-000
+    name: "<模型逻辑名>"
+    storage_path: "<权重 URI / 集群路径>"
+    checkpoint_ref: "<checkpoint-index 里的 id>"
+    trained_by_run: "<run-id>"
+    commit: "<git sha>"
+    config: "<config 路径>"
+    supports: "<claim id>"
+    status: unknown        # active | superseded | archived | unknown
+    updated: "YYYY-MM-DD"

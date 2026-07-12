@@ -1,0 +1,76 @@
+# 多 case 模板压力测试登记账。
+# 流程见 .claude/skills/template-stress-test/SKILL.md；
+# 变更幅度 -> 测试深度的分级见 .agent/template-stress-test-policy.md。
+#
+# 定位：human/agent 纪律面维护的记录，不受 scripts/validate-governance.py 覆盖
+# （该脚本的 check_yaml() 只扫 lab/research|artifacts|data|models 四个目录）。
+# 这与 lab/recipes/claude-code/*.yaml、lab/evals/cc-workflow/*.yaml 同一定位，
+# 不是机器强制的 release gate。
+#
+# depth 取值：doc-only | targeted-smoke | adversarial-probe-matrix | full-case-replay
+#   （对应 .agent/template-stress-test-policy.md 的 4 档分级）
+# status 取值：complete | partial | superseded
+
+cases:
+  - id: elf-template-case-replay
+    case_source: "lillian039/ELF（PyTorch/JAX 训练项目，外部真实公开仓库，只读引用）"
+    template_commit_range: "fc18318..18281c1"
+    branch: worktree-case+elf-template-replay
+    depth: full-case-replay
+    rounds: 4
+    date: "2026-07-09"
+    findings_summary: >
+      F1-F19：证据链分级按预期更严格（F1）；hook 相对路径自锁 bug 及同类实例（F2/F11，
+      已修复，commit 6fed240/bd1266a）；same-commit 闸门只认直接父目录的已知设计边界
+      （F3）；branch-reporter 输出未登记进 ANATOMY（F4，round4 补修，commit 18281c1）；
+      缺 reference/research-narrative/外部 vendor 位置约定（F5/F6，已写成 ADR）；
+      subagent 因 cwd 不持久化误写主仓库（F13/F19，已在 4 处加 pwd 自查 mitigation，
+      commit f523992）；release-gates/regression-matrix 缺引用校验（P1-4，已修复，
+      commit 62a9413）；3 处 skill-实践漂移（F17，已修复，commit f523992）；F2 修复的
+      全新顶层 session 复验（F10/F15 遗留项，round4 用真实嵌套仓库 cwd 漂移场景复现，
+      Bash/Write/Edit 三种工具均正常，已完全闭环）；`sub-agent-maker-agent` 重试
+      （round4，真实评估 8 个候选模式，结论无需新 draft）。详见 report。
+    report: lab/docs/audits/agent-native-template-functional-test-report.md
+    probe_log: lab/docs/audits/stress-probe-catalog.md
+    status: complete
+  - id: agent-r1-adoption-replay
+    case_source: "AgentR1/Agent-R1（agent-RL / ML-research 公开仓库，真实 existing repo adoption replay）"
+    template_commit_range: "93fabae（adoption workflow feature）; case commit 5c8850f"
+    branch: worktree-case+agent-r1-adoption-replay
+    depth: targeted-smoke
+    rounds: 1
+    date: "2026-07-09"
+    findings_summary: >
+      新增 `adopt-existing-repo` 迁移能力后，用 Agent-R1 commit 85e0099 做真实 replay，
+      并将迁移后 case 固化为 template repo branch `worktree-case+agent-r1-adoption-replay`
+      （commit 5c8850f）。
+      discover/baseline/scaffold/normalize/prove 全阶段通过：178 个 tracked 文件按 hash
+      全部保留，normalize 移动 9 个 root entries，0 blockers，目标 repo
+      `validate-governance.py --strict` 为 0 error / 0 warning，remaining_root_pollution=0。
+      发现 v1 结构收敛有效但语义归类较粗（docs/images/examples/recipes 作为 imported unit
+      保留在 `lab/code/imported/agent-r1/`），且目标 repo 无轻量 native test command，
+      因此 runtime 行为未验证。Replay 中已增强 adoption report，使其显示 moved entries、
+      blocker count、root pollution 与 move-based Git status 说明。
+    report: lab/docs/audits/agent-r1-adoption-replay-report.md
+    probe_log: null
+    status: complete
+  - id: template-upstream-sync-selftest
+    case_source: "自造合成 case：从本模板 working tree 派生上/下游 checkout（非外部真实仓库）"
+    template_commit_range: "bc7a037..feat/template-upstream-sync（模板上下游同步闭环 + 哨兵）"
+    branch: feat/template-upstream-sync
+    depth: adversarial-probe-matrix
+    rounds: 3
+    date: "2026-07-11"
+    findings_summary: >
+      新增一类机制（VERSION/bump/template-sync/manifest/merge 哨兵 + check_merge_sentinels
+      validator）。按合成下游 repo 做端到端对抗探针：框架层覆盖（改脏 doctrine 被覆盖）、
+      project 层零触碰（112 私有文件保留）、版本追平、MAJOR 门禁（rc=2，--allow-major 放行）、
+      幂等（二次 0 覆盖）、bump 有/无 git 两路径、哨兵合并（上游改块内传入 + 下游自定义区存活 +
+      下游乱改块内被覆盖）、哨兵 validator mutate→assert→revert 正负用例。真上游
+      validate-governance 0 error/0 warning。fresh sonnet5 reviewer 复审（fb70fb1）：1 HIGH
+      （codex 重建 rc 未检查被静默吞）+ 4 MEDIUM + 1 LOW；HIGH 及 replace count=1 / TOML 转义 /
+      哨兵唯一性校验已在 merge 前修复，orphan 处理与 classify 去重列为 fast-follow。
+      局限：case 为自造合成而非外部真实仓库，depth 记 adversarial-probe-matrix 而非 full-case-replay。
+    report: null
+    probe_log: null
+    status: complete

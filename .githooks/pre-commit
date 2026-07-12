@@ -1,0 +1,17 @@
+#!/bin/sh
+# 仓库版 git pre-commit hook：强制 same-commit rule（结构改动 <-> ANATOMY.md 同变更集）。
+# 见 .agent/anatomy-protocol.md、scripts/check-same-commit.py。
+#
+# 启用（每个 clone 一次性，git config 不随 clone 复制）：
+#   git config core.hooksPath .githooks
+#
+# 逃生：git commit --no-verify，或 SAME_COMMIT_SKIP=1 git commit ...
+#
+# 路径锚定：不能假设 cwd == 仓库根（真正的 git hook，不在 Claude Code 的
+# PreToolUse 环境里，没有 $CLAUDE_PROJECT_DIR 可用；`git rev-parse
+# --show-toplevel` 在 cwd 已漂移进嵌套仓库时会返回错误的（嵌套仓库的）根，
+# 正是当初 hook 自锁 bug 的根因）。改用本脚本自身相对 `.githooks/` 的位置
+# 推算仓库根：`.githooks/` 就在仓库根下一级。
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+exec python "$REPO_ROOT/scripts/check-same-commit.py" --staged

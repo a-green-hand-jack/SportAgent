@@ -1,0 +1,201 @@
+{
+  "created_at": "2026-07-12T21:18:31+00:00",
+  "import_root": "lab/code/imported/SportAgent",
+  "normalize_blockers": [],
+  "policy": "conservative",
+  "project_slug": "SportAgent",
+  "protected_roots": [],
+  "report_path": "lab/docs/audits/template-adoption-report.md",
+  "root_entries": [
+    {
+      "allowed_root": true,
+      "kind": "dir",
+      "path": ".agent",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".agents",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".codex",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "file",
+      "path": ".coverage",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "file",
+      "path": ".env.example",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": ".gitignore",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".mypy_cache",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".omx",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".pytest_cache",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": ".python-version",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".ruff_cache",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".venv",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": ".vscode",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": "CLAUDE.md",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": "README.md",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": "data",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": "docs",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": "outputs",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": "pyproject.toml",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "dir",
+      "path": "scripts",
+      "protected": false,
+      "template_control_item": true
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": "src",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": false,
+      "kind": "dir",
+      "path": "tests",
+      "protected": false,
+      "template_control_item": false
+    },
+    {
+      "allowed_root": true,
+      "kind": "file",
+      "path": "uv.lock",
+      "protected": false,
+      "template_control_item": false
+    }
+  ],
+  "root_pollution": [
+    ".agents",
+    ".codex",
+    ".coverage",
+    ".env.example",
+    ".mypy_cache",
+    ".omx",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    ".vscode",
+    "data",
+    "docs",
+    "outputs",
+    "src",
+    "tests"
+  ],
+  "schema": "template-adoption-plan-v1",
+  "state_dir": "lab/docs/audits/template-adoption/state",
+  "target": "/home/user/Projects/SportAgent",
+  "template_conflicts": [
+    ".agent",
+    ".gitignore",
+    "CLAUDE.md",
+    "README.md",
+    "scripts"
+  ],
+  "template_root": "/tmp/sportagent-template-v1.3.0",
+  "test_command": "UV_CACHE_DIR=/tmp/uv-cache uv run --frozen pytest \"$(git rev-parse --show-toplevel)/$(if [ -d \"$(git rev-parse --show-toplevel)/tests\" ]; then printf tests; else printf lab/code/imported/SportAgent/tests; fi)\""
+}

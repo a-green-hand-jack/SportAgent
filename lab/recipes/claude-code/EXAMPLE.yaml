@@ -1,0 +1,35 @@
+# Claude Code workflow recipe 示例（schema 参考）。真实 recipe 命名 <recipe-id>.yaml。
+# 由 workflow-recipe-harvester 从 lab/traces/human-cc/ 提炼；见 .agent/claude-code-recipe-policy.md。
+# status: candidate | provisional | stable | deprecated
+
+id: cc-recipe-001
+title: "用 repo-local plan doc 承载多步任务"
+status: candidate
+observed:
+  date: 2026-07-06
+  product: Claude Code
+  version: "<claude --version>"
+claim: >
+  对跨多个文件的任务，先写 repo-local plan doc，再实现，
+  比只在聊天中维护 plan 更容易恢复上下文和 review。
+preconditions:
+  - 任务会跨多个文件或多个 session
+  - repo 有 human/、plans/ 或 docs/ 工作面
+steps:
+  - 创建或更新 plan doc
+  - human 在文件中批注
+  - Claude Code 读取 diff 并收敛 plan
+evidence:
+  traces:
+    - lab/traces/human-cc/2026-07-06/session-abc/
+  commits:
+    - "<commit-sha>"
+evals:
+  - lab/evals/cc-workflow/plan-doc-recovery.yaml
+metrics:
+  - recovery_turns_after_context_drop
+  - unresolved_assumption_count
+  - human_review_minutes
+counterexamples:
+  - "小于 20 行的单文件修改会被 plan doc 拖慢"
+expires_at: 2026-08-06

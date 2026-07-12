@@ -1,0 +1,163 @@
+# template-manifest.toml — 路径分类的唯一真源
+#
+# template-sync.py 据此决定「从上游 template 追平到下游时，每条路径怎么处理」。
+# 也是 versioning policy 里「什么算框架层」的权威定义。
+#
+# kind 语义：
+#   framework  上游拥有 —— sync 直接覆盖下游（下游不该改；要改走 template-feedback 上报）
+#   generated  生成物 —— 不直接拷；sync 覆盖完 canonical 后在下游跑生成器重建
+#   project    下游拥有 —— sync 绝不触碰
+#   scaffold   骨架 —— 缺了才建，已存在则跳过（下游可自由填充）
+#   merge      混合文件 —— 只替换 template:begin/end 哨兵块；无哨兵则 WARN 并跳过（人工 reconcile）
+#
+# 规则按顺序求值，第一条匹配生效 —— 具体的放前面，宽泛的放后面。
+# glob 约定：以 `/**` 结尾匹配该前缀下所有路径；否则按 fnmatch 匹配单条 repo-relative 路径。
+# 上游存在但没被任何规则匹配的文件 → sync 会 WARN（提醒补全本清单，防分类漂移）。
+
+[[rule]]
+glob = ".template.toml"
+kind = "project"        # 下游的版本锚点，各repo自持
+
+[[rule]]
+glob = "VERSION"
+kind = "framework"      # 上游版本真源，覆盖下游（下游据此知道追到哪）
+
+[[rule]]
+glob = "CHANGELOG.md"
+kind = "framework"
+
+[[rule]]
+glob = "template-manifest.toml"
+kind = "framework"      # 分类清单本身随模板演进
+
+[[rule]]
+glob = ".claude/settings.local.json"
+kind = "project"        # 本地权限覆盖，属下游
+
+[[rule]]
+glob = ".agent/**"
+kind = "framework"
+
+[[rule]]
+glob = ".claude/agents/**"
+kind = "framework"
+
+[[rule]]
+glob = ".claude/skills/**"
+kind = "framework"
+
+[[rule]]
+glob = ".claude/commands/**"
+kind = "framework"
+
+[[rule]]
+glob = ".claude/hooks/**"
+kind = "framework"
+
+[[rule]]
+glob = ".claude/settings.json"
+kind = "framework"
+
+[[rule]]
+glob = ".claude/settings.example.json"
+kind = "framework"      # canonical 示例，上游拥有
+
+[[rule]]
+glob = ".claude/settings.local.json.example"
+kind = "framework"      # canonical 示例，上游拥有
+
+[[rule]]
+glob = ".claude/statusline.sh"
+kind = "framework"
+
+[[rule]]
+glob = ".claude/CLAUDE.md"
+kind = "merge"
+
+[[rule]]
+glob = ".claude/agent-reports/**"
+kind = "scaffold"       # 下游各自积累的报告，只保底建目录骨架
+
+[[rule]]
+glob = ".claude/**"
+kind = "merge"          # .claude 下其余导航文件（README/AGENTS/ANATOMY 等）含项目内容
+
+[[rule]]
+glob = ".codex/**"
+kind = "generated"
+
+[[rule]]
+glob = ".agents/**"
+kind = "generated"
+
+[[rule]]
+glob = "scripts/**"
+kind = "framework"
+
+[[rule]]
+glob = ".githooks/**"
+kind = "framework"
+
+[[rule]]
+glob = ".github/**"
+kind = "framework"
+
+[[rule]]
+glob = ".gitignore"
+kind = "framework"
+
+[[rule]]
+glob = ".vscode/**"
+kind = "framework"
+
+[[rule]]
+glob = "DESIGN.md"
+kind = "framework"      # 模板设计说明 + §10 能力清单，上游拥有
+
+[[rule]]
+glob = "AGENTS.md"
+kind = "merge"
+
+[[rule]]
+glob = "ANATOMY.md"
+kind = "merge"
+
+[[rule]]
+glob = "CLAUDE.md"
+kind = "merge"
+
+[[rule]]
+glob = ".reference-docs/**"
+kind = "framework"      # 模板策展的外部参考资料，上游拥有
+
+[[rule]]
+glob = "README.md"
+kind = "scaffold"       # 下游自己的门面
+
+[[rule]]
+glob = "PROJECT.md"
+kind = "project"
+
+[[rule]]
+glob = "DECISIONS.md"
+kind = "project"
+
+[[rule]]
+glob = "lab/**"
+kind = "project"
+
+[[rule]]
+glob = "memory/**"
+kind = "project"
+
+[[rule]]
+glob = "deliverables/**"
+kind = "project"
+
+[[rule]]
+glob = "plans/**"
+kind = "project"
+
+[[rule]]
+glob = "human/**"
+kind = "project"

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_README": [
+    "自主窗口档（autonomous window profile）。用于 human 明确授权一段无人值守时间：",
+    "human 出门 / 睡觉，但任务得继续跑。用法见 .agent/autonomous-window.md。",
+    "",
+    "怎么用：",
+    "1. cp .claude/settings.local.json.example .claude/settings.local.json",
+    "2. 按 THIS TASK 真正需要的，保留/删减下面 allow 里的条目（宁少勿多）。",
+    "3. 干活；窗口结束后 rm .claude/settings.local.json 收回授权。",
+    "",
+    "本文件 git-ignored（见 .gitignore），只本机生效，不改模板对外默认。",
+    "settings.local.json 覆盖 settings.json 同名条目。",
+    "",
+    "★ 关键：这里只放宽 permission 层（可调）。以下红线由 pre_tool_guard.py",
+    "  这个 hook 地板守住，本档放开也拦得住，故意不给逃逸：",
+    "  - rm -rf / sudo / curl|sh",
+    "  - 写 lab/data、lab/runs、lab/models、checkpoints、wandb bytes",
+    "  - 删数据/产物/checkpoint bytes",
+    "  - push 到 main/master（除非命令带 CLAUDE_ALLOW_PUSH_MAIN=1，属显式单次放行）",
+    "所以'授权自主'依然安全：致命动作根本不在可放宽的这层。"
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git worktree add *)"
+    ],
+    "_ask_examples_do_not_blanket_allow": [
+      "以下动作副作用半径大，默认别整晚放开——除非 THIS TASK 就是它、且你已在场确认过一次：",
+      "Bash(sbatch *)  Bash(runai *)  —— 真实计算成本，最好睡前先手动起一次",
+      "Bash(uv add *)  Bash(uv sync *)  —— 改环境，最好睡前先 resolve 好",
+      "Bash(kill *)  Bash(gh pr merge *)  —— 高风险/共享，别自动化"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+# recipe 复测任务示例。每条 recipe 绑 1-3 个小任务：一正例、一边界例、一反例。
+# 连续通过 >=2 次 -> recipe 可升 provisional。见 .agent/claude-code-recipe-policy.md。
+
+recipe_id: cc-recipe-001
+eval_id: plan-doc-recovery
+cases:
+  - kind: positive
+    name: "多文件任务用 plan doc"
+    setup: "给一个跨 3 文件的重构任务"
+    procedure: "先写 plan doc，制造一次 context drop，让 fresh session 从 repo 恢复"
+    pass_if: "recovery_turns_after_context_drop <= 3 且无遗漏子任务"
+  - kind: boundary
+    name: "中等任务"
+    setup: "跨 2 文件的小改动"
+    pass_if: "plan doc 开销不超过收益（human_review_minutes 合理）"
+  - kind: negative
+    name: "单文件 <20 行修改"
+    setup: "一个 typo 级修改"
+    pass_if: "识别出无需 plan doc（recipe 不误用）"
+judge: "human 或 fresh verifier 依据上面 pass_if 判定"
+last_results: []   # e.g. [{date: 2026-07-08, verdict: pass}]

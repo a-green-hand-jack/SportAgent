@@ -1,0 +1,16 @@
+# 结果索引。让 future session 快速知道「哪些结果还活着」。由 artifact-librarian 维护。
+# 只存 index，不存 bytes。status: active | superseded | archived | unknown
+
+results:
+  - id: result-000
+    summary: "<这个结果是什么>"
+    storage_path: "<路径或 URI，bytes 不进 Git>"
+    how_to_inspect: "<怎么看，例如打开命令>"
+    commit: "<git sha>"
+    config: "<config 路径>"
+    run_id: "<run-id>"
+    supports: "<claim/table/figure id>"
+    status: unknown
+    missing_metadata: []
+    archive_recommendation: "<何时可归档>"
+    updated: "YYYY-MM-DD"

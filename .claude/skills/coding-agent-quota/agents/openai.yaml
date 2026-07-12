@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coding Agent Quota"
+  short_description: "Read Codex and Claude Code quota snapshots"
+  default_prompt: "Use $coding-agent-quota to check current Codex and Claude Code quota before routing agent work."

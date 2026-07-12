@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "扩展示例：在 settings.json 基础上加入可选 hooks（Notification 等）。按项目真实工具裁剪后复制进 settings.json。注：rm -rf 不用 blanket deny——由 pre_tool_guard.py 按目标分级（缓存可删、数据/产物拦）。",
+  "permissions": {
+    "deny": [
+      "Agent(general-purpose)"
+    ],
+    "ask": [
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)"
+    ],
+    "allow": [
+      "Bash(git push *)",
+      "Bash(pytest *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre_tool_guard.py\"" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "_comment": "编辑 Python 后自动格式化；再做一次便宜的中文审阅启发提醒（Track 0 方案 B，见 zh_review_advisory.py）。需要项目已装 ruff。",
+        "hooks": [
+          { "type": "command", "command": "ruff format \"$CLAUDE_FILE_PATHS\" 2>/dev/null || true" },
+          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/zh_review_advisory.py\"" }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre_compact_memory_check.py\"" }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "*",
+        "_comment": "Claude 等待输入/权限时通知（按需接入桌面通知命令）。",
+        "hooks": [
+          { "type": "command", "command": "true" }
+        ]
+      }
+    ]
+  }
+}
