@@ -54,11 +54,13 @@ maintenance: |
 
 <!-- 项目自定义区（template:end 之后，sync 不碰）：下游在此追加本项目特定内容；template:begin/end 块内是模板拥有的内容，如需改动请走 template-feedback 上报，勿在此直接改块内。 -->
 
-## SportAgent 项目单元
+## SportAgent 当前状态
 
 | 路径 | 作用 | 入口 |
 | --- | --- | --- |
-| `lab/code/imported/SportAgent/` | 可运行的 Fitness Agent 产品单元 | `README.md` · `pyproject.toml` |
-| `human/imported/adoption-conflicts/` | 采用模板时保留的原始冲突文件 | 原 README / CLAUDE / gitignore |
+| `lab/code/` | 空实现骨架；等待开源产品底座决策 | `lab/code/README.md` |
+| `human/briefs/active/` | 底座选型与相似项目研究任务 | 两份 20260713 research briefs |
+| `lab/docs/audits/template-adoption*` | v1.3.0 采用过程的历史证据 | adoption report / state |
+| `human/imported/adoption-conflicts/` | 采用模板时保留的历史冲突文件 | 原 README / CLAUDE / gitignore |
 
-产品单元保持原来的 `src/`、`tests/`、`data/`、`docs/` 和 uv 布局，避免改变运行时路径语义。
+当前不存在活动产品源码、数据、测试、依赖或运行时。未来底座选定后，必须同 commit 更新本路由与 `lab/code/ANATOMY.md`。

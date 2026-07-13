@@ -44,5 +44,6 @@
 
 ## SportAgent 路由
 
-产品工作先读 `lab/code/imported/SportAgent/CLAUDE.md`。所有 uv、pytest、ruff、mypy 和
-`fitness-agent` 命令从 `lab/code/imported/SportAgent/` 运行；仓库根 `scripts/` 仅用于治理验证。
+当前没有产品实现。先读 `PROJECT.md`、`memory/current-status.md` 与
+`human/briefs/active/20260713-open-source-base-selection.md`；在 human 接受开源底座决策前，
+只做研究、设计和小型选型计划，不创建新的产品框架。仓库根 `scripts/` 当前仅用于治理验证。

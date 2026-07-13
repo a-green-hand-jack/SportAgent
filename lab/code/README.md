@@ -1,21 +1,20 @@
 # lab/code/ — 实现层
 
-一切**可执行代码**都在这里：源码、配置、脚本、测试、实验入口。想改模型、写训练/评估逻辑、加一个实验，就来这层。
+此目录是未来产品集成、实验与测试的代码控制面。当前有意保持为空实现状态：具体产品形态和开源底座尚未裁决。
 
 ## 子目录
 
-| 目录 | 是什么 |
+| 目录 | 当前用途 |
 | --- | --- |
-| `imported/SportAgent/` | SportAgent 产品单元：源码、数据、测试、文档与 uv 环境 |
-| `src/` | 模板预留的通用源码层；当前 SportAgent 不使用 |
-| `configs/` | 配置文件（超参、数据、运行配置） |
-| `scripts/` | 一次性 / 运维 / 数据处理脚本 |
-| `tests/` | 单元与集成测试 |
-| `experiments/` | 实验入口与实验专属代码 |
+| `src/` | 模板预留源码层；尚无 SportAgent 实现 |
+| `configs/` | 未来 spike 与实验配置 |
+| `scripts/` | 未来一次性或集成脚本 |
+| `tests/` | 未来契约、集成与领域评测测试 |
+| `experiments/` | 开源底座 Top 2 的受限 spike 入口 |
 
-## 常见入口
+## 当前门禁
 
-- SportAgent 核心逻辑在 `imported/SportAgent/src/fitness_agent/`。
-- 产品依赖与测试从 `imported/SportAgent/` 运行，使用其 `pyproject.toml` 与 `uv.lock`。
-- 新实验从 `experiments/` 起步，配置放 `configs/`。
-- 提交前跑 `tests/`。
+- 先完成 `human/briefs/active/20260713-open-source-base-selection.md`。
+- human 接受底座和首期范围决策前，不创建内部产品框架或引入产品依赖。
+- spike 必须围绕具体候选底座，写清接入边界、退出条件和预计替代的自研基础设施。
+- 正式代码进入本层时，同 commit 更新 `lab/code/ANATOMY.md` 与相关测试入口。

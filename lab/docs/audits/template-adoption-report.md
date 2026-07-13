@@ -1,5 +1,10 @@
 # Template Adoption Report
 
+> Historical adoption evidence. The imported Fitness Agent product unit described below was intentionally
+> removed from the active `main`/`dev` baseline on 2026-07-13 after the north-star discussion reset the
+> implementation direction. `.template.toml` and the agent-native control plane remain active. The 106/106
+> integrity result records the moment of adoption; it is not a current product-presence invariant.
+
 - created_at: `2026-07-12T21:30:00+00:00`
 - target: `/home/user/Projects/SportAgent`
 - policy: `conservative`
@@ -58,5 +63,6 @@ Remaining root pollution:
 - The official `template-sync.py` supplied version files and rebuilt adapters. Static `.codex/.agents`
   navigation and config files were copied byte-for-byte from tag `v1.3.0` because the v1.3.0 generator
   creates capability adapters but does not emit those static files.
-- SportAgent remains a self-contained product unit at `lab/code/imported/SportAgent/`; project-owned
-  README, Claude guidance, Git ignore rules, scripts, uv metadata, source, data, docs, and tests live there.
+- At initial adoption time, SportAgent was preserved as a self-contained product unit at
+  `lab/code/imported/SportAgent/`. That unit was later removed by explicit product-direction decision;
+  this report remains only as audit history.

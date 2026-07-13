@@ -4,53 +4,46 @@
 
 ## 当前 objective
 
-完成 SportAgent 对 `ml-project-repo-agent-native-template` v1.3.0 的原地采用，并保持产品行为与
-uv 锁定环境可复现。
+把 SportAgent 收敛为只有 `main`/`dev` 的无具体实现基线，并完成传统开源运动记录/训练规划产品底座的选型准备。
+
+## 已接受方向
+
+- 北极星方向保持不变：安全、可执行、会随真实反馈持续调整的个性化运动指导。
+- 具体产品形态、首期运动类型和交互方式仍需讨论。
+- 优先依托成熟开源产品；SportAgent 聚焦 AI 约束推理、计划修订、反馈闭环和领域评测。
+- 旧 Fitness Agent 原型对当前决策没有约束力，已从活动基线移除。
 
 ## 当前结构
 
-- Agent-native 控制根：仓库根目录。
-- SportAgent 产品单元：`lab/code/imported/SportAgent/`。
-- 迁移状态与 proof：`lab/docs/audits/template-adoption/` 和
-  `lab/docs/audits/template-adoption-report.md`。
-- 原始冲突留档：`human/imported/adoption-conflicts/`。
+- Agent-native 控制根：仓库根目录，模板版本 v1.3.0。
+- 活动实现：无；`lab/code/` 只保留模板骨架。
+- 研究入口：
+  - `human/briefs/active/20260713-open-source-base-selection.md`
+  - `human/briefs/active/20260713-similar-projects-deep-research.md`
+- 历史迁移证据：`lab/docs/audits/template-adoption*`。
+
+## 分支目标
+
+- GitHub 默认分支：`main`。
+- 长期分支：仅 `main` 与 `dev`。
+- `dev` 从当前 `main` 无实现基线创建；当前二者内容一致。
+- 其余本地和远端分支删除。
 
 ## Constraints
 
-- 不改写产品知识库、生成数据、评审材料或原 tracked bytes。
-- 不 commit、push、reset、clean，不操作 GitHub issue。
-- Python 约束保持 3.12；依赖保持现有 `uv.lock`，不使用系统 pip。
+- 在 human 接受开源底座与首期范围决策前，不开始产品实现、不新增产品依赖。
+- 研究优先使用一手资料，许可证、活跃度和扩展边界必须动态核对。
+- 不把旧原型的模块划分当成新产品架构。
+- 根模板治理文件保持可同步；结构变更同步更新 ANATOMY。
 
-## Baseline
+## Active research
 
-- 原 tracked 文件：106 个，内容 hash 已记录。
-- `uv sync --frozen`：CPython 3.12.3，64 个包。
-- `uv run --frozen pytest`：471 passed，78% coverage。
-- 既有质量债：ruff 123 个 findings；mypy 8 个 errors。
-
-## Migration decisions
-
-- 使用模板官方 `adopt-existing-repo.py` 的 discover/baseline/scaffold/normalize/prove 阶段。
-- 采用 tag `v1.3.0`、commit `53cbbee6efcf4e0df92f5ed727f84745210b58b8`。
-- 产品保持为一个 imported unit，避免改变 `src/`、`data/`、`tests/` 的内部相对路径和行为。
-- `.codex/` 与 `.agents/` 由 canonical `.claude/` 能力生成；静态导航/config 从同一 tag 补齐。
+现有 Paseo tab `技术侦察员｜基础设施外包地图` 正在筛选 8–15 个传统运动记录/训练规划底座，并为 Top 3 设计 AI 接入边界和两周 spike。
 
 ## Stop condition
 
-Integrity、adoption smoke、strict governance、uv sync、471 项产品测试、CLI smoke、diff check
-均有 fresh evidence；ruff/mypy 与 baseline 相同且无迁移新增错误。
-
-## Final evidence
-
-- `python scripts/check-adoption-integrity.py /home/user/Projects/SportAgent`：106/106 present。
-- `python lab/evals/adoption/run-adoption-smoke.py`：OK。
-- `python scripts/validate-governance.py --strict`：0 error / 0 warning。
-- `python scripts/sync-codex-adapters.py --check`：0 issue。
-- `UV_CACHE_DIR=/tmp/uv-cache uv sync --frozen`：CPython 3.12.3，64 packages installed。
-- `UV_CACHE_DIR=/tmp/uv-cache uv lock --check`：65 packages resolved，lock valid。
-- `UV_CACHE_DIR=/tmp/uv-cache uv run --frozen pytest`：471 passed，78% coverage。
-- `UV_CACHE_DIR=/tmp/uv-cache uv run --frozen fitness-agent version`：`v0.1.0`。
-- `git diff --check`：通过。
-- Ruff 仍为 baseline 的 123 errors；mypy 仍为 baseline 的 8 errors / 3 files。
-
-迁移已达到 stop condition；剩余工作仅是协调方审阅、Git 记录与 issue #11 tracker 更新。
+1. 本地与远端只剩 `main`/`dev`，默认分支为 `main`；
+2. 两个分支指向同一个无具体实现 commit；
+3. governance、anatomy drift、adapter sync 与 Git 状态验证通过；
+4. GitHub #2/#3 反映“形态待讨论、开源底座优先、实现暂停”；
+5. 开源底座研究 tab 已启动并保留供后续讨论。

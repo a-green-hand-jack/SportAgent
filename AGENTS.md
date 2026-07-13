@@ -57,8 +57,9 @@
 
 ## SportAgent 项目约定
 
-- 产品根目录是 `lab/code/imported/SportAgent/`；源码、测试、数据、文档和 uv 元数据均在其中。
-- 产品命令从该目录运行：`uv sync --frozen`、`uv run pytest`、`uv run fitness-agent version`。
-- 根 `scripts/` 属于模板治理；SportAgent 自有脚本位于 `lab/code/imported/SportAgent/scripts/`。
-- 不改写或删除知识库 JSON、用户生成数据、评审 HTML 和迁移冲突留档。
-- 原项目指导保存在 `lab/code/imported/SportAgent/CLAUDE.md`，产品改动前应一并阅读。
+- 当前没有产品实现；`lab/code/` 仅保留模板骨架，旧 Fitness Agent 原型不属于活动代码。
+- 北极星已确定，但产品形态、首期范围和开源底座尚未裁决。底座决策落入 `human/decisions/` 前，不开始产品实现或新增产品依赖。
+- 优先选择成熟的传统运动记录/训练规划开源项目，再以薄适配层增加 SportAgent 的 AI 约束推理、计划修订和反馈闭环。
+- 根 `scripts/` 属于模板治理；当前只运行治理与研究相关验证。
+- `lab/docs/audits/template-adoption*` 与 `human/imported/adoption-conflicts/` 是历史迁移证据，不是当前产品入口。
+- 长期分支只保留 `main` 与 `dev`；稳定决策进 `main`，后续 spike/集成先进入 `dev`。
